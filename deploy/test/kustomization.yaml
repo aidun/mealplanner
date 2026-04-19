@@ -10,10 +10,10 @@ resources:
 images:
   - name: ghcr.io/aidun/mealplanner/api
     newName: ghcr.io/aidun/mealplanner/api
-    newTag: master-c5e6afa # replaced by local pipeline: master-<git-sha>
+    newTag: master-bc1b899 # replaced by local pipeline: master-<git-sha>
   - name: ghcr.io/aidun/mealplanner/frontend
     newName: ghcr.io/aidun/mealplanner/frontend
-    newTag: master-2a3a524 # replaced by local pipeline: master-<git-sha>
+    newTag: master-bc1b899 # replaced by local pipeline: master-<git-sha>
 
 patches:
   - patch: |-
