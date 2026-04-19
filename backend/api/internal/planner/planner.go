@@ -1,0 +1,100 @@
+package planner
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/aidun/mealplanner/backend/api/internal/domain"
+)
+
+type Generator interface {
+	GenerateWeek(ctx context.Context, profile domain.Profile, weekStart time.Time) (domain.Plan, error)
+	RegenerateMeal(ctx context.Context, profile domain.Profile, plan domain.Plan, mealID string, note string) (domain.Meal, error)
+}
+
+type Planner struct {
+	generator Generator
+	now       func() time.Time
+}
+
+func New(generator Generator) Planner {
+	return Planner{generator: generator, now: time.Now}
+}
+
+func (p Planner) WithNow(now func() time.Time) Planner {
+	p.now = now
+	return p
+}
+
+func (p Planner) GenerateWeek(ctx context.Context, profile domain.Profile, weekStart string) (domain.Plan, error) {
+	if err := profile.Validate(); err != nil {
+		return domain.Plan{}, err
+	}
+	start, err := parseOrNextWeekStart(weekStart, p.now())
+	if err != nil {
+		return domain.Plan{}, err
+	}
+	plan, err := p.generator.GenerateWeek(ctx, profile, start)
+	if err != nil {
+		return domain.Plan{}, err
+	}
+	plan.WeekStart = start.Format("2006-01-02")
+	plan.Status = "planned"
+	plan.ShoppingList = domain.ConsolidateShoppingList(plan)
+	return plan, nil
+}
+
+func (p Planner) RegenerateMeal(ctx context.Context, profile domain.Profile, plan domain.Plan, mealID string, note string) (domain.Plan, error) {
+	if err := profile.Validate(); err != nil {
+		return domain.Plan{}, err
+	}
+	meal, err := p.generator.RegenerateMeal(ctx, profile, plan, mealID, note)
+	if err != nil {
+		return domain.Plan{}, err
+	}
+	found := false
+	for dayIndex := range plan.Days {
+		for mealIndex := range plan.Days[dayIndex].Meals {
+			if plan.Days[dayIndex].Meals[mealIndex].ID == mealID {
+				plan.Days[dayIndex].Meals[mealIndex] = meal
+				found = true
+			}
+		}
+	}
+	if !found {
+		return domain.Plan{}, fmt.Errorf("meal %s not found", mealID)
+	}
+	plan.Status = "planned"
+	plan.ShoppingList = domain.ConsolidateShoppingList(plan)
+	return plan, nil
+}
+
+func parseOrNextWeekStart(value string, now time.Time) (time.Time, error) {
+	if value != "" {
+		parsed, err := time.Parse("2006-01-02", value)
+		if err != nil {
+			return time.Time{}, fmt.Errorf("weekStart must use YYYY-MM-DD: %w", err)
+		}
+		return monday(parsed), nil
+	}
+	return nextSunday(now), nil
+}
+
+func monday(t time.Time) time.Time {
+	weekday := int(t.Weekday())
+	if weekday == 0 {
+		weekday = 7
+	}
+	return dateOnly(t).AddDate(0, 0, -(weekday - 1))
+}
+
+func nextSunday(t time.Time) time.Time {
+	days := (7 - int(t.Weekday())) % 7
+	return dateOnly(t).AddDate(0, 0, days)
+}
+
+func dateOnly(t time.Time) time.Time {
+	y, m, d := t.Date()
+	return time.Date(y, m, d, 0, 0, 0, 0, t.Location())
+}

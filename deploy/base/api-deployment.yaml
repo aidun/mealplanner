@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api
+  template:
+    metadata:
+      labels:
+        app: api
+    spec:
+      imagePullSecrets:
+        - name: ghcr-pull-secret
+      initContainers:
+        - name: migrate
+          image: ghcr.io/aidun/mealplanner/api:latest
+          imagePullPolicy: IfNotPresent
+          command: ["/app/bin/migrate", "up"]
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: mealplanner-database
+                  key: DATABASE_URL
+      containers:
+        - name: api
+          image: ghcr.io/aidun/mealplanner/api:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3001
+          env:
+            - name: PORT
+              value: "3001"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: mealplanner-database
+                  key: DATABASE_URL
+            - name: API_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: api-secrets
+                  key: API_SECRET
+                  optional: true
+            - name: CORS_ORIGINS
+              valueFrom:
+                secretKeyRef:
+                  name: api-secrets
+                  key: CORS_ORIGINS
+                  optional: true
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: api-secrets
+                  key: OPENAI_API_KEY
+                  optional: true
+            - name: OPENAI_MEAL_MODEL
+              value: "gpt-5.4-mini"
+            - name: PROVIDER_MODE
+              value: "live"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3001
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3001
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi

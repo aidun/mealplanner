@@ -1,0 +1,176 @@
+name: Mealplanner - Publish Test Images
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_ref:
+        description: Git ref to publish for the test environment
+        required: true
+        default: master
+        type: string
+
+permissions:
+  contents: write
+  packages: write
+  pull-requests: write
+
+concurrency:
+  group: mealplanner-publish-test-images
+  cancel-in-progress: true
+
+jobs:
+  verify-backend:
+    name: Verify backend
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgres://mealplanner:mealplanner@127.0.0.1:5432/mealplanner_test
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: mealplanner
+          POSTGRES_PASSWORD: mealplanner
+          POSTGRES_DB: mealplanner_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U mealplanner -d mealplanner_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.source_ref || github.sha }}
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.2'
+          cache: true
+          cache-dependency-path: backend/api/go.sum
+      - name: Verify backend
+        working-directory: backend/api
+        run: |
+          go test ./...
+
+  verify-frontend:
+    name: Verify frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.source_ref || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+
+  verify-manifests:
+    name: Verify manifests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.source_ref || github.sha }}
+      - uses: azure/setup-kubectl@v4
+        with:
+          version: v1.33.0
+      - run: kubectl kustomize deploy/test > /tmp/deploy-test.yaml
+      - run: kubectl kustomize deploy/production > /tmp/deploy-production.yaml
+
+  publish-test-images:
+    name: Build and publish test images
+    needs: [verify-backend, verify-frontend, verify-manifests]
+    runs-on: ubuntu-latest
+    outputs:
+      short_sha: ${{ steps.meta.outputs.short_sha }}
+      full_sha: ${{ steps.meta.outputs.full_sha }}
+      source_ref: ${{ steps.meta.outputs.source_ref }}
+      branch_short_sha: ${{ steps.meta.outputs.branch_short_sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.source_ref || github.sha }}
+      - id: meta
+        shell: bash
+        run: |
+          short_sha="$(git rev-parse --short HEAD)"
+          source_ref="${{ github.event_name == 'workflow_dispatch' && inputs.source_ref || github.sha }}"
+          echo "source_ref=$source_ref" >> "$GITHUB_OUTPUT"
+          echo "short_sha=$short_sha" >> "$GITHUB_OUTPUT"
+          echo "branch_short_sha=$short_sha" >> "$GITHUB_OUTPUT"
+          echo "full_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: backend/api
+          file: backend/api/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/aidun/mealplanner/api:master
+            ghcr.io/aidun/mealplanner/api:master-${{ steps.meta.outputs.short_sha }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: frontend
+          file: frontend/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/aidun/mealplanner/frontend:master
+            ghcr.io/aidun/mealplanner/frontend:master-${{ steps.meta.outputs.short_sha }}
+
+  update-test-target:
+    name: Open GitOps PR for test image tags
+    needs: [publish-test-images]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+      - name: Update test overlay image tags
+        shell: python
+        env:
+          SHORT_SHA: ${{ needs.publish-test-images.outputs.short_sha }}
+        run: |
+          from pathlib import Path
+          import os
+
+          overlay = Path("deploy/test/kustomization.yaml")
+          short_sha = os.environ["SHORT_SHA"]
+          lines = []
+          replacements = {
+              "ghcr.io/aidun/mealplanner/api": f"master-{short_sha}",
+              "ghcr.io/aidun/mealplanner/frontend": f"master-{short_sha}",
+          }
+          current = None
+
+          for line in overlay.read_text(encoding="utf-8").splitlines():
+              stripped = line.strip()
+              if stripped.startswith("- name: "):
+                  current = stripped.split(": ", 1)[1]
+              elif stripped.startswith("newTag: ") and current in replacements:
+                  prefix = line.split("newTag:")[0]
+                  line = f"{prefix}newTag: {replacements[current]} # replaced by bot PR: master-<git-sha>"
+              lines.append(line)
+
+          overlay.write_text("\n".join(lines) + "\n", encoding="utf-8")
+      - id: pr
+        continue-on-error: true
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.AUTOMATION_GITHUB_TOKEN != '' && secrets.AUTOMATION_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
+          commit-message: Update test image tags to master-${{ needs.publish-test-images.outputs.short_sha }}
+          title: Update test image tags to master-${{ needs.publish-test-images.outputs.short_sha }}
+          body: |
+            - update api and frontend test overlay tags to immutable `master-${{ needs.publish-test-images.outputs.short_sha }}`
+          branch: automation/update-mealplanner-test-target
+          branch-suffix: short-commit-hash
+          delete-branch: true
+          add-paths: |
+            deploy/test/kustomization.yaml

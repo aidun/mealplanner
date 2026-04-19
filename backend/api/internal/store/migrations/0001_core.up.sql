@@ -1,0 +1,19 @@
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+CREATE TABLE IF NOT EXISTS profiles (
+	id TEXT PRIMARY KEY DEFAULT 'default',
+	data JSONB NOT NULL,
+	updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS plans (
+	id TEXT PRIMARY KEY,
+	week_start DATE NOT NULL UNIQUE,
+	status TEXT NOT NULL DEFAULT 'planned',
+	data JSONB NOT NULL,
+	created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+	updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS plans_week_start_idx ON plans(week_start DESC);
+

@@ -1,0 +1,41 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: database-bootstrap
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+    argocd.argoproj.io/sync-options: Force=true,Replace=true
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app: database-bootstrap
+    spec:
+      restartPolicy: OnFailure
+      serviceAccountName: database-bootstrap
+      containers:
+        - name: bootstrap
+          image: bitnamilegacy/kubectl:1.33.4-debian-12-r0
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/sh
+            - /bootstrap/bootstrap.sh
+          env:
+            - name: POSTGRES_DB
+              value: mealplanner
+            - name: POSTGRES_USER
+              value: mealplanner
+            - name: API_SECRET_PLACEHOLDER
+              value: __set_api_secret__
+            - name: OPENAI_API_KEY_PLACEHOLDER
+              value: __set_openai_api_key__
+          volumeMounts:
+            - name: bootstrap-script
+              mountPath: /bootstrap
+              readOnly: true
+      volumes:
+        - name: bootstrap-script
+          configMap:
+            name: database-bootstrap-script
+            defaultMode: 493

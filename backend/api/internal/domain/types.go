@@ -1,0 +1,142 @@
+package domain
+
+import (
+	"errors"
+	"strings"
+	"time"
+)
+
+type Profile struct {
+	HouseholdName string       `json:"householdName"`
+	Members       []Member     `json:"members"`
+	Defaults      MealDefaults `json:"defaults"`
+	Presets       []string     `json:"presets"`
+	Notes         string       `json:"notes"`
+	UpdatedAt     time.Time    `json:"updatedAt,omitempty"`
+}
+
+type Member struct {
+	ID             string   `json:"id"`
+	Name           string   `json:"name"`
+	Role           string   `json:"role,omitempty"`
+	Age            int      `json:"age,omitempty"`
+	CaloriesTarget int      `json:"caloriesTarget,omitempty"`
+	Presets        []string `json:"presets,omitempty"`
+	Likes          string   `json:"likes,omitempty"`
+	Dislikes       string   `json:"dislikes,omitempty"`
+	Restrictions   string   `json:"restrictions,omitempty"`
+}
+
+type MealDefaults struct {
+	Breakfast string `json:"breakfast,omitempty"`
+	Lunch     string `json:"lunch,omitempty"`
+	Dinner    string `json:"dinner,omitempty"`
+	Snacks    string `json:"snacks,omitempty"`
+}
+
+type Plan struct {
+	ID           string         `json:"id"`
+	WeekStart    string         `json:"weekStart"`
+	Status       string         `json:"status"`
+	Days         []DayPlan      `json:"days"`
+	ShoppingList []ShoppingItem `json:"shoppingList,omitempty"`
+	CreatedAt    time.Time      `json:"createdAt,omitempty"`
+	UpdatedAt    time.Time      `json:"updatedAt,omitempty"`
+}
+
+type DayPlan struct {
+	Date  string `json:"date"`
+	Label string `json:"label"`
+	Meals []Meal `json:"meals"`
+}
+
+type Meal struct {
+	ID                 string            `json:"id"`
+	Slot               string            `json:"slot"`
+	Title              string            `json:"title"`
+	Description        string            `json:"description"`
+	Servings           []Serving         `json:"servings"`
+	Ingredients        []Ingredient      `json:"ingredients"`
+	Instructions       []string          `json:"instructions"`
+	Nutrition          Nutrition         `json:"nutrition"`
+	Tags               []string          `json:"tags"`
+	Warnings           []string          `json:"warnings,omitempty"`
+	EstimatedNutrition bool              `json:"estimatedNutrition"`
+	RegenerationNote   string            `json:"regenerationNote,omitempty"`
+	GeneratedAt        time.Time         `json:"generatedAt,omitempty"`
+	Meta               map[string]string `json:"meta,omitempty"`
+}
+
+type Serving struct {
+	MemberID string  `json:"memberId"`
+	Name     string  `json:"name"`
+	Portion  string  `json:"portion"`
+	Factor   float64 `json:"factor"`
+}
+
+type Ingredient struct {
+	Name     string  `json:"name"`
+	Amount   float64 `json:"amount,omitempty"`
+	Unit     string  `json:"unit,omitempty"`
+	Category string  `json:"category,omitempty"`
+	Note     string  `json:"note,omitempty"`
+}
+
+type ShoppingItem struct {
+	Name     string  `json:"name"`
+	Amount   float64 `json:"amount,omitempty"`
+	Unit     string  `json:"unit,omitempty"`
+	Category string  `json:"category,omitempty"`
+	Note     string  `json:"note,omitempty"`
+}
+
+type Nutrition struct {
+	Calories int `json:"calories"`
+	ProteinG int `json:"proteinG"`
+	CarbsG   int `json:"carbsG"`
+	FatG     int `json:"fatG"`
+	FiberG   int `json:"fiberG,omitempty"`
+}
+
+type CreatePlanRequest struct {
+	WeekStart string `json:"weekStart,omitempty"`
+}
+
+type RegenerateMealRequest struct {
+	Note string `json:"note"`
+}
+
+func (p Profile) Validate() error {
+	if strings.TrimSpace(p.HouseholdName) == "" {
+		return errors.New("householdName is required")
+	}
+	if len(p.Members) == 0 {
+		return errors.New("at least one member is required")
+	}
+	for _, member := range p.Members {
+		if strings.TrimSpace(member.ID) == "" {
+			return errors.New("member id is required")
+		}
+		if strings.TrimSpace(member.Name) == "" {
+			return errors.New("member name is required")
+		}
+	}
+	return nil
+}
+
+func DefaultProfile() Profile {
+	return Profile{
+		HouseholdName: "Familie Hartmann",
+		Members: []Member{
+			{ID: "markus", Name: "Markus", Role: "Erwachsener", CaloriesTarget: 2300, Likes: "abwechslungsreiche, frische Kueche", Dislikes: "langweilige Standardgerichte"},
+		},
+		Defaults: MealDefaults{
+			Breakfast: "schnell, familientauglich, nicht zu suess",
+			Lunch:     "alltagstauglich und gut vorzubereiten",
+			Dinner:    "gemeinsames warmes Essen",
+			Snacks:    "nur wenn sinnvoll fuer Kalorienziel oder Alltag",
+		},
+		Presets: []string{"familientauglich", "ausgewogen", "saisonal", "schnell unter der Woche"},
+		Notes:   "Naehrwerte sind Schaetzungen und nicht medizinisch verbindlich.",
+	}
+}

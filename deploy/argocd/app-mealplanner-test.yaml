@@ -1,0 +1,35 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: mealplanner-test
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: mealplanner
+    app.kubernetes.io/component: app
+    environment: test
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/aidun/mealplanner.git
+    targetRevision: master
+    path: deploy/test
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: mealplanner-test
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 3m

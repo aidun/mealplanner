@@ -1,0 +1,88 @@
+name: Mealplanner CI
+
+on:
+  workflow_dispatch:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend tests
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgres://mealplanner:mealplanner@127.0.0.1:5432/mealplanner_test
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: mealplanner
+          POSTGRES_PASSWORD: mealplanner
+          POSTGRES_DB: mealplanner_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U mealplanner -d mealplanner_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.2'
+          cache: true
+          cache-dependency-path: backend/api/go.sum
+      - name: Run Go tests
+        working-directory: backend/api
+        run: go test ./...
+
+  frontend:
+    name: Frontend build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
+  image-smoke:
+    name: Docker image smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build API image
+        working-directory: backend/api
+        run: docker build -t mealplanner-api-smoke -f Dockerfile .
+      - name: Check migrate binary
+        run: docker run --rm --entrypoint /bin/sh mealplanner-api-smoke -c 'test -x /app/bin/migrate'
+      - name: Build frontend image
+        working-directory: frontend
+        run: docker build -t mealplanner-frontend-smoke -f Dockerfile .
+      - name: Check frontend health endpoint
+        run: |
+          cid="$(docker run -d -p 18080:80 mealplanner-frontend-smoke)"
+          trap 'docker rm -f "$cid" >/dev/null 2>&1 || true' EXIT
+          sleep 2
+          curl -fsS http://127.0.0.1:18080/healthz
+
+  manifests:
+    name: Render manifests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-kubectl@v4
+        with:
+          version: v1.33.0
+      - name: Render test overlay
+        run: kubectl kustomize deploy/test > /tmp/deploy-test.yaml
+      - name: Render production overlay
+        run: kubectl kustomize deploy/production > /tmp/deploy-production.yaml

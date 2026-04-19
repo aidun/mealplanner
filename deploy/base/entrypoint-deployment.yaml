@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: entrypoint
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: entrypoint
+  template:
+    metadata:
+      labels:
+        app: entrypoint
+    spec:
+      containers:
+        - name: traefik
+          image: traefik:v3.6.12
+          imagePullPolicy: IfNotPresent
+          args:
+            - --entryPoints.web.address=:8000/tcp
+            - --entryPoints.websecure.address=:8443/tcp
+            - --entryPoints.traefik.address=:8080/tcp
+            - --providers.file.filename=/etc/traefik/dynamic/dynamic.yaml
+            - --ping=true
+            - --ping.entryPoint=traefik
+            - --log.level=INFO
+          ports:
+            - name: web
+              containerPort: 8000
+            - name: websecure
+              containerPort: 8443
+            - name: traefik
+              containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /ping
+              port: traefik
+            initialDelaySeconds: 2
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /ping
+              port: traefik
+            initialDelaySeconds: 5
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi
+          volumeMounts:
+            - name: dynamic-config
+              mountPath: /etc/traefik/dynamic
+              readOnly: true
+      volumes:
+        - name: dynamic-config
+          configMap:
+            name: entrypoint-traefik-dynamic
