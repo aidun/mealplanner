@@ -79,9 +79,16 @@ func newBringExportView(plan domain.Plan) (bringExportView, error) {
 	schema := map[string]any{
 		"@context":         "https://schema.org",
 		"@type":            "Recipe",
+		"author":           map[string]string{"@type": "Person", "name": "Mealplanner"},
+		"description":      "Konsolidierte Einkaufsliste aus dem Mealplanner Wochenplan.",
+		"image":            "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=1200&q=80",
 		"name":             title,
 		"recipeYield":      "1 Wochenplan",
 		"recipeIngredient": ingredients,
+		"recipeInstructions": []map[string]string{{
+			"@type": "HowToStep",
+			"text":  "Alle Zutaten zur Einkaufsliste hinzufuegen.",
+		}},
 	}
 	rawSchema, err := json.Marshal(schema)
 	if err != nil {
@@ -132,6 +139,7 @@ var bringExportTemplate = template.Must(template.New("bring-export").Parse(`<!do
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ .Title }}</title>
   <script type="application/ld+json">{{ .SchemaJSON }}</script>
+  <script async="async" src="https://platform.getbring.com/widgets/import.js"></script>
   <style>
     :root {
       color-scheme: light;
@@ -172,6 +180,19 @@ var bringExportTemplate = template.Must(template.New("bring-export").Parse(`<!do
       color: var(--muted);
       font-size: 1.05rem;
     }
+    .bring-box {
+      display: grid;
+      gap: 10px;
+      margin: 0 0 24px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #ffffff;
+    }
+    .bring-box p {
+      margin: 0;
+      color: var(--muted);
+    }
     ul {
       display: grid;
       gap: 10px;
@@ -205,7 +226,12 @@ var bringExportTemplate = template.Must(template.New("bring-export").Parse(`<!do
   <main>
     <p class="eyebrow">Bring Import</p>
     <h1>{{ .Title }}</h1>
-    <p class="lead">Diese Seite enthaelt die Zutaten als Rezeptdaten und als lesbare Einkaufsliste.</p>
+    <p class="lead">Diese Seite enthaelt die Zutaten als Rezeptdaten, Bring-Import und als lesbare Einkaufsliste.</p>
+    <section class="bring-box" aria-label="Bring Import">
+      <div data-bring-import="" style="display:none"></div>
+      <a href="https://www.getbring.com">Bring! Einkaufsliste App fuer iPhone und Android</a>
+      <p>Wenn Bring die lokale Test-URL nicht importiert, kopiere die Liste aus der Mealplanner-App und fuege sie in Bring ein.</p>
+    </section>
     {{ if .Items }}
       <ul>
         {{ range .Items }}

@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react';
 import type { ShoppingList, ShoppingListItem } from '../types';
 
 interface ShoppingListPanelProps {
@@ -7,7 +8,10 @@ interface ShoppingListPanelProps {
 }
 
 export function ShoppingListPanel({ planId, shoppingList, loading }: ShoppingListPanelProps) {
+  const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
   const canExport = Boolean(planId && shoppingList);
+  const items = useMemo(() => flattenShoppingList(shoppingList), [shoppingList]);
+  const categories = useMemo(() => uniqueCategories(items), [items]);
 
   const openBringExport = () => {
     if (!planId) return;
@@ -15,15 +19,32 @@ export function ShoppingListPanel({ planId, shoppingList, loading }: ShoppingLis
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
+  const copyList = async () => {
+    if (items.length === 0) return;
+    try {
+      await writeClipboard(items.map(formatLine).join('\n'));
+      setCopyState('copied');
+    } catch {
+      setCopyState('failed');
+    }
+  };
+
   return (
-    <section className="surface">
+    <section className="surface shopping-list-panel">
       <div className="surface-header">
         <div>
           <h2>Einkaufsliste</h2>
-          <p>Zusammenstellung für den aktuellen Plan.</p>
+          <p>
+            {items.length > 0
+              ? `${items.length} Artikel${categories.length > 0 ? ` · ${categories.length} Bereiche` : ''}`
+              : 'Zusammenstellung für den aktuellen Plan.'}
+          </p>
         </div>
         {canExport ? (
-          <div className="surface-action">
+          <div className="surface-actions">
+            <button type="button" className="button button-secondary bring-export-button" onClick={copyList}>
+              {copyState === 'copied' ? 'Kopiert' : 'Liste kopieren'}
+            </button>
             <button type="button" className="button button-primary bring-export-button" onClick={openBringExport}>
               Zu Bring
             </button>
@@ -89,4 +110,41 @@ export function ShoppingListPanel({ planId, shoppingList, loading }: ShoppingLis
 function formatAmount(item: ShoppingListItem) {
   if (!item.amount) return '';
   return ` · ${item.amount}${item.unit ? ` ${item.unit}` : ''}`;
+}
+
+function formatLine(item: ShoppingListItem) {
+  return `${item.name}${formatAmount(item).replace(' · ', ' ')}`.trim();
+}
+
+function flattenShoppingList(shoppingList?: ShoppingList | null): ShoppingListItem[] {
+  if (!shoppingList) return [];
+  if (Array.isArray(shoppingList)) return shoppingList;
+  if (shoppingList.sections?.length) {
+    return shoppingList.sections.flatMap((section) => section.items);
+  }
+  return shoppingList.items ?? [];
+}
+
+function uniqueCategories(items: ShoppingListItem[]) {
+  return Array.from(new Set(items.map((item) => item.category).filter(Boolean)));
+}
+
+async function writeClipboard(text: string) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.setAttribute('readonly', '');
+  textarea.style.position = 'fixed';
+  textarea.style.left = '-9999px';
+  document.body.append(textarea);
+  textarea.select();
+  const copied = document.execCommand('copy');
+  textarea.remove();
+  if (!copied) {
+    throw new Error('copy failed');
+  }
 }

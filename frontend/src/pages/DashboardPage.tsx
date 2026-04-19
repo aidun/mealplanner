@@ -158,15 +158,15 @@ export function DashboardPage() {
           </div>
 
           <div className="workspace-side">
-            <MealInspector
-              meal={selectedMeal}
-              onRegenerate={handleRegenerate}
-              isRegenerating={regenerateMealMutation.isPending}
-            />
             <ShoppingListPanel
               planId={currentPlanQuery.data?.id}
               shoppingList={shoppingListQuery.data ?? null}
               loading={shoppingListQuery.isLoading}
+            />
+            <MealInspector
+              meal={selectedMeal}
+              onRegenerate={handleRegenerate}
+              isRegenerating={regenerateMealMutation.isPending}
             />
           </div>
         </div>

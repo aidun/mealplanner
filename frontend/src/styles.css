@@ -292,13 +292,26 @@ a {
   padding: 18px 18px 8px;
 }
 
-.surface-action {
+.surface-actions {
   display: flex;
   justify-content: end;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .bring-export-button {
   white-space: nowrap;
+}
+
+.shopping-list-panel {
+  position: sticky;
+  top: 92px;
+}
+
+.shopping-list-panel .stack {
+  max-height: min(52vh, 620px);
+  overflow: auto;
+  padding-bottom: 18px;
 }
 
 .board-grid {
@@ -500,8 +513,14 @@ a {
     grid-template-columns: 1fr;
   }
 
-  .inspector {
+  .inspector,
+  .shopping-list-panel {
     position: static;
+  }
+
+  .shopping-list-panel .stack {
+    max-height: none;
+    overflow: visible;
   }
 }
 
@@ -538,9 +557,13 @@ a {
     align-items: stretch;
   }
 
-  .surface-action,
+  .surface-actions,
   .bring-export-button {
     width: 100%;
+  }
+
+  .surface-actions {
+    display: grid;
   }
 
   .board-grid {

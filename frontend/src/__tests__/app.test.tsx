@@ -68,6 +68,11 @@ function renderApp(initialEntry = '/') {
 
 beforeEach(() => {
   vi.spyOn(window, 'open').mockImplementation(() => null);
+  Object.assign(navigator, {
+    clipboard: {
+      writeText: vi.fn().mockResolvedValue(undefined),
+    },
+  });
   vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
 
@@ -107,6 +112,8 @@ describe('Mealplanner app', () => {
     expect(await screen.findByRole('button', { name: /Pasta mit Gemüse/ })).toBeInTheDocument();
     expect(await screen.findByText('Einkaufsliste')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Zu Bring' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Liste kopieren' })).toBeInTheDocument();
+    expect(screen.getByText('1 Artikel · 1 Bereiche')).toBeInTheDocument();
     expect(screen.getByText('Zucchini')).toBeInTheDocument();
   });
 
@@ -122,11 +129,22 @@ describe('Mealplanner app', () => {
     );
   });
 
+  it('copies the shopping list as Bring fallback', async () => {
+    renderApp('/');
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Liste kopieren' }));
+
+    await waitFor(() => {
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('Zucchini 2 Stk');
+    });
+    expect(screen.getByRole('button', { name: 'Kopiert' })).toBeInTheDocument();
+  });
+
   it('keeps the Bring export button mobile friendly', () => {
     expect(styles).toContain('.bring-export-button');
     expect(styles).toContain('min-height: 44px');
     expect(styles).toContain('@media (max-width: 760px)');
-    expect(styles).toContain('.surface-action,\n  .bring-export-button {\n    width: 100%;');
+    expect(styles).toContain('.surface-actions,\n  .bring-export-button {\n    width: 100%;');
   });
 
   it('opens onboarding and saves the profile', async () => {
