@@ -41,6 +41,7 @@ func (p Planner) GenerateWeek(ctx context.Context, profile domain.Profile, weekS
 	}
 	plan.WeekStart = start.Format("2006-01-02")
 	plan.Status = "planned"
+	plan.Days = normalizeDays(plan.Days, start)
 	plan.ShoppingList = domain.ConsolidateShoppingList(plan)
 	return plan, nil
 }
@@ -97,4 +98,32 @@ func nextSunday(t time.Time) time.Time {
 func dateOnly(t time.Time) time.Time {
 	y, m, d := t.Date()
 	return time.Date(y, m, d, 0, 0, 0, 0, t.Location())
+}
+
+func normalizeDays(days []domain.DayPlan, weekStart time.Time) []domain.DayPlan {
+	byDate := map[string]domain.DayPlan{}
+	for _, day := range days {
+		if day.Date == "" {
+			continue
+		}
+		if _, exists := byDate[day.Date]; !exists {
+			byDate[day.Date] = day
+		}
+	}
+	labels := []string{"Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"}
+	out := make([]domain.DayPlan, 0, 7)
+	for i := 0; i < 7; i++ {
+		date := weekStart.AddDate(0, 0, i)
+		key := date.Format("2006-01-02")
+		day, ok := byDate[key]
+		if !ok {
+			day = domain.DayPlan{Date: key}
+		}
+		day.Date = key
+		if day.Label == "" {
+			day.Label = labels[int(date.Weekday())]
+		}
+		out = append(out, day)
+	}
+	return out
 }

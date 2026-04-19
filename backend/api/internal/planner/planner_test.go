@@ -54,3 +54,24 @@ func TestWeekPromptIncludesProfile(t *testing.T) {
 		t.Fatalf("prompt should include profile")
 	}
 }
+
+func TestNormalizeDaysKeepsExactlySevenDays(t *testing.T) {
+	start := time.Date(2026, 4, 19, 0, 0, 0, 0, time.UTC)
+	days := []domain.DayPlan{
+		{Date: "2026-04-19", Label: "Start"},
+		{Date: "2026-04-20"},
+		{Date: "2026-04-21"},
+		{Date: "2026-04-22"},
+		{Date: "2026-04-23"},
+		{Date: "2026-04-24"},
+		{Date: "2026-04-25"},
+		{Date: "2026-04-26", Label: "Extra"},
+	}
+	got := normalizeDays(days, start)
+	if len(got) != 7 {
+		t.Fatalf("expected 7 days, got %d", len(got))
+	}
+	if got[0].Date != "2026-04-19" || got[6].Date != "2026-04-25" {
+		t.Fatalf("unexpected range: %s to %s", got[0].Date, got[6].Date)
+	}
+}
