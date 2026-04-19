@@ -7,7 +7,9 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/aidun/mealplanner/backend/api/internal/auth"
 	"github.com/aidun/mealplanner/backend/api/internal/domain"
 	"github.com/aidun/mealplanner/backend/api/internal/planner"
 	"github.com/aidun/mealplanner/backend/api/internal/provider"
@@ -15,48 +17,109 @@ import (
 )
 
 type memoryRepo struct {
-	profile domain.Profile
-	plan    domain.Plan
+	profiles map[string]domain.Profile
+	plans    map[string]domain.Plan
+	sessions map[string]memorySession
 }
 
-func (m *memoryRepo) GetProfile(*http.Request) (domain.Profile, error) {
-	if m.profile.HouseholdName == "" {
+type memorySession struct {
+	userID    string
+	csrf      string
+	expiresAt time.Time
+}
+
+func newMemoryRepo() *memoryRepo {
+	return &memoryRepo{
+		profiles: map[string]domain.Profile{},
+		plans:    map[string]domain.Plan{},
+		sessions: map[string]memorySession{},
+	}
+}
+
+func (m *memoryRepo) UpsertUser(_ *http.Request, _, _ string) (string, error) {
+	return "user-1", nil
+}
+
+func (m *memoryRepo) CreateSession(_ *http.Request, userID string, ttl time.Duration) (string, string, time.Time, error) {
+	sessionID := "session-" + userID
+	csrf := "csrf-" + userID
+	expiresAt := time.Now().Add(ttl)
+	m.sessions[sessionID] = memorySession{userID: userID, csrf: csrf, expiresAt: expiresAt}
+	return sessionID, csrf, expiresAt, nil
+}
+
+func (m *memoryRepo) GetSession(_ *http.Request, sessionID string) (string, string, time.Time, error) {
+	session, ok := m.sessions[sessionID]
+	if !ok || time.Now().After(session.expiresAt) {
+		return "", "", time.Time{}, store.ErrNotFound
+	}
+	return session.userID, session.csrf, session.expiresAt, nil
+}
+
+func (m *memoryRepo) DeleteSession(_ *http.Request, sessionID string) error {
+	delete(m.sessions, sessionID)
+	return nil
+}
+
+func (m *memoryRepo) ListUserIDs(_ *http.Request) ([]string, error) {
+	seen := map[string]bool{}
+	var ids []string
+	for userID := range m.profiles {
+		seen[userID] = true
+		ids = append(ids, userID)
+	}
+	for _, session := range m.sessions {
+		if !seen[session.userID] {
+			ids = append(ids, session.userID)
+		}
+	}
+	return ids, nil
+}
+
+func (m *memoryRepo) GetProfile(r *http.Request) (domain.Profile, error) {
+	userID := mustUserID(r.Context())
+	if m.profiles[userID].HouseholdName == "" {
 		return domain.DefaultProfile(), nil
 	}
-	return m.profile, nil
+	return m.profiles[userID], nil
 }
 
-func (m *memoryRepo) SaveProfile(_ *http.Request, profile domain.Profile) (domain.Profile, error) {
-	m.profile = profile
+func (m *memoryRepo) SaveProfile(r *http.Request, profile domain.Profile) (domain.Profile, error) {
+	m.profiles[mustUserID(r.Context())] = profile
 	return profile, nil
 }
 
-func (m *memoryRepo) SavePlan(_ *http.Request, plan domain.Plan) (domain.Plan, error) {
-	m.plan = plan
+func (m *memoryRepo) SavePlan(r *http.Request, plan domain.Plan) (domain.Plan, error) {
+	m.plans[mustUserID(r.Context())+"|"+plan.ID] = plan
 	return plan, nil
 }
 
-func (m *memoryRepo) GetCurrentPlan(*http.Request) (domain.Plan, error) {
-	if m.plan.ID == "" {
-		return domain.Plan{}, store.ErrNotFound
+func (m *memoryRepo) GetCurrentPlan(r *http.Request) (domain.Plan, error) {
+	prefix := mustUserID(r.Context()) + "|"
+	for key, plan := range m.plans {
+		if strings.HasPrefix(key, prefix) {
+			return plan, nil
+		}
 	}
-	return m.plan, nil
+	return domain.Plan{}, store.ErrNotFound
 }
 
-func (m *memoryRepo) GetPlan(_ *http.Request, id string) (domain.Plan, error) {
-	if m.plan.ID != id {
+func (m *memoryRepo) GetPlan(r *http.Request, id string) (domain.Plan, error) {
+	plan, ok := m.plans[mustUserID(r.Context())+"|"+id]
+	if !ok {
 		return domain.Plan{}, store.ErrNotFound
 	}
-	return m.plan, nil
+	return plan, nil
 }
 
 func TestCreatePlanAndShoppingList(t *testing.T) {
-	repo := &memoryRepo{profile: domain.DefaultProfile()}
-	handler := New(repo, planner.New(provider.NewMockGenerator()), "secret", nil, nil)
+	repo := newMemoryRepo()
+	repo.profiles["user-1"] = domain.DefaultProfile()
+	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil)
 
 	body := bytes.NewBufferString(`{"weekStart":"2026-04-20"}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/plans", body)
-	req.Header.Set("X-API-Secret", "secret")
+	setAuth(repo, req, "user-1")
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 	if rec.Code != http.StatusCreated {
@@ -71,7 +134,7 @@ func TestCreatePlanAndShoppingList(t *testing.T) {
 	}
 
 	req = httptest.NewRequest(http.MethodGet, "/api/plans/"+plan.ID+"/shopping-list", nil)
-	req.Header.Set("X-API-Secret", "secret")
+	setAuth(repo, req, "user-1")
 	rec = httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
@@ -79,8 +142,8 @@ func TestCreatePlanAndShoppingList(t *testing.T) {
 	}
 }
 
-func TestAPISecretRequired(t *testing.T) {
-	handler := New(&memoryRepo{}, planner.New(provider.NewMockGenerator()), "secret", nil, nil)
+func TestSessionRequired(t *testing.T) {
+	handler := New(newMemoryRepo(), planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/profile", nil)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
@@ -90,7 +153,8 @@ func TestAPISecretRequired(t *testing.T) {
 }
 
 func TestBringExport(t *testing.T) {
-	repo := &memoryRepo{plan: domain.Plan{
+	repo := newMemoryRepo()
+	repo.plans["user-1|plan-1"] = domain.Plan{
 		ID:        "plan-1",
 		WeekStart: "2026-04-20",
 		Days: []domain.DayPlan{{
@@ -105,11 +169,11 @@ func TestBringExport(t *testing.T) {
 				},
 			}},
 		}},
-	}}
-	handler := New(repo, planner.New(provider.NewMockGenerator()), "secret", nil, nil)
+	}
+	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/plans/plan-1/bring-export", nil)
-	req.Header.Set("X-API-Secret", "secret")
+	setAuth(repo, req, "user-1")
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 
@@ -128,9 +192,10 @@ func TestBringExport(t *testing.T) {
 }
 
 func TestBringExportPlanNotFound(t *testing.T) {
-	handler := New(&memoryRepo{}, planner.New(provider.NewMockGenerator()), "secret", nil, nil)
+	repo := newMemoryRepo()
+	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/plans/missing/bring-export", nil)
-	req.Header.Set("X-API-Secret", "secret")
+	setAuth(repo, req, "user-1")
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 
@@ -140,7 +205,7 @@ func TestBringExportPlanNotFound(t *testing.T) {
 }
 
 func TestMetricsEndpoint(t *testing.T) {
-	handler := New(&memoryRepo{}, planner.New(provider.NewMockGenerator()), "secret", nil, nil)
+	handler := New(newMemoryRepo(), planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil)
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
@@ -154,4 +219,69 @@ func TestMetricsEndpoint(t *testing.T) {
 	if !strings.Contains(rec.Body.String(), "mealplanner_http_requests_total") {
 		t.Fatalf("metrics output missing request counter: %s", rec.Body.String())
 	}
+}
+
+func TestMutatingRequestRequiresCSRF(t *testing.T) {
+	repo := newMemoryRepo()
+	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil)
+	req := httptest.NewRequest(http.MethodPost, "/api/plans", bytes.NewBufferString(`{}`))
+	repo.sessions["session-user-1"] = memorySession{userID: "user-1", csrf: "csrf-user-1", expiresAt: time.Now().Add(time.Hour)}
+	req.AddCookie(&http.Cookie{Name: auth.SessionCookieName, Value: "session-user-1"})
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("expected 403, got %d", rec.Code)
+	}
+}
+
+func TestInternalWeeklyPlanUsesAPISecret(t *testing.T) {
+	repo := newMemoryRepo()
+	repo.profiles["user-1"] = domain.DefaultProfile()
+	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "internal-secret", nil, nil)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/internal/plans/weekly", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401 without internal secret, got %d", rec.Code)
+	}
+
+	req = httptest.NewRequest(http.MethodPost, "/api/internal/plans/weekly", nil)
+	req.Header.Set("X-API-Secret", "internal-secret")
+	rec = httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("expected 201 with internal secret, got %d: %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"users":1`) {
+		t.Fatalf("unexpected weekly response: %s", rec.Body.String())
+	}
+}
+
+func TestSessionEndpoint(t *testing.T) {
+	repo := newMemoryRepo()
+	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/session", nil)
+	setAuth(repo, req, "user-1")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rec.Code)
+	}
+	if !strings.Contains(rec.Body.String(), `"authenticated":true`) || !strings.Contains(rec.Body.String(), "csrf-user-1") {
+		t.Fatalf("unexpected session response: %s", rec.Body.String())
+	}
+}
+
+func testAuth() auth.Service {
+	return auth.NewService(auth.Config{
+		BaseURL:       "https://mealplanner.test",
+		SessionSecret: "test-secret",
+	})
+}
+
+func setAuth(repo *memoryRepo, req *http.Request, userID string) {
+	repo.sessions["session-"+userID] = memorySession{userID: userID, csrf: "csrf-" + userID, expiresAt: time.Now().Add(time.Hour)}
+	req.AddCookie(&http.Cookie{Name: auth.SessionCookieName, Value: "session-" + userID})
+	req.Header.Set("X-CSRF-Token", "csrf-"+userID)
 }

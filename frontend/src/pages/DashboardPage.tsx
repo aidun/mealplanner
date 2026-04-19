@@ -3,27 +3,22 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Header } from '../components/Header';
 import { MealBoard } from '../components/MealBoard';
 import { MealInspector } from '../components/MealInspector';
-import { SecretDialog } from '../components/SecretDialog';
 import { ShoppingListPanel } from '../components/ShoppingListPanel';
+import { LoginPage } from './LoginPage';
 import {
-  ApiError,
-  AUTH_REQUIRED,
-  clearStoredApiSecret,
   createPlan,
   getCurrentPlan,
   getProfile,
   getShoppingList,
-  getStoredApiSecret,
+  logout,
   regenerateMeal,
-  saveStoredApiSecret,
 } from '../api';
 import type { Meal } from '../types';
 
 export function DashboardPage() {
   const queryClient = useQueryClient();
   const [selectedMeal, setSelectedMeal] = useState<Meal | undefined>();
-  const [secretConfigured, setSecretConfigured] = useState(() => !AUTH_REQUIRED || Boolean(getStoredApiSecret()));
-  const [secretDialogOpen, setSecretDialogOpen] = useState(() => AUTH_REQUIRED && !getStoredApiSecret());
+  const [loggedOut, setLoggedOut] = useState(false);
 
   const profileQuery = useQuery({
     queryKey: ['profile'],
@@ -41,12 +36,6 @@ export function DashboardPage() {
     enabled: Boolean(currentPlanQuery.data?.id),
   });
 
-  const unauthorized =
-    AUTH_REQUIRED &&
-    (profileQuery.error instanceof ApiError && profileQuery.error.status === 401 ||
-      currentPlanQuery.error instanceof ApiError && currentPlanQuery.error.status === 401 ||
-      shoppingListQuery.error instanceof ApiError && shoppingListQuery.error.status === 401);
-
   const createPlanMutation = useMutation({
     mutationFn: () => createPlan({}),
     onSuccess: async () => {
@@ -61,6 +50,15 @@ export function DashboardPage() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['current-plan'] });
       await queryClient.invalidateQueries({ queryKey: ['shopping-list'] });
+    },
+  });
+
+  const logoutMutation = useMutation({
+    mutationFn: logout,
+    onSuccess: async () => {
+      queryClient.removeQueries({ predicate: (query) => query.queryKey[0] !== 'session' });
+      queryClient.setQueryData(['session'], { authenticated: false });
+      setLoggedOut(true);
     },
   });
 
@@ -93,45 +91,22 @@ export function DashboardPage() {
     });
   };
 
-  const saveSecret = async (secret: string) => {
-    saveStoredApiSecret(secret);
-    setSecretConfigured(Boolean(secret.trim()));
-    setSecretDialogOpen(false);
-    await queryClient.invalidateQueries();
-  };
-
-  const clearSecret = async () => {
-    clearStoredApiSecret();
-    setSecretConfigured(false);
-    setSecretDialogOpen(true);
-    await queryClient.invalidateQueries();
-  };
-
-  return (
+  return loggedOut ? (
+    <LoginPage />
+  ) : (
     <div className="app-shell">
       <Header
         weekStart={currentPlanQuery.data?.weekStart}
         onCreatePlan={() => createPlanMutation.mutate()}
         creatingPlan={createPlanMutation.isPending}
-        authRequired={AUTH_REQUIRED}
-        secretConfigured={secretConfigured}
-        onUnlock={() => setSecretDialogOpen(true)}
-        onLock={clearSecret}
+        onLogout={() => {
+          setLoggedOut(true);
+          logoutMutation.mutate();
+        }}
+        loggingOut={logoutMutation.isPending}
       />
 
       <main className="app-main">
-        {unauthorized ? (
-          <section className="inline-banner">
-            <div>
-              <h2>Zugriff gesperrt</h2>
-              <p>Gib das API-Secret ein, um Profil, Wochenplan und Einkaufsliste aus dem Testcluster zu laden.</p>
-            </div>
-            <button type="button" className="button button-primary" onClick={() => setSecretDialogOpen(true)}>
-              Secret eingeben
-            </button>
-          </section>
-        ) : null}
-
         {!profileQuery.data ? (
           <section className="inline-banner">
             <div>
@@ -171,16 +146,6 @@ export function DashboardPage() {
           </div>
         </div>
       </main>
-
-      {AUTH_REQUIRED ? (
-        <SecretDialog
-          open={secretDialogOpen}
-          initialSecret={getStoredApiSecret()}
-          invalid={unauthorized}
-          onSave={saveSecret}
-          onClose={() => setSecretDialogOpen(false)}
-        />
-      ) : null}
     </div>
   );
 }

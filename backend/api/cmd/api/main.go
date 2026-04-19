@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aidun/mealplanner/backend/api/internal/auth"
 	"github.com/aidun/mealplanner/backend/api/internal/config"
 	"github.com/aidun/mealplanner/backend/api/internal/httpapi"
 	"github.com/aidun/mealplanner/backend/api/internal/planner"
@@ -35,7 +36,19 @@ func main() {
 		log.Fatal(err)
 	}
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	handler := httpapi.New(httpapi.StoreRepository{Store: store.New(pool)}, planner.New(generator), cfg.APISecret, cfg.CORSOrigins, logger)
+	authService := auth.NewService(auth.Config{
+		BaseURL:              cfg.AuthBaseURL,
+		SessionSecret:        cfg.SessionSecret,
+		AllowedSubjectHashes: cfg.AuthAllowedSubjectHashes,
+		AllowedEmailHashes:   cfg.AuthAllowedEmailHashes,
+		GoogleClientID:       cfg.GoogleClientID,
+		GoogleClientSecret:   cfg.GoogleClientSecret,
+		AppleClientID:        cfg.AppleClientID,
+		AppleTeamID:          cfg.AppleTeamID,
+		AppleKeyID:           cfg.AppleKeyID,
+		ApplePrivateKey:      cfg.ApplePrivateKey,
+	})
+	handler := httpapi.New(httpapi.StoreRepository{Store: store.New(pool)}, planner.New(generator), authService, cfg.APISecret, cfg.CORSOrigins, logger)
 
 	server := &http.Server{
 		Addr:              ":" + cfg.Port,

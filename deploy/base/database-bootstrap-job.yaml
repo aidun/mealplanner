@@ -30,6 +30,26 @@ spec:
               value: __set_api_secret__
             - name: OPENAI_API_KEY_PLACEHOLDER
               value: __set_openai_api_key__
+            - name: AUTH_BASE_URL_PLACEHOLDER
+              value: __set_https_auth_base_url__
+            - name: SESSION_SECRET_PLACEHOLDER
+              value: __set_random_session_secret_min_32_bytes__
+            - name: AUTH_ALLOWED_SUBJECT_HASHES_PLACEHOLDER
+              value: __set_allowed_subject_hashes__
+            - name: AUTH_ALLOWED_EMAIL_HASHES_PLACEHOLDER
+              value: ""
+            - name: GOOGLE_CLIENT_ID_PLACEHOLDER
+              value: __set_google_client_id__
+            - name: GOOGLE_CLIENT_SECRET_PLACEHOLDER
+              value: __set_google_client_secret__
+            - name: APPLE_CLIENT_ID_PLACEHOLDER
+              value: ""
+            - name: APPLE_TEAM_ID_PLACEHOLDER
+              value: ""
+            - name: APPLE_KEY_ID_PLACEHOLDER
+              value: ""
+            - name: APPLE_PRIVATE_KEY_PLACEHOLDER
+              value: ""
           volumeMounts:
             - name: bootstrap-script
               mountPath: /bootstrap

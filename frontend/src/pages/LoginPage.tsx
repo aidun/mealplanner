@@ -1,0 +1,55 @@
+import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
+import { getAuthProviders } from '../api';
+
+export function LoginPage() {
+  const providersQuery = useQuery({
+    queryKey: ['auth-providers'],
+    queryFn: getAuthProviders,
+  });
+  const providers = providersQuery.data?.providers ?? [];
+  const google = providers.find((provider) => provider.id === 'google');
+  const apple = providers.find((provider) => provider.id === 'apple');
+  const googleEnabled = google?.enabled ?? true;
+  const googleStartUrl = google?.startUrl ?? '/api/auth/google/start';
+
+  return (
+    <div className="auth-shell">
+      <main className="login-panel" aria-labelledby="login-title">
+        <div className="login-copy">
+          <p className="eyebrow">Privater Zugang</p>
+          <h1 id="login-title">Mealplanner</h1>
+          <p>
+            Melde dich mit einem erlaubten Social Login an. Die App speichert keine Namen, E-Mail-Adressen oder
+            Profilbilder aus dem Login.
+          </p>
+        </div>
+
+        <div className="login-actions" aria-label="Login-Anbieter">
+          <a
+            className="button button-primary login-button"
+            href={googleStartUrl}
+            aria-disabled={!googleEnabled}
+          >
+            Mit Google anmelden
+          </a>
+
+          {apple?.enabled ? (
+            <a className="button button-secondary login-button" href={apple.startUrl}>
+              Mit Apple anmelden
+            </a>
+          ) : null}
+        </div>
+
+        {providersQuery.isError ? (
+          <p className="error-copy">Login-Anbieter konnten nicht geladen werden. Bitte später erneut versuchen.</p>
+        ) : null}
+
+        <nav className="legal-links" aria-label="Rechtliches">
+          <Link to="/datenschutz">Datenschutz</Link>
+          <Link to="/impressum">Impressum</Link>
+        </nav>
+      </main>
+    </div>
+  );
+}

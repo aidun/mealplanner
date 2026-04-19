@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/aidun/mealplanner/backend/api/internal/domain"
@@ -14,8 +15,8 @@ func TestLoadMigrations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(migrations) != 1 {
-		t.Fatalf("expected one migration, got %d", len(migrations))
+	if len(migrations) != 2 {
+		t.Fatalf("expected two migrations, got %d", len(migrations))
 	}
 }
 
@@ -34,7 +35,11 @@ func TestStoreRoundtrip(t *testing.T) {
 		t.Fatal(err)
 	}
 	s := New(pool)
-	profile, err := s.SaveProfile(ctx, domain.DefaultProfile())
+	userID, err := s.UpsertUser(ctx, "google", "store-test-subject")
+	if err != nil {
+		t.Fatal(err)
+	}
+	profile, err := s.SaveProfile(ctx, userID, domain.DefaultProfile())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -42,14 +47,14 @@ func TestStoreRoundtrip(t *testing.T) {
 		t.Fatalf("expected updated timestamp")
 	}
 	plan := domain.Plan{ID: "plan-test", WeekStart: "2026-04-20", Status: "planned"}
-	if _, err := s.SavePlan(ctx, plan); err != nil {
+	if _, err := s.SavePlan(ctx, userID, plan); err != nil {
 		t.Fatal(err)
 	}
-	got, err := s.GetCurrentPlan(ctx)
+	got, err := s.GetCurrentPlan(ctx, userID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.ID != "plan-test" {
-		t.Fatalf("expected plan-test, got %s", got.ID)
+	if !strings.HasSuffix(got.ID, "-plan-test") {
+		t.Fatalf("expected scoped plan-test id, got %s", got.ID)
 	}
 }

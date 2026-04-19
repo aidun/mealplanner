@@ -37,4 +37,4 @@ spec:
                     -H "X-API-Secret: ${API_SECRET}" \
                     -X POST \
                     --data '{}' \
-                    http://api:3001/api/plans
+                    http://api:3001/api/internal/plans/weekly

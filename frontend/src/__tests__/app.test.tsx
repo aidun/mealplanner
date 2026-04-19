@@ -48,6 +48,13 @@ const plan = {
 };
 
 const shoppingList = [{ name: 'Zucchini', amount: 2, unit: 'Stk', category: 'Gemüse' }];
+const session = { authenticated: true, csrfToken: 'csrf-token-1' };
+const providers = {
+  providers: [
+    { id: 'google', name: 'Google', enabled: true, startUrl: '/api/auth/google/start' },
+    { id: 'apple', name: 'Apple', enabled: false, startUrl: '/api/auth/apple/start' },
+  ],
+};
 
 function renderApp(initialEntry = '/') {
   const queryClient = new QueryClient({
@@ -67,14 +74,34 @@ function renderApp(initialEntry = '/') {
 }
 
 beforeEach(() => {
+  vi.restoreAllMocks();
   vi.spyOn(window, 'open').mockImplementation(() => null);
-  Object.assign(navigator, {
-    clipboard: {
+  Object.defineProperty(navigator, 'clipboard', {
+    configurable: true,
+    value: {
       writeText: vi.fn().mockResolvedValue(undefined),
     },
   });
-  vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+  vi.stubGlobal('fetch', createFetchMock());
+});
+
+function createFetchMock(options: { authenticated?: boolean } = {}) {
+  const authenticated = options.authenticated ?? true;
+
+  return vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
+
+    if (url.endsWith('/api/session')) {
+      return new Response(JSON.stringify(authenticated ? session : { authenticated: false }), { status: 200 });
+    }
+
+    if (url.endsWith('/api/auth/providers')) {
+      return new Response(JSON.stringify(providers), { status: 200 });
+    }
+
+    if (url.endsWith('/api/auth/logout') && init?.method === 'POST') {
+      return new Response('', { status: 204 });
+    }
 
     if (url.endsWith('/api/profile') && (!init || !init.method || init.method === 'GET')) {
       return new Response(JSON.stringify(profile), { status: 200 });
@@ -101,10 +128,25 @@ beforeEach(() => {
     }
 
     return new Response('', { status: 404 });
-  }) as unknown as typeof fetch);
-});
+  }) as unknown as typeof fetch;
+}
 
 describe('Mealplanner app', () => {
+  it('shows the login page without a session and only enabled providers', async () => {
+    vi.stubGlobal('fetch', createFetchMock({ authenticated: false }));
+
+    renderApp('/');
+
+    expect(await screen.findByRole('heading', { name: 'Mealplanner' })).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: 'Mit Google anmelden' })).toHaveAttribute(
+      'href',
+      '/api/auth/google/start'
+    );
+    expect(screen.queryByRole('link', { name: 'Mit Apple anmelden' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Datenschutz' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Impressum' })).toBeInTheDocument();
+  });
+
   it('renders the weekly board and shopping list', async () => {
     renderApp('/');
 
@@ -160,7 +202,10 @@ describe('Mealplanner app', () => {
     await waitFor(() => {
       expect(fetch).toHaveBeenCalledWith(
         expect.stringContaining('/api/profile'),
-        expect.objectContaining({ method: 'PUT' })
+        expect.objectContaining({
+          method: 'PUT',
+          headers: expect.objectContaining({ 'X-CSRF-Token': 'csrf-token-1' }),
+        })
       );
     });
   });
@@ -180,9 +225,39 @@ describe('Mealplanner app', () => {
         expect.stringContaining('/api/plans/plan-1/meals/meal-1/regenerate'),
         expect.objectContaining({
           method: 'POST',
+          headers: expect.objectContaining({ 'X-CSRF-Token': 'csrf-token-1' }),
           body: JSON.stringify({ note: 'Weniger Salz, mehr Gemüse.' }),
         })
       );
     });
+  });
+
+  it('logs out and returns to the login page', async () => {
+    renderApp('/');
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Logout' }));
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/auth/logout'),
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({ 'X-CSRF-Token': 'csrf-token-1' }),
+        })
+      );
+    });
+    expect(await screen.findByRole('link', { name: 'Mit Google anmelden' })).toBeInTheDocument();
+  });
+
+  it('renders legal placeholder pages', async () => {
+    renderApp('/datenschutz');
+
+    expect(await screen.findByRole('heading', { name: 'Datenschutz' })).toBeInTheDocument();
+    expect(screen.getByText('TODO: Verantwortlicher')).toBeInTheDocument();
+
+    renderApp('/impressum');
+
+    expect(await screen.findByRole('heading', { name: 'Impressum' })).toBeInTheDocument();
+    expect(screen.getByText('TODO: Anbieterkennzeichnung')).toBeInTheDocument();
   });
 });

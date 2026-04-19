@@ -1,8 +1,8 @@
-import type { Meal, Plan, Profile, ShoppingList } from './types';
+import type { AuthProvidersResponse, Meal, Plan, Profile, Session, ShoppingList } from './types';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
 
-export const AUTH_REQUIRED = import.meta.env.VITE_AUTH_REQUIRED !== 'false';
+let csrfToken = '';
 
 export class ApiError extends Error {
   status: number;
@@ -20,14 +20,17 @@ async function request<T>(
   options: { allow404?: boolean } = {}
 ): Promise<T | null> {
   const hasBody = init.body !== undefined && init.body !== null;
+  const method = (init.method ?? 'GET').toUpperCase();
+  const mutating = method === 'POST' || method === 'PUT';
   const headers: Record<string, string> = {
     ...(hasBody ? { 'Content-Type': 'application/json' } : {}),
-    ...apiSecretHeader(),
+    ...(mutating && csrfToken ? { 'X-CSRF-Token': csrfToken } : {}),
     ...(init.headers as Record<string, string> | undefined),
   };
 
   const response = await fetch(`${API_BASE}${path}`, {
     ...(Object.keys(headers).length > 0 ? { headers } : {}),
+    credentials: 'include',
     ...init,
   });
 
@@ -50,6 +53,30 @@ async function request<T>(
   }
 
   return JSON.parse(text) as T;
+}
+
+export async function getSession() {
+  try {
+    const session = await request<Session>('/api/session');
+    csrfToken = session?.csrfToken ?? '';
+    return session ?? { authenticated: false };
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) {
+      csrfToken = '';
+      return { authenticated: false };
+    }
+    throw error;
+  }
+}
+
+export async function getAuthProviders() {
+  const response = await request<AuthProvidersResponse>('/api/auth/providers');
+  return response ?? { providers: [] };
+}
+
+export async function logout() {
+  await request<null>('/api/auth/logout', { method: 'POST' });
+  csrfToken = '';
 }
 
 export async function getProfile() {
@@ -88,38 +115,4 @@ export async function getShoppingList(planId: string) {
   return request<ShoppingList>(`/api/plans/${encodeURIComponent(planId)}/shopping-list`, undefined, {
     allow404: true,
   });
-}
-
-export function getStoredApiSecret() {
-  if (typeof window === 'undefined') {
-    return '';
-  }
-  return window.localStorage.getItem('mealplanner.apiSecret') ?? '';
-}
-
-export function saveStoredApiSecret(secret: string) {
-  if (typeof window === 'undefined') {
-    return;
-  }
-  const trimmed = secret.trim();
-  if (trimmed) {
-    window.localStorage.setItem('mealplanner.apiSecret', trimmed);
-  } else {
-    window.localStorage.removeItem('mealplanner.apiSecret');
-  }
-}
-
-export function clearStoredApiSecret() {
-  saveStoredApiSecret('');
-}
-
-function apiSecretHeader(): Record<string, string> {
-  if (!AUTH_REQUIRED) {
-    return {};
-  }
-  const secret = import.meta.env.VITE_API_SECRET ?? getStoredApiSecret();
-  if (typeof secret === 'string' && secret !== '') {
-    return { 'X-API-Secret': secret };
-  }
-  return {};
 }

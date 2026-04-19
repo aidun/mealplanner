@@ -57,6 +57,66 @@ spec:
                   name: api-secrets
                   key: OPENAI_API_KEY
                   optional: true
+            - name: AUTH_BASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: api-secrets
+                  key: AUTH_BASE_URL
+                  optional: true
+            - name: SESSION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: api-secrets
+                  key: SESSION_SECRET
+                  optional: true
+            - name: AUTH_ALLOWED_SUBJECT_HASHES
+              valueFrom:
+                secretKeyRef:
+                  name: api-secrets
+                  key: AUTH_ALLOWED_SUBJECT_HASHES
+                  optional: true
+            - name: AUTH_ALLOWED_EMAIL_HASHES
+              valueFrom:
+                secretKeyRef:
+                  name: api-secrets
+                  key: AUTH_ALLOWED_EMAIL_HASHES
+                  optional: true
+            - name: GOOGLE_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: api-secrets
+                  key: GOOGLE_CLIENT_ID
+                  optional: true
+            - name: GOOGLE_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: api-secrets
+                  key: GOOGLE_CLIENT_SECRET
+                  optional: true
+            - name: APPLE_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: api-secrets
+                  key: APPLE_CLIENT_ID
+                  optional: true
+            - name: APPLE_TEAM_ID
+              valueFrom:
+                secretKeyRef:
+                  name: api-secrets
+                  key: APPLE_TEAM_ID
+                  optional: true
+            - name: APPLE_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: api-secrets
+                  key: APPLE_KEY_ID
+                  optional: true
+            - name: APPLE_PRIVATE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: api-secrets
+                  key: APPLE_PRIVATE_KEY
+                  optional: true
             - name: OPENAI_MEAL_MODEL
               value: "gpt-5.4-mini"
             - name: PROVIDER_MODE

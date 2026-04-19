@@ -9,6 +9,19 @@ data:
     #!/bin/sh
     set -eu
 
+    ensure_api_secret_key() {
+      key="$1"
+      value="$2"
+
+      if kubectl get secret api-secrets -o "jsonpath={.data.${key}}" 2>/dev/null | grep -q .; then
+        echo "api-secrets key ${key} already exists"
+        return
+      fi
+
+      encoded="$(printf '%s' "${value}" | base64 | tr -d '\n')"
+      kubectl patch secret api-secrets --type merge -p "{\"data\":{\"${key}\":\"${encoded}\"}}"
+    }
+
     if kubectl get secret mealplanner-database >/dev/null 2>&1; then
       echo "mealplanner-database already exists"
     else
@@ -32,8 +45,29 @@ data:
 
       kubectl create secret generic api-secrets \
         --from-literal=API_SECRET="${api_secret}" \
-        --from-literal=OPENAI_API_KEY="${openai_api_key}"
+        --from-literal=OPENAI_API_KEY="${openai_api_key}" \
+        --from-literal=AUTH_BASE_URL="${AUTH_BASE_URL_PLACEHOLDER:-__set_https_auth_base_url__}" \
+        --from-literal=SESSION_SECRET="${SESSION_SECRET_PLACEHOLDER:-__set_random_session_secret_min_32_bytes__}" \
+        --from-literal=AUTH_ALLOWED_SUBJECT_HASHES="${AUTH_ALLOWED_SUBJECT_HASHES_PLACEHOLDER:-__set_allowed_subject_hashes__}" \
+        --from-literal=AUTH_ALLOWED_EMAIL_HASHES="${AUTH_ALLOWED_EMAIL_HASHES_PLACEHOLDER:-}" \
+        --from-literal=GOOGLE_CLIENT_ID="${GOOGLE_CLIENT_ID_PLACEHOLDER:-__set_google_client_id__}" \
+        --from-literal=GOOGLE_CLIENT_SECRET="${GOOGLE_CLIENT_SECRET_PLACEHOLDER:-__set_google_client_secret__}" \
+        --from-literal=APPLE_CLIENT_ID="${APPLE_CLIENT_ID_PLACEHOLDER:-}" \
+        --from-literal=APPLE_TEAM_ID="${APPLE_TEAM_ID_PLACEHOLDER:-}" \
+        --from-literal=APPLE_KEY_ID="${APPLE_KEY_ID_PLACEHOLDER:-}" \
+        --from-literal=APPLE_PRIVATE_KEY="${APPLE_PRIVATE_KEY_PLACEHOLDER:-}"
     fi
+
+    ensure_api_secret_key AUTH_BASE_URL "${AUTH_BASE_URL_PLACEHOLDER:-__set_https_auth_base_url__}"
+    ensure_api_secret_key SESSION_SECRET "${SESSION_SECRET_PLACEHOLDER:-__set_random_session_secret_min_32_bytes__}"
+    ensure_api_secret_key AUTH_ALLOWED_SUBJECT_HASHES "${AUTH_ALLOWED_SUBJECT_HASHES_PLACEHOLDER:-__set_allowed_subject_hashes__}"
+    ensure_api_secret_key AUTH_ALLOWED_EMAIL_HASHES "${AUTH_ALLOWED_EMAIL_HASHES_PLACEHOLDER:-}"
+    ensure_api_secret_key GOOGLE_CLIENT_ID "${GOOGLE_CLIENT_ID_PLACEHOLDER:-__set_google_client_id__}"
+    ensure_api_secret_key GOOGLE_CLIENT_SECRET "${GOOGLE_CLIENT_SECRET_PLACEHOLDER:-__set_google_client_secret__}"
+    ensure_api_secret_key APPLE_CLIENT_ID "${APPLE_CLIENT_ID_PLACEHOLDER:-}"
+    ensure_api_secret_key APPLE_TEAM_ID "${APPLE_TEAM_ID_PLACEHOLDER:-}"
+    ensure_api_secret_key APPLE_KEY_ID "${APPLE_KEY_ID_PLACEHOLDER:-}"
+    ensure_api_secret_key APPLE_PRIVATE_KEY "${APPLE_PRIVATE_KEY_PLACEHOLDER:-}"
 
     if kubectl get secret ghcr-pull-secret >/dev/null 2>&1; then
       echo "ghcr-pull-secret already exists"

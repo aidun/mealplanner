@@ -1,7 +1,5 @@
 FROM node:22-alpine AS build
 WORKDIR /app
-ARG VITE_AUTH_REQUIRED=true
-ENV VITE_AUTH_REQUIRED=$VITE_AUTH_REQUIRED
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .

@@ -106,6 +106,24 @@ export interface ShoppingListDocument {
 
 export type ShoppingList = ShoppingListItem[] | ShoppingListDocument;
 
+export type AuthProviderID = 'google' | 'apple' | string;
+
+export interface AuthProvider {
+  id: AuthProviderID;
+  name: string;
+  enabled: boolean;
+  startUrl: string;
+}
+
+export interface AuthProvidersResponse {
+  providers: AuthProvider[];
+}
+
+export interface Session {
+  authenticated: boolean;
+  csrfToken?: string;
+}
+
 export interface ProfileFormState {
   householdName: string;
   members: string;
