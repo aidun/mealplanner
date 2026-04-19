@@ -7,6 +7,7 @@ import { SecretDialog } from '../components/SecretDialog';
 import { ShoppingListPanel } from '../components/ShoppingListPanel';
 import {
   ApiError,
+  AUTH_REQUIRED,
   clearStoredApiSecret,
   createPlan,
   getCurrentPlan,
@@ -21,8 +22,8 @@ import type { Meal } from '../types';
 export function DashboardPage() {
   const queryClient = useQueryClient();
   const [selectedMeal, setSelectedMeal] = useState<Meal | undefined>();
-  const [secretConfigured, setSecretConfigured] = useState(() => Boolean(getStoredApiSecret()));
-  const [secretDialogOpen, setSecretDialogOpen] = useState(() => !getStoredApiSecret());
+  const [secretConfigured, setSecretConfigured] = useState(() => !AUTH_REQUIRED || Boolean(getStoredApiSecret()));
+  const [secretDialogOpen, setSecretDialogOpen] = useState(() => AUTH_REQUIRED && !getStoredApiSecret());
 
   const profileQuery = useQuery({
     queryKey: ['profile'],
@@ -41,9 +42,10 @@ export function DashboardPage() {
   });
 
   const unauthorized =
-    profileQuery.error instanceof ApiError && profileQuery.error.status === 401 ||
-    currentPlanQuery.error instanceof ApiError && currentPlanQuery.error.status === 401 ||
-    shoppingListQuery.error instanceof ApiError && shoppingListQuery.error.status === 401;
+    AUTH_REQUIRED &&
+    (profileQuery.error instanceof ApiError && profileQuery.error.status === 401 ||
+      currentPlanQuery.error instanceof ApiError && currentPlanQuery.error.status === 401 ||
+      shoppingListQuery.error instanceof ApiError && shoppingListQuery.error.status === 401);
 
   const createPlanMutation = useMutation({
     mutationFn: () => createPlan({}),
@@ -111,6 +113,7 @@ export function DashboardPage() {
         weekStart={currentPlanQuery.data?.weekStart}
         onCreatePlan={() => createPlanMutation.mutate()}
         creatingPlan={createPlanMutation.isPending}
+        authRequired={AUTH_REQUIRED}
         secretConfigured={secretConfigured}
         onUnlock={() => setSecretDialogOpen(true)}
         onLock={clearSecret}
@@ -165,13 +168,15 @@ export function DashboardPage() {
         </div>
       </main>
 
-      <SecretDialog
-        open={secretDialogOpen}
-        initialSecret={getStoredApiSecret()}
-        invalid={unauthorized}
-        onSave={saveSecret}
-        onClose={() => setSecretDialogOpen(false)}
-      />
+      {AUTH_REQUIRED ? (
+        <SecretDialog
+          open={secretDialogOpen}
+          initialSecret={getStoredApiSecret()}
+          invalid={unauthorized}
+          onSave={saveSecret}
+          onClose={() => setSecretDialogOpen(false)}
+        />
+      ) : null}
     </div>
   );
 }

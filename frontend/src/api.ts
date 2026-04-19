@@ -2,6 +2,8 @@ import type { Meal, Plan, Profile, ShoppingList } from './types';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
 
+export const AUTH_REQUIRED = import.meta.env.VITE_AUTH_REQUIRED !== 'false';
+
 export class ApiError extends Error {
   status: number;
 
@@ -112,6 +114,9 @@ export function clearStoredApiSecret() {
 }
 
 function apiSecretHeader(): Record<string, string> {
+  if (!AUTH_REQUIRED) {
+    return {};
+  }
   const secret = import.meta.env.VITE_API_SECRET ?? getStoredApiSecret();
   if (typeof secret === 'string' && secret !== '') {
     return { 'X-API-Secret': secret };

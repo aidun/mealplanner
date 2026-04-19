@@ -23,3 +23,12 @@ patches:
     target:
       kind: Namespace
       name: mealplanner-test
+  - patch: |-
+      - op: remove
+        path: /spec/template/spec/containers/0/env/2/valueFrom
+      - op: add
+        path: /spec/template/spec/containers/0/env/2/value
+        value: ""
+    target:
+      kind: Deployment
+      name: api

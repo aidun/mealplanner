@@ -5,12 +5,21 @@ interface HeaderProps {
   weekStart?: string;
   onCreatePlan: () => void;
   creatingPlan: boolean;
+  authRequired: boolean;
   secretConfigured: boolean;
   onUnlock: () => void;
   onLock: () => void;
 }
 
-export function Header({ weekStart, onCreatePlan, creatingPlan, secretConfigured, onUnlock, onLock }: HeaderProps) {
+export function Header({
+  weekStart,
+  onCreatePlan,
+  creatingPlan,
+  authRequired,
+  secretConfigured,
+  onUnlock,
+  onLock,
+}: HeaderProps) {
   return (
     <header className="app-header">
       <div className="brand-block">
@@ -34,9 +43,11 @@ export function Header({ weekStart, onCreatePlan, creatingPlan, secretConfigured
       </div>
 
       <nav className="header-actions" aria-label="Primäre Aktionen">
-        <button type="button" className="button button-secondary" onClick={secretConfigured ? onLock : onUnlock}>
-          {secretConfigured ? 'Sperren' : 'Zugriff'}
-        </button>
+        {authRequired ? (
+          <button type="button" className="button button-secondary" onClick={secretConfigured ? onLock : onUnlock}>
+            {secretConfigured ? 'Sperren' : 'Zugriff'}
+          </button>
+        ) : null}
         <NavLink to="/onboarding" className="button button-secondary">
           Profil
         </NavLink>
