@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../App';
+import styles from '../styles.css?raw';
 
 const profile = {
   householdName: 'Familie Weber',
@@ -66,6 +67,7 @@ function renderApp(initialEntry = '/') {
 }
 
 beforeEach(() => {
+  vi.spyOn(window, 'open').mockImplementation(() => null);
   vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
 
@@ -104,7 +106,27 @@ describe('Mealplanner app', () => {
     expect(await screen.findByText('Wochenboard')).toBeInTheDocument();
     expect(await screen.findByRole('button', { name: /Pasta mit Gemüse/ })).toBeInTheDocument();
     expect(await screen.findByText('Einkaufsliste')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Zu Bring' })).toBeInTheDocument();
     expect(screen.getByText('Zucchini')).toBeInTheDocument();
+  });
+
+  it('opens the Bring export page for the current plan', async () => {
+    renderApp('/');
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Zu Bring' }));
+
+    expect(window.open).toHaveBeenCalledWith(
+      '/api/plans/plan-1/bring-export',
+      '_blank',
+      'noopener,noreferrer'
+    );
+  });
+
+  it('keeps the Bring export button mobile friendly', () => {
+    expect(styles).toContain('.bring-export-button');
+    expect(styles).toContain('min-height: 44px');
+    expect(styles).toContain('@media (max-width: 760px)');
+    expect(styles).toContain('.surface-action,\n  .bring-export-button {\n    width: 100%;');
   });
 
   it('opens onboarding and saves the profile', async () => {

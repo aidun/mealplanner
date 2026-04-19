@@ -1,11 +1,20 @@
 import type { ShoppingList, ShoppingListItem } from '../types';
 
 interface ShoppingListPanelProps {
+  planId?: string;
   shoppingList?: ShoppingList | null;
   loading: boolean;
 }
 
-export function ShoppingListPanel({ shoppingList, loading }: ShoppingListPanelProps) {
+export function ShoppingListPanel({ planId, shoppingList, loading }: ShoppingListPanelProps) {
+  const canExport = Boolean(planId && shoppingList);
+
+  const openBringExport = () => {
+    if (!planId) return;
+    const url = `/api/plans/${encodeURIComponent(planId)}/bring-export`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
   return (
     <section className="surface">
       <div className="surface-header">
@@ -13,6 +22,13 @@ export function ShoppingListPanel({ shoppingList, loading }: ShoppingListPanelPr
           <h2>Einkaufsliste</h2>
           <p>Zusammenstellung für den aktuellen Plan.</p>
         </div>
+        {canExport ? (
+          <div className="surface-action">
+            <button type="button" className="button button-primary bring-export-button" onClick={openBringExport}>
+              Zu Bring
+            </button>
+          </div>
+        ) : null}
       </div>
 
       {loading ? <p className="muted">Lädt ...</p> : null}

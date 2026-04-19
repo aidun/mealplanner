@@ -65,6 +65,7 @@ func New(repo Repository, planner planner.Planner, apiSecret string, corsOrigins
 	mux.HandleFunc("PUT /api/profile", h.withAPI(h.putProfile))
 	mux.HandleFunc("POST /api/plans", h.withAPI(h.createPlan))
 	mux.HandleFunc("GET /api/plans/current", h.withAPI(h.getCurrentPlan))
+	mux.HandleFunc("GET /api/plans/{planID}/bring-export", h.withAPI(h.getBringExport))
 	mux.HandleFunc("GET /api/plans/{planID}/shopping-list", h.withAPI(h.getShoppingList))
 	mux.HandleFunc("POST /api/plans/{planID}/meals/{mealID}/regenerate", h.withAPI(h.regenerateMeal))
 	return h.metrics.Middleware(h.withCORS(mux))

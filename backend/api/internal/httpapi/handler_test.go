@@ -89,6 +89,56 @@ func TestAPISecretRequired(t *testing.T) {
 	}
 }
 
+func TestBringExport(t *testing.T) {
+	repo := &memoryRepo{plan: domain.Plan{
+		ID:        "plan-1",
+		WeekStart: "2026-04-20",
+		Days: []domain.DayPlan{{
+			Date: "2026-04-20",
+			Meals: []domain.Meal{{
+				ID:    "meal-1",
+				Title: "Pasta",
+				Ingredients: []domain.Ingredient{
+					{Name: "Zucchini", Amount: 1, Unit: "Stk", Category: "Gemuese"},
+					{Name: "Zucchini", Amount: 1, Unit: "Stk", Category: "Gemuese"},
+					{Name: "Pasta", Amount: 400, Unit: "g", Category: "Vorrat"},
+				},
+			}},
+		}},
+	}}
+	handler := New(repo, planner.New(provider.NewMockGenerator()), "secret", nil, nil)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/plans/plan-1/bring-export", nil)
+	req.Header.Set("X-API-Secret", "secret")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+	if contentType := rec.Header().Get("Content-Type"); !strings.Contains(contentType, "text/html") {
+		t.Fatalf("expected text/html content type, got %q", contentType)
+	}
+	body := rec.Body.String()
+	for _, expected := range []string{"schema.org", `"@type":"Recipe"`, "recipeIngredient", "2 Stk Zucchini", "400 g Pasta"} {
+		if !strings.Contains(body, expected) {
+			t.Fatalf("bring export missing %q in body: %s", expected, body)
+		}
+	}
+}
+
+func TestBringExportPlanNotFound(t *testing.T) {
+	handler := New(&memoryRepo{}, planner.New(provider.NewMockGenerator()), "secret", nil, nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/plans/missing/bring-export", nil)
+	req.Header.Set("X-API-Secret", "secret")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d", rec.Code)
+	}
+}
+
 func TestMetricsEndpoint(t *testing.T) {
 	handler := New(&memoryRepo{}, planner.New(provider.NewMockGenerator()), "secret", nil, nil)
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)

@@ -139,7 +139,7 @@ a {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 40px;
+  min-height: 44px;
   padding: 0 14px;
   border-radius: 8px;
   cursor: pointer;
@@ -287,8 +287,18 @@ a {
 .surface-header {
   display: flex;
   justify-content: space-between;
+  align-items: start;
   gap: 12px;
   padding: 18px 18px 8px;
+}
+
+.surface-action {
+  display: flex;
+  justify-content: end;
+}
+
+.bring-export-button {
+  white-space: nowrap;
 }
 
 .board-grid {
@@ -521,6 +531,16 @@ a {
   .field-group,
   .preset-grid {
     grid-template-columns: 1fr;
+  }
+
+  .surface-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .surface-action,
+  .bring-export-button {
+    width: 100%;
   }
 
   .board-grid {

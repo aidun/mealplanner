@@ -163,7 +163,11 @@ export function DashboardPage() {
               onRegenerate={handleRegenerate}
               isRegenerating={regenerateMealMutation.isPending}
             />
-            <ShoppingListPanel shoppingList={shoppingListQuery.data ?? null} loading={shoppingListQuery.isLoading} />
+            <ShoppingListPanel
+              planId={currentPlanQuery.data?.id}
+              shoppingList={shoppingListQuery.data ?? null}
+              loading={shoppingListQuery.isLoading}
+            />
           </div>
         </div>
       </main>
