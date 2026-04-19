@@ -13,7 +13,6 @@ data:
           rule: PathPrefix(`/api`)
           priority: 100
           service: api
-          tls: {}
         frontend:
           entryPoints:
             - web
@@ -21,7 +20,6 @@ data:
           rule: PathPrefix(`/`)
           priority: 1
           service: frontend
-          tls: {}
 
       services:
         api:
