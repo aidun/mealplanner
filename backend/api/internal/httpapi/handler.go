@@ -47,6 +47,7 @@ func (r StoreRepository) GetPlan(req *http.Request, id string) (domain.Plan, err
 type Handler struct {
 	repo        Repository
 	planner     planner.Planner
+	metrics     *Metrics
 	apiSecret   string
 	corsOrigins []string
 	logger      *slog.Logger
@@ -56,16 +57,17 @@ func New(repo Repository, planner planner.Planner, apiSecret string, corsOrigins
 	if logger == nil {
 		logger = slog.Default()
 	}
-	h := &Handler{repo: repo, planner: planner, apiSecret: strings.TrimSpace(apiSecret), corsOrigins: corsOrigins, logger: logger}
+	h := &Handler{repo: repo, planner: planner, metrics: NewMetrics(), apiSecret: strings.TrimSpace(apiSecret), corsOrigins: corsOrigins, logger: logger}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", h.health)
+	mux.Handle("GET /metrics", h.metrics)
 	mux.HandleFunc("GET /api/profile", h.withAPI(h.getProfile))
 	mux.HandleFunc("PUT /api/profile", h.withAPI(h.putProfile))
 	mux.HandleFunc("POST /api/plans", h.withAPI(h.createPlan))
 	mux.HandleFunc("GET /api/plans/current", h.withAPI(h.getCurrentPlan))
 	mux.HandleFunc("GET /api/plans/{planID}/shopping-list", h.withAPI(h.getShoppingList))
 	mux.HandleFunc("POST /api/plans/{planID}/meals/{mealID}/regenerate", h.withAPI(h.regenerateMeal))
-	return h.withCORS(mux)
+	return h.metrics.Middleware(h.withCORS(mux))
 }
 
 func (h *Handler) health(w http.ResponseWriter, _ *http.Request) {

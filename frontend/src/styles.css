@@ -146,6 +146,67 @@ a {
   transition: transform 120ms ease, background-color 120ms ease, border-color 120ms ease;
 }
 
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(21, 24, 21, 0.46);
+  backdrop-filter: blur(10px);
+}
+
+.secret-dialog {
+  width: min(480px, 100%);
+  border: 1px solid rgba(21, 24, 21, 0.12);
+  border-radius: 8px;
+  padding: 28px;
+  background: #fffdf7;
+  box-shadow: 0 24px 70px rgba(21, 24, 21, 0.22);
+}
+
+.secret-dialog h2 {
+  margin: 6px 0 10px;
+  font-size: 1.7rem;
+}
+
+.secret-dialog p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.secret-form {
+  display: grid;
+  gap: 18px;
+  margin-top: 22px;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.eyebrow {
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.inline-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  color: var(--ink);
+}
+
+.error-copy {
+  margin-top: 16px !important;
+  color: #b42318 !important;
+  font-weight: 700;
+}
+
 .button:disabled {
   cursor: not-allowed;
   opacity: 0.65;

@@ -14,6 +14,15 @@ spec:
         - podSelector:
             matchLabels:
               app: entrypoint
+        - podSelector:
+            matchLabels:
+              app: weekly-plan
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - protocol: TCP
+          port: 3001
 
 ---
 apiVersion: networking.k8s.io/v1
@@ -31,6 +40,9 @@ spec:
         - podSelector:
             matchLabels:
               app: entrypoint
+      ports:
+        - protocol: TCP
+          port: 80
 
 ---
 apiVersion: networking.k8s.io/v1
@@ -48,3 +60,6 @@ spec:
         - podSelector:
             matchLabels:
               app: api
+      ports:
+        - protocol: TCP
+          port: 5432

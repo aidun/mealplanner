@@ -88,10 +88,31 @@ export async function getShoppingList(planId: string) {
   });
 }
 
+export function getStoredApiSecret() {
+  if (typeof window === 'undefined') {
+    return '';
+  }
+  return window.localStorage.getItem('mealplanner.apiSecret') ?? '';
+}
+
+export function saveStoredApiSecret(secret: string) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  const trimmed = secret.trim();
+  if (trimmed) {
+    window.localStorage.setItem('mealplanner.apiSecret', trimmed);
+  } else {
+    window.localStorage.removeItem('mealplanner.apiSecret');
+  }
+}
+
+export function clearStoredApiSecret() {
+  saveStoredApiSecret('');
+}
+
 function apiSecretHeader(): Record<string, string> {
-  const secret =
-    import.meta.env.VITE_API_SECRET ??
-    (typeof window !== 'undefined' ? window.localStorage.getItem('mealplanner.apiSecret') : '');
+  const secret = import.meta.env.VITE_API_SECRET ?? getStoredApiSecret();
   if (typeof secret === 'string' && secret !== '') {
     return { 'X-API-Secret': secret };
   }

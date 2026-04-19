@@ -3,13 +3,26 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Header } from '../components/Header';
 import { MealBoard } from '../components/MealBoard';
 import { MealInspector } from '../components/MealInspector';
+import { SecretDialog } from '../components/SecretDialog';
 import { ShoppingListPanel } from '../components/ShoppingListPanel';
-import { createPlan, getCurrentPlan, getProfile, getShoppingList, regenerateMeal } from '../api';
+import {
+  ApiError,
+  clearStoredApiSecret,
+  createPlan,
+  getCurrentPlan,
+  getProfile,
+  getShoppingList,
+  getStoredApiSecret,
+  regenerateMeal,
+  saveStoredApiSecret,
+} from '../api';
 import type { Meal } from '../types';
 
 export function DashboardPage() {
   const queryClient = useQueryClient();
   const [selectedMeal, setSelectedMeal] = useState<Meal | undefined>();
+  const [secretConfigured, setSecretConfigured] = useState(() => Boolean(getStoredApiSecret()));
+  const [secretDialogOpen, setSecretDialogOpen] = useState(() => !getStoredApiSecret());
 
   const profileQuery = useQuery({
     queryKey: ['profile'],
@@ -26,6 +39,11 @@ export function DashboardPage() {
     queryFn: () => getShoppingList(currentPlanQuery.data!.id),
     enabled: Boolean(currentPlanQuery.data?.id),
   });
+
+  const unauthorized =
+    profileQuery.error instanceof ApiError && profileQuery.error.status === 401 ||
+    currentPlanQuery.error instanceof ApiError && currentPlanQuery.error.status === 401 ||
+    shoppingListQuery.error instanceof ApiError && shoppingListQuery.error.status === 401;
 
   const createPlanMutation = useMutation({
     mutationFn: () => createPlan({}),
@@ -73,15 +91,44 @@ export function DashboardPage() {
     });
   };
 
+  const saveSecret = async (secret: string) => {
+    saveStoredApiSecret(secret);
+    setSecretConfigured(Boolean(secret.trim()));
+    setSecretDialogOpen(false);
+    await queryClient.invalidateQueries();
+  };
+
+  const clearSecret = async () => {
+    clearStoredApiSecret();
+    setSecretConfigured(false);
+    setSecretDialogOpen(true);
+    await queryClient.invalidateQueries();
+  };
+
   return (
     <div className="app-shell">
       <Header
         weekStart={currentPlanQuery.data?.weekStart}
         onCreatePlan={() => createPlanMutation.mutate()}
         creatingPlan={createPlanMutation.isPending}
+        secretConfigured={secretConfigured}
+        onUnlock={() => setSecretDialogOpen(true)}
+        onLock={clearSecret}
       />
 
       <main className="app-main">
+        {unauthorized ? (
+          <section className="inline-banner">
+            <div>
+              <h2>Zugriff gesperrt</h2>
+              <p>Gib das API-Secret ein, um Profil, Wochenplan und Einkaufsliste aus dem Testcluster zu laden.</p>
+            </div>
+            <button type="button" className="button button-primary" onClick={() => setSecretDialogOpen(true)}>
+              Secret eingeben
+            </button>
+          </section>
+        ) : null}
+
         {!profileQuery.data ? (
           <section className="inline-banner">
             <div>
@@ -117,6 +164,14 @@ export function DashboardPage() {
           </div>
         </div>
       </main>
+
+      <SecretDialog
+        open={secretDialogOpen}
+        initialSecret={getStoredApiSecret()}
+        invalid={unauthorized}
+        onSave={saveSecret}
+        onClose={() => setSecretDialogOpen(false)}
+      />
     </div>
   );
 }

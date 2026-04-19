@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/aidun/mealplanner/backend/api/internal/domain"
@@ -85,5 +86,22 @@ func TestAPISecretRequired(t *testing.T) {
 	handler.ServeHTTP(rec, req)
 	if rec.Code != http.StatusUnauthorized {
 		t.Fatalf("expected 401, got %d", rec.Code)
+	}
+}
+
+func TestMetricsEndpoint(t *testing.T) {
+	handler := New(&memoryRepo{}, planner.New(provider.NewMockGenerator()), "secret", nil, nil)
+	req := httptest.NewRequest(http.MethodGet, "/health", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	req = httptest.NewRequest(http.MethodGet, "/metrics", nil)
+	rec = httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rec.Code)
+	}
+	if !strings.Contains(rec.Body.String(), "mealplanner_http_requests_total") {
+		t.Fatalf("metrics output missing request counter: %s", rec.Body.String())
 	}
 }

@@ -15,6 +15,7 @@ resources:
   - entrypoint-deployment.yaml
   - api-deployment.yaml
   - api-service.yaml
+  - api-servicemonitor.yaml
   - weekly-plan-cronjob.yaml
   - frontend-deployment.yaml
   - frontend-service.yaml
