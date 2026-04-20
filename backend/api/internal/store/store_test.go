@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"strings"
 	"testing"
@@ -56,5 +57,39 @@ func TestStoreRoundtrip(t *testing.T) {
 	}
 	if !strings.HasSuffix(got.ID, "-plan-test") {
 		t.Fatalf("expected scoped plan-test id, got %s", got.ID)
+	}
+}
+
+func TestScopedPlanID(t *testing.T) {
+	got := scopedPlanID("12345678-1234-1234-1234-123456789abc", "plan-2026")
+	if got != "123456781234-plan-2026" {
+		t.Fatalf("unexpected scoped plan id %q", got)
+	}
+	if scopedPlanID("12345678-1234-1234-1234-123456789abc", got) != got {
+		t.Fatal("expected already scoped plan id to stay stable")
+	}
+}
+
+func TestDecodePlan(t *testing.T) {
+	raw, err := json.Marshal(domain.Plan{ID: "plan-1", WeekStart: "2026-04-20"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	plan, err := decodePlan(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if plan.ID != "plan-1" || plan.WeekStart != "2026-04-20" {
+		t.Fatalf("unexpected plan: %+v", plan)
+	}
+}
+
+func TestRandomToken(t *testing.T) {
+	token, err := randomToken(32)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(token) < 32 {
+		t.Fatalf("token too short: %q", token)
 	}
 }

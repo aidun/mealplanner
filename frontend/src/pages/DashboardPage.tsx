@@ -113,6 +113,7 @@ export function DashboardPage() {
     : regenerateMealMutation.isSuccess
       ? 'Das Gericht wurde ausgetauscht.'
       : '';
+  const logoutMessage = logoutMutation.isError ? 'Logout gerade nicht möglich. Bitte versuche es erneut.' : '';
 
   return loggedOut ? (
     <LoginPage />
@@ -122,10 +123,7 @@ export function DashboardPage() {
         weekStart={currentPlanQuery.data?.weekStart}
         onCreatePlan={() => createPlanMutation.mutate()}
         creatingPlan={createPlanMutation.isPending}
-        onLogout={() => {
-          setLoggedOut(true);
-          logoutMutation.mutate();
-        }}
+        onLogout={() => logoutMutation.mutate()}
         loggingOut={logoutMutation.isPending}
       />
 
@@ -180,13 +178,13 @@ export function DashboardPage() {
           </div>
         </section>
 
-        {planMessage || regenerateMessage ? (
+        {planMessage || regenerateMessage || logoutMessage ? (
           <div
-            className={`status-strip${createPlanMutation.isError || regenerateMealMutation.isError || currentPlanQuery.isError ? ' status-strip-error' : ' status-strip-success'}`}
-            role={createPlanMutation.isError || regenerateMealMutation.isError || currentPlanQuery.isError ? 'alert' : 'status'}
+            className={`status-strip${createPlanMutation.isError || regenerateMealMutation.isError || currentPlanQuery.isError || logoutMutation.isError ? ' status-strip-error' : ' status-strip-success'}`}
+            role={createPlanMutation.isError || regenerateMealMutation.isError || currentPlanQuery.isError || logoutMutation.isError ? 'alert' : 'status'}
             aria-live="polite"
           >
-            <span>{planMessage || regenerateMessage}</span>
+            <span>{planMessage || regenerateMessage || logoutMessage}</span>
           </div>
         ) : null}
 

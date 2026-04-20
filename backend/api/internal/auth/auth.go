@@ -89,6 +89,10 @@ func (s Service) Providers() []Provider {
 	}
 }
 
+func (s Service) BaseURL() string {
+	return strings.TrimRight(strings.TrimSpace(s.cfg.BaseURL), "/")
+}
+
 func (s Service) GoogleEnabled() bool {
 	return configured(s.cfg.BaseURL) && configured(s.cfg.GoogleClientID) && configured(s.cfg.GoogleClientSecret) && configured(s.cfg.SessionSecret)
 }
@@ -114,7 +118,7 @@ func (s Service) RedirectURL(provider string) string {
 	return strings.TrimRight(s.cfg.BaseURL, "/") + "/api/auth/" + provider + "/callback"
 }
 
-func (s Service) ExchangeGoogleCode(ctx context.Context, code, verifier string) (Identity, error) {
+func (s Service) ExchangeGoogleCode(ctx context.Context, code, verifier, expectedNonce string) (Identity, error) {
 	form := url.Values{}
 	form.Set("client_id", s.cfg.GoogleClientID)
 	form.Set("client_secret", s.cfg.GoogleClientSecret)
@@ -141,10 +145,10 @@ func (s Service) ExchangeGoogleCode(ctx context.Context, code, verifier string) 
 	if err := json.NewDecoder(resp.Body).Decode(&tokenResp); err != nil {
 		return Identity{}, err
 	}
-	return s.VerifyGoogleIDToken(ctx, tokenResp.IDToken)
+	return s.VerifyGoogleIDToken(ctx, tokenResp.IDToken, expectedNonce)
 }
 
-func (s Service) VerifyGoogleIDToken(ctx context.Context, idToken string) (Identity, error) {
+func (s Service) VerifyGoogleIDToken(ctx context.Context, idToken string, expectedNonce string) (Identity, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://oauth2.googleapis.com/tokeninfo?id_token="+url.QueryEscape(idToken), nil)
 	if err != nil {
 		return Identity{}, err
@@ -164,6 +168,15 @@ func (s Service) VerifyGoogleIDToken(ctx context.Context, idToken string) (Ident
 	if info.Audience != s.cfg.GoogleClientID {
 		return Identity{}, errors.New("google token audience mismatch")
 	}
+	if strings.TrimSpace(expectedNonce) != "" {
+		nonce, err := idTokenNonce(idToken)
+		if err != nil {
+			return Identity{}, err
+		}
+		if nonce != expectedNonce {
+			return Identity{}, errors.New("google token nonce mismatch")
+		}
+	}
 	identity := Identity{
 		Provider:    "google",
 		SubjectHash: s.Hash("google:" + info.Subject),
@@ -175,6 +188,27 @@ func (s Service) VerifyGoogleIDToken(ctx context.Context, idToken string) (Ident
 		return Identity{}, ErrNotAllowed
 	}
 	return identity, nil
+}
+
+func idTokenNonce(idToken string) (string, error) {
+	parts := strings.Split(idToken, ".")
+	if len(parts) < 2 {
+		return "", errors.New("invalid google id token")
+	}
+	raw, err := base64.RawURLEncoding.DecodeString(parts[1])
+	if err != nil {
+		return "", err
+	}
+	var claims struct {
+		Nonce string `json:"nonce"`
+	}
+	if err := json.Unmarshal(raw, &claims); err != nil {
+		return "", err
+	}
+	if strings.TrimSpace(claims.Nonce) == "" {
+		return "", errors.New("google token nonce missing")
+	}
+	return claims.Nonce, nil
 }
 
 func (s Service) Allowed(identity Identity) bool {

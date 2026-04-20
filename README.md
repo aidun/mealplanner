@@ -1,12 +1,14 @@
 # Mealplanner
 
-Private Familien-Webapp fuer Wochen-Essensplaene.
+Private Familien-Webapp fuer Wochen-Essensplaene. Der aktuelle produktive Zugang laeuft ueber
+`https://mealplanner.markushartmann.dev`.
 
 ## Architektur
 
 - `backend/api`: Go API mit Postgres, Migrationen und Provider-Abstraktion fuer Mock/OpenAI.
 - `frontend`: React/Vite UI im Premium-Food-App-Stil.
-- `deploy`: Kustomize-Manifeste fuer Test/Production und ArgoCD.
+- `deploy`: Kustomize-Manifeste fuer Test/Production, Cloudflare Tunnel und ArgoCD.
+- `docs/security.md`: Security-, Pentest- und Betriebs-Runbook.
 
 ## Lokal starten
 
@@ -26,9 +28,31 @@ npm ci
 npm run dev
 ```
 
-Wenn `API_SECRET` gesetzt ist, sendet das Frontend `VITE_API_SECRET` oder den im Browser gespeicherten Wert `localStorage["mealplanner.apiSecret"]` als `X-API-Secret`.
+Social Login benoetigt eine HTTPS-`AUTH_BASE_URL`, Google OAuth Credentials und Allowlist-Hashes.
+Klartext-E-Mail-Adressen gehoeren nicht in Repo oder Datenbank.
 
 ## Cluster
 
-Der Test-Overlay nutzt `192.168.2.204` und `PROVIDER_MODE=live`. Der Pod startet nur sauber, wenn `api-secrets.OPENAI_API_KEY` auf einen echten Wert gesetzt ist. Platzhalter wie `__set_openai_api_key__` werden vom Backend abgelehnt.
+Der Test-Overlay nutzt weiterhin `192.168.2.204` im LAN und zusaetzlich Cloudflare Tunnel fuer
+`mealplanner.markushartmann.dev`. `PROVIDER_MODE=live` startet nur sauber, wenn
+`api-secrets.OPENAI_API_KEY` auf einen echten Wert gesetzt ist. Platzhalter wie
+`__set_openai_api_key__` werden vom Backend abgelehnt.
 
+## Qualitaets-Gates
+
+```sh
+cd backend/api
+go vet ./...
+go test ./...
+govulncheck ./...
+gosec ./...
+
+cd ../../frontend
+npm run test -- --run
+npm run build
+npm audit --audit-level=moderate
+
+cd ..
+kubectl kustomize deploy/test
+kubectl kustomize deploy/production
+```

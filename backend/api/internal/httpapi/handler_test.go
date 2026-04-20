@@ -286,6 +286,34 @@ func TestCORSAllowsCSRFCredentials(t *testing.T) {
 	}
 }
 
+func TestCORSRejectsWildcardForCredentialedRequests(t *testing.T) {
+	handler := New(newMemoryRepo(), planner.New(provider.NewMockGenerator()), testAuth(), "", []string{"*"}, nil)
+	req := httptest.NewRequest(http.MethodOptions, "/api/profile", nil)
+	req.Header.Set("Origin", "https://evil.example")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if got := rec.Header().Get("Access-Control-Allow-Origin"); got != "" {
+		t.Fatalf("expected wildcard CORS to be ignored for credentials, got %q", got)
+	}
+}
+
+func TestSecurityHeadersAndJSONBodyLimit(t *testing.T) {
+	repo := newMemoryRepo()
+	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil)
+	req := httptest.NewRequest(http.MethodPut, "/api/profile", strings.NewReader(strings.Repeat("x", maxJSONBodyBytes+1)))
+	setAuth(repo, req, "user-1")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 for oversized json body, got %d", rec.Code)
+	}
+	if got := rec.Header().Get("X-Content-Type-Options"); got != "nosniff" {
+		t.Fatalf("expected nosniff header, got %q", got)
+	}
+}
+
 func TestInternalWeeklyPlanUsesAPISecret(t *testing.T) {
 	repo := newMemoryRepo()
 	repo.profiles["user-1"] = domain.DefaultProfile()
@@ -322,6 +350,33 @@ func TestSessionEndpoint(t *testing.T) {
 	}
 	if !strings.Contains(rec.Body.String(), `"authenticated":true`) || !strings.Contains(rec.Body.String(), "csrf-user-1") {
 		t.Fatalf("unexpected session response: %s", rec.Body.String())
+	}
+}
+
+func TestBringExportURLUsesConfiguredBaseURL(t *testing.T) {
+	repo := newMemoryRepo()
+	repo.plans["user-1|plan-1"] = domain.Plan{ID: "plan-1", WeekStart: "2026-04-20"}
+	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "test-secret", nil, nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/plans/plan-1/bring-export-url", nil)
+	req.Host = "attacker.example"
+	req.Header.Set("X-Forwarded-Host", "attacker.example")
+	req.Header.Set("X-Forwarded-Proto", "http")
+	setAuth(repo, req, "user-1")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+	var payload map[string]string
+	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasPrefix(payload["url"], "https://mealplanner.test/api/plans/plan-1/bring-export?token=") {
+		t.Fatalf("unexpected export url %q", payload["url"])
+	}
+	if strings.Contains(payload["url"], "attacker.example") {
+		t.Fatalf("export url trusted spoofed host: %q", payload["url"])
 	}
 }
 

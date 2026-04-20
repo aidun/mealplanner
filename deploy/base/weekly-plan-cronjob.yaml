@@ -16,6 +16,7 @@ spec:
           labels:
             app: weekly-plan
         spec:
+          automountServiceAccountToken: false
           restartPolicy: OnFailure
           containers:
             - name: trigger
@@ -38,3 +39,12 @@ spec:
                     -X POST \
                     --data '{}' \
                     http://api:3001/api/internal/plans/weekly
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                    - ALL
+                readOnlyRootFilesystem: true
+                runAsNonRoot: true
+                seccompProfile:
+                  type: RuntimeDefault

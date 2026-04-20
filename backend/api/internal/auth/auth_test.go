@@ -1,6 +1,9 @@
 package auth
 
-import "testing"
+import (
+	"encoding/base64"
+	"testing"
+)
 
 func TestHashAndAllowlist(t *testing.T) {
 	service := NewService(Config{SessionSecret: "test-secret"})
@@ -68,5 +71,23 @@ func TestProvidersExposeStartURLsWhenConfigured(t *testing.T) {
 	}
 	if providers[1].Enabled || providers[1].StartURL != "" {
 		t.Fatalf("unexpected apple provider: %+v", providers[1])
+	}
+}
+
+func TestIDTokenNonce(t *testing.T) {
+	token := "header." + base64.RawURLEncoding.EncodeToString([]byte(`{"nonce":"nonce-1"}`)) + ".signature"
+	nonce, err := idTokenNonce(token)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if nonce != "nonce-1" {
+		t.Fatalf("unexpected nonce %q", nonce)
+	}
+}
+
+func TestIDTokenNonceRequiresClaim(t *testing.T) {
+	token := "header." + base64.RawURLEncoding.EncodeToString([]byte(`{"sub":"subject"}`)) + ".signature"
+	if _, err := idTokenNonce(token); err == nil {
+		t.Fatal("expected missing nonce error")
 	}
 }

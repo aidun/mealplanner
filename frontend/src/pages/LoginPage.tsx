@@ -26,13 +26,15 @@ export function LoginPage() {
         </div>
 
         <div className="login-actions" aria-label="Login-Anbieter">
-          <a
-            className="button button-primary login-button"
-            href={googleStartUrl}
-            aria-disabled={!googleEnabled}
-          >
-            Mit Google anmelden
-          </a>
+          {googleEnabled ? (
+            <a className="button button-primary login-button" href={googleStartUrl}>
+              Mit Google anmelden
+            </a>
+          ) : (
+            <button type="button" className="button button-primary login-button" disabled>
+              Mit Google anmelden
+            </button>
+          )}
 
           {apple?.enabled ? (
             <a className="button button-secondary login-button" href={apple.startUrl}>

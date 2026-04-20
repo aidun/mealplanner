@@ -110,7 +110,7 @@ func (g OpenAIGenerator) call(ctx context.Context, operation string, prompt stri
 		return err
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return fmt.Errorf("openai responses api failed: status=%d body=%s", resp.StatusCode, string(respBody))
+		return fmt.Errorf("openai responses api failed: status=%d body=%s", resp.StatusCode, sanitizeOpenAIErrorBody(respBody))
 	}
 	recordOpenAIUsage(operation, g.model, parseUsage(respBody))
 
@@ -123,6 +123,25 @@ func (g OpenAIGenerator) call(ctx context.Context, operation string, prompt stri
 	}
 	status = "success"
 	return nil
+}
+
+func sanitizeOpenAIErrorBody(body []byte) string {
+	const limit = 512
+	text := strings.TrimSpace(string(body))
+	if text == "" {
+		return ""
+	}
+	text = strings.ReplaceAll(text, "\n", " ")
+	text = strings.ReplaceAll(text, "\r", " ")
+	for _, marker := range []string{"sk-", "sess-", "Bearer "} {
+		if strings.Contains(text, marker) {
+			return "[redacted]"
+		}
+	}
+	if len(text) > limit {
+		return text[:limit] + "...[truncated]"
+	}
+	return text
 }
 
 type openAIUsage struct {

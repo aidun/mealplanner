@@ -60,7 +60,7 @@ func (h *Handler) startGoogle(w http.ResponseWriter, r *http.Request) {
 		Path:     "/api/auth/google",
 		MaxAge:   600,
 		HttpOnly: true,
-		Secure:   secureCookie(r),
+		Secure:   true,
 		SameSite: http.SameSiteLaxMode,
 	})
 	http.Redirect(w, r, h.auth.GoogleStartURL(state, nonce, challenge), http.StatusFound)
@@ -77,7 +77,7 @@ func (h *Handler) googleCallback(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, r.URL.Query().Get("error"))
 		return
 	}
-	identity, err := h.auth.ExchangeGoogleCode(r.Context(), r.URL.Query().Get("code"), saved.Verifier)
+	identity, err := h.auth.ExchangeGoogleCode(r.Context(), r.URL.Query().Get("code"), saved.Verifier, saved.Nonce)
 	if errors.Is(err, auth.ErrNotAllowed) {
 		writeError(w, http.StatusForbidden, "login not allowed")
 		return
@@ -97,7 +97,7 @@ func (h *Handler) googleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	setSessionCookie(w, r, sessionID, expiresAt)
-	clearCookie(w, auth.StateCookieName, "/api/auth/google", secureCookie(r))
+	clearCookie(w, auth.StateCookieName, "/api/auth/google")
 	http.Redirect(w, r, "/", http.StatusFound)
 }
 
@@ -109,7 +109,7 @@ func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
 	if cookie, err := r.Cookie(auth.SessionCookieName); err == nil {
 		_ = h.repo.DeleteSession(r, cookie.Value)
 	}
-	clearCookie(w, auth.SessionCookieName, "/", secureCookie(r))
+	clearCookie(w, auth.SessionCookieName, "/")
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
@@ -161,32 +161,28 @@ func mustUserID(ctx context.Context) string {
 	return userID
 }
 
-func setSessionCookie(w http.ResponseWriter, r *http.Request, sessionID string, expiresAt time.Time) {
+func setSessionCookie(w http.ResponseWriter, _ *http.Request, sessionID string, expiresAt time.Time) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     auth.SessionCookieName,
 		Value:    sessionID,
 		Path:     "/",
 		Expires:  expiresAt,
 		HttpOnly: true,
-		Secure:   secureCookie(r),
+		Secure:   true,
 		SameSite: http.SameSiteLaxMode,
 	})
 }
 
-func clearCookie(w http.ResponseWriter, name, path string, secure bool) {
+func clearCookie(w http.ResponseWriter, name, path string) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     name,
 		Value:    "",
 		Path:     path,
 		MaxAge:   -1,
 		HttpOnly: true,
-		Secure:   secure,
+		Secure:   true,
 		SameSite: http.SameSiteLaxMode,
 	})
-}
-
-func secureCookie(r *http.Request) bool {
-	return r.TLS != nil || strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https")
 }
 
 func encodeCookie(raw []byte) string {

@@ -54,6 +54,15 @@ spec:
             - name: bootstrap-script
               mountPath: /bootstrap
               readOnly: true
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
       volumes:
         - name: bootstrap-script
           configMap:

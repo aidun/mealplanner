@@ -45,6 +45,19 @@ func TestParseUsage(t *testing.T) {
 	}
 }
 
+func TestSanitizeOpenAIErrorBody(t *testing.T) {
+	got := sanitizeOpenAIErrorBody([]byte("bad\nBearer secret-token"))
+	if got != "[redacted]" {
+		t.Fatalf("expected redacted body, got %q", got)
+	}
+
+	long := strings.Repeat("x", 600)
+	got = sanitizeOpenAIErrorBody([]byte(long))
+	if len(got) >= len(long) || !strings.Contains(got, "[truncated]") {
+		t.Fatalf("expected truncated body, got %q", got)
+	}
+}
+
 func TestOpenAIMetricsOutput(t *testing.T) {
 	recordOpenAIRequest("generate_week", "gpt-test", "success", 150*time.Millisecond)
 	recordOpenAIUsage("generate_week", "gpt-test", openAIUsage{InputTokens: 10, OutputTokens: 20, TotalTokens: 30})

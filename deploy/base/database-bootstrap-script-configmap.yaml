@@ -76,6 +76,8 @@ data:
     fi
 
     ensure_api_secret_key AUTH_BASE_URL "${AUTH_BASE_URL_PLACEHOLDER:-__set_https_auth_base_url__}"
+    ensure_api_secret_key API_SECRET "${API_SECRET_PLACEHOLDER:-__set_api_secret__}"
+    ensure_api_secret_key OPENAI_API_KEY "${OPENAI_API_KEY_PLACEHOLDER:-__set_openai_api_key__}"
     ensure_api_secret_key SESSION_SECRET "${SESSION_SECRET_PLACEHOLDER:-__set_random_session_secret_min_32_bytes__}"
     ensure_api_secret_key AUTH_ALLOWED_SUBJECT_HASHES "${AUTH_ALLOWED_SUBJECT_HASHES_PLACEHOLDER:-__set_allowed_subject_hashes__}"
     ensure_api_secret_key AUTH_ALLOWED_EMAIL_HASHES "${AUTH_ALLOWED_EMAIL_HASHES_PLACEHOLDER:-}"

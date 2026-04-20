@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../App';
+import { ShoppingListPanel } from '../components/ShoppingListPanel';
 import styles from '../styles.css?raw';
 
 const profile = {
@@ -137,7 +138,7 @@ function createFetchMock(options: { authenticated?: boolean } = {}) {
     }
 
     if (url.endsWith('/api/auth/logout') && init?.method === 'POST') {
-      return new Response('', { status: 204 });
+      return new Response(null, { status: 204 });
     }
 
     if (url.endsWith('/api/profile') && (!init || !init.method || init.method === 'GET')) {
@@ -190,6 +191,29 @@ describe('Mealplanner app', () => {
     expect(screen.getByRole('link', { name: 'Impressum' })).toBeInTheDocument();
   });
 
+  it('renders disabled Google login as a disabled button, not a link', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.endsWith('/api/session')) {
+          return new Response(JSON.stringify({ authenticated: false }), { status: 200 });
+        }
+        if (url.endsWith('/api/auth/providers')) {
+          return new Response(JSON.stringify({ providers: [{ id: 'google', name: 'Google', enabled: false }] }), {
+            status: 200,
+          });
+        }
+        return new Response('', { status: 404 });
+      }) as unknown as typeof fetch
+    );
+
+    renderApp('/');
+
+    expect(await screen.findByRole('button', { name: 'Mit Google anmelden' })).toBeDisabled();
+    expect(screen.queryByRole('link', { name: 'Mit Google anmelden' })).not.toBeInTheDocument();
+  });
+
   it('renders the weekly board and shopping list', async () => {
     renderApp('/');
 
@@ -213,6 +237,39 @@ describe('Mealplanner app', () => {
     expect(bringLink).toHaveAttribute('href', '/api/plans/plan-1/bring-export?token=test-token');
     expect(bringLink).not.toHaveAttribute('target');
     expect(window.open).not.toHaveBeenCalled();
+  });
+
+  it('refreshes the Bring export link when shopping list contents change', async () => {
+    let exportCalls = 0;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith('/api/plans/plan-1/bring-export-url')) {
+        exportCalls += 1;
+        return new Response(JSON.stringify({ url: `/api/plans/plan-1/bring-export?token=${exportCalls}` }), {
+          status: 200,
+        });
+      }
+      return new Response('', { status: 404 });
+    }) as unknown as typeof fetch;
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { rerender } = render(
+      <ShoppingListPanel planId="plan-1" shoppingList={[{ name: 'Zucchini', amount: 2, unit: 'Stk' }]} loading={false} />
+    );
+    expect(await screen.findByRole('link', { name: 'Zu Bring' })).toHaveAttribute(
+      'href',
+      '/api/plans/plan-1/bring-export?token=1'
+    );
+
+    rerender(
+      <ShoppingListPanel
+        planId="plan-1"
+        shoppingList={[{ name: 'Zucchini', amount: 3, unit: 'Stk' }]}
+        loading={false}
+      />
+    );
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
   });
 
   it('moves through days as a carousel', async () => {
@@ -352,6 +409,44 @@ describe('Mealplanner app', () => {
       );
     });
     expect(await screen.findByRole('link', { name: 'Mit Google anmelden' })).toBeInTheDocument();
+  });
+
+  it('keeps the dashboard visible when logout fails', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        if (url.endsWith('/api/session')) {
+          return new Response(JSON.stringify(session), { status: 200 });
+        }
+        if (url.endsWith('/api/profile')) {
+          return new Response(JSON.stringify(profile), { status: 200 });
+        }
+        if (url.endsWith('/api/plans/current')) {
+          return new Response(JSON.stringify(plan), { status: 200 });
+        }
+        if (url.endsWith('/api/plans/plan-1/shopping-list')) {
+          return new Response(JSON.stringify(shoppingList), { status: 200 });
+        }
+        if (url.endsWith('/api/plans/plan-1/bring-export-url')) {
+          return new Response(JSON.stringify({ url: '/api/plans/plan-1/bring-export?token=test-token' }), {
+            status: 200,
+          });
+        }
+        if (url.endsWith('/api/auth/logout') && init?.method === 'POST') {
+          return new Response(JSON.stringify({ error: 'logout failed' }), { status: 500 });
+        }
+        return new Response('', { status: 404 });
+      }) as unknown as typeof fetch
+    );
+
+    renderApp('/');
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Logout' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Logout gerade nicht möglich');
+    expect(screen.getByText('Was essen wir diese Woche?')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Mit Google anmelden' })).not.toBeInTheDocument();
   });
 
   it('renders legal placeholder pages', async () => {

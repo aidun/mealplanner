@@ -24,7 +24,7 @@ func main() {
 	}
 	defer pool.Close()
 	if len(os.Args) > 1 && os.Args[1] != "up" {
-		log.Fatalf("unsupported migration command %q", os.Args[1])
+		log.Fatal("unsupported migration command")
 	}
 	if err := store.MigrateUp(ctx, pool); err != nil {
 		log.Fatal(err)

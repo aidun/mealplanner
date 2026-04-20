@@ -1,4 +1,4 @@
-FROM golang:1.24-alpine AS build
+FROM golang:1.25.9-alpine AS build
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
@@ -14,4 +14,3 @@ COPY --from=build /out/migrate /app/bin/migrate
 USER app
 EXPOSE 3001
 ENTRYPOINT ["/app/bin/api"]
-

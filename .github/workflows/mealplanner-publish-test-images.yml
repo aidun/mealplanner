@@ -44,12 +44,13 @@ jobs:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.source_ref || github.sha }}
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.24.2'
+          go-version: '1.25.9'
           cache: true
           cache-dependency-path: backend/api/go.sum
       - name: Verify backend
         working-directory: backend/api
         run: |
+          go vet ./...
           go test ./...
 
   verify-frontend:
@@ -66,6 +67,7 @@ jobs:
         working-directory: frontend
         run: |
           npm ci
+          npm run test -- --run
           npm run build
 
   verify-manifests:

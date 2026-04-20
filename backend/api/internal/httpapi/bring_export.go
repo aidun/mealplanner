@@ -51,7 +51,7 @@ func (h *Handler) getBringExportURL(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusServiceUnavailable, "bring export is not configured")
 		return
 	}
-	exportURL := absoluteRequestURL(r, "/api/plans/"+url.PathEscape(planID)+"/bring-export")
+	exportURL := h.absoluteRequestURL(r, "/api/plans/"+url.PathEscape(planID)+"/bring-export")
 	query := exportURL.Query()
 	query.Set("token", token)
 	exportURL.RawQuery = query.Encode()
@@ -70,7 +70,7 @@ func (h *Handler) getBringExport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	canonicalURL := absoluteRequestURL(r, "/api/plans/"+url.PathEscape(planID)+"/bring-export")
+	canonicalURL := h.absoluteRequestURL(r, "/api/plans/"+url.PathEscape(planID)+"/bring-export")
 	canonicalURL.RawQuery = r.URL.RawQuery
 	view, err := newBringExportView(plan, canonicalURL.String())
 	if err != nil {
@@ -127,7 +127,13 @@ func (h *Handler) verifyBringExport(planID string, token string) bool {
 	return hmac.Equal(tokenBytes, expectedBytes)
 }
 
-func absoluteRequestURL(r *http.Request, path string) *url.URL {
+func (h *Handler) absoluteRequestURL(r *http.Request, path string) *url.URL {
+	if baseURL := h.auth.BaseURL(); baseURL != "" {
+		parsed, err := url.Parse(baseURL)
+		if err == nil && parsed.Scheme != "" && parsed.Host != "" {
+			return &url.URL{Scheme: parsed.Scheme, Host: parsed.Host, Path: path}
+		}
+	}
 	scheme := firstForwardedValue(r.Header.Get("X-Forwarded-Proto"))
 	if scheme == "" {
 		if r.TLS != nil {
@@ -217,7 +223,8 @@ func newBringExportView(plan domain.Plan, canonicalURL string) (bringExportView,
 		CanonicalURL: strings.TrimSpace(canonicalURL),
 		Items:        items,
 		Ingredients:  ingredients,
-		SchemaJSON:   template.JS(rawSchema),
+		// #nosec G203 -- rawSchema is produced by json.Marshal before template execution.
+		SchemaJSON: template.JS(rawSchema),
 	}, nil
 }
 

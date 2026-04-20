@@ -13,6 +13,7 @@ export function ShoppingListPanel({ planId, shoppingList, loading }: ShoppingLis
   const [bringState, setBringState] = useState<'idle' | 'loading' | 'ready' | 'failed'>('idle');
   const [bringUrl, setBringUrl] = useState('');
   const items = useMemo(() => flattenShoppingList(shoppingList), [shoppingList]);
+  const itemsKey = useMemo(() => items.map(formatLine).join('|'), [items]);
   const categories = useMemo(() => uniqueCategories(items), [items]);
   const canExport = Boolean(planId && items.length > 0);
 
@@ -37,7 +38,7 @@ export function ShoppingListPanel({ planId, shoppingList, loading }: ShoppingLis
     return () => {
       cancelled = true;
     };
-  }, [canExport, planId]);
+  }, [canExport, planId, itemsKey]);
 
   const copyList = async () => {
     if (items.length === 0) return;

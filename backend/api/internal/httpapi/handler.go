@@ -89,6 +89,8 @@ type Handler struct {
 	logger      *slog.Logger
 }
 
+const maxJSONBodyBytes = 1 << 20
+
 func New(repo Repository, planner planner.Planner, authService auth.Service, apiSecret string, corsOrigins []string, logger *slog.Logger) http.Handler {
 	if logger == nil {
 		logger = slog.Default()
@@ -113,7 +115,7 @@ func New(repo Repository, planner planner.Planner, authService auth.Service, api
 	mux.HandleFunc("GET /api/plans/{planID}/bring-export-url", h.withSession(h.getBringExportURL))
 	mux.HandleFunc("GET /api/plans/{planID}/shopping-list", h.withSession(h.getShoppingList))
 	mux.HandleFunc("POST /api/plans/{planID}/meals/{mealID}/regenerate", h.withSession(h.withCSRF(h.regenerateMeal)))
-	return h.metrics.Middleware(h.withCORS(mux))
+	return h.metrics.Middleware(h.withSecurityHeaders(h.withCORS(mux)))
 }
 
 func (h *Handler) health(w http.ResponseWriter, _ *http.Request) {
@@ -131,7 +133,7 @@ func (h *Handler) getProfile(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) putProfile(w http.ResponseWriter, r *http.Request) {
 	var profile domain.Profile
-	if err := decodeJSON(r, &profile); err != nil {
+	if err := decodeJSON(w, r, &profile); err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -150,7 +152,7 @@ func (h *Handler) putProfile(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) createPlan(w http.ResponseWriter, r *http.Request) {
 	var req domain.CreatePlanRequest
 	if r.Body != nil && r.ContentLength != 0 {
-		if err := decodeJSON(r, &req); err != nil {
+		if err := decodeJSON(w, r, &req); err != nil {
 			writeError(w, http.StatusBadRequest, err.Error())
 			return
 		}
@@ -239,7 +241,7 @@ func (h *Handler) getShoppingList(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) regenerateMeal(w http.ResponseWriter, r *http.Request) {
 	var req domain.RegenerateMealRequest
-	if err := decodeJSON(r, &req); err != nil {
+	if err := decodeJSON(w, r, &req); err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -306,12 +308,22 @@ func (h *Handler) withCORS(next http.Handler) http.Handler {
 	})
 }
 
+func (h *Handler) withSecurityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("Referrer-Policy", "no-referrer")
+		w.Header().Set("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=(), usb=()")
+		w.Header().Set("X-Frame-Options", "DENY")
+		next.ServeHTTP(w, r)
+	})
+}
+
 func originAllowed(origin string, allowed []string) bool {
 	if origin == "" || len(allowed) == 0 {
 		return false
 	}
 	for _, candidate := range allowed {
-		if candidate == "*" || candidate == origin {
+		if candidate == origin {
 			return true
 		}
 	}
@@ -327,8 +339,8 @@ func (h *Handler) serverError(w http.ResponseWriter, err error) {
 	})
 }
 
-func decodeJSON(r *http.Request, target any) error {
-	decoder := json.NewDecoder(r.Body)
+func decodeJSON(w http.ResponseWriter, r *http.Request, target any) error {
+	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxJSONBodyBytes))
 	decoder.DisallowUnknownFields()
 	return decoder.Decode(target)
 }
