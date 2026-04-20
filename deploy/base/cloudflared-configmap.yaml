@@ -15,4 +15,5 @@ data:
         originRequest:
           httpHostHeader: mealplanner.markushartmann.dev
           originServerName: mealplanner.markushartmann.dev
+          noTLSVerify: true
       - service: http_status:404
