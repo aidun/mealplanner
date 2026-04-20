@@ -22,7 +22,7 @@ spec:
             - --entryPoints.traefik.address=:8080/tcp
             - --providers.file.filename=/etc/traefik/dynamic/dynamic.yaml
             - --providers.file.watch=false
-            - --certificatesresolvers.letsencrypt.acme.email=admin@markushartmann.dev
+            - --certificatesresolvers.letsencrypt.acme.email=markush1986@gmail.com
             - --certificatesresolvers.letsencrypt.acme.storage=/data/acme.json
             - --certificatesresolvers.letsencrypt.acme.dnschallenge.provider=cloudflare
             - --certificatesresolvers.letsencrypt.acme.dnschallenge.resolvers=1.1.1.1:53,1.0.0.1:53
