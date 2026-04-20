@@ -193,7 +193,7 @@ func TestBringExport(t *testing.T) {
 		t.Fatalf("expected text/html content type, got %q", contentType)
 	}
 	body := rec.Body.String()
-	for _, expected := range []string{"schema.org", `"@type":"Recipe"`, "recipeIngredient", `"author"`, "platform.getbring.com/widgets/import.js", "data-bring-import", "2 Stk Zucchini", "400 g Pasta"} {
+	for _, expected := range []string{"schema.org", `"@type":"Recipe"`, "recipeIngredient", `"author":"Mealplanner"`, `"prepTime":"PT10M"`, `"totalTime":"PT10M"`, "itemtype=\"https://schema.org/Recipe\"", "itemprop=\"recipeIngredient\"", "itemprop=\"author\"", "itemprop=\"recipeInstructions\"", "platform.getbring.com/widgets/import.js", "data-bring-import", "2 Stk Zucchini", "400 g Pasta"} {
 		if !strings.Contains(body, expected) {
 			t.Fatalf("bring export missing %q in body: %s", expected, body)
 		}

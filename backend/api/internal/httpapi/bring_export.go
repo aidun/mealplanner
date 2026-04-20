@@ -19,11 +19,14 @@ import (
 )
 
 type bringExportView struct {
-	Title       string
-	WeekStart   string
-	Items       []bringExportItem
-	Ingredients []string
-	SchemaJSON  template.JS
+	Title        string
+	WeekStart    string
+	ImageURL     string
+	Description  string
+	CanonicalURL string
+	Items        []bringExportItem
+	Ingredients  []string
+	SchemaJSON   template.JS
 }
 
 type bringExportItem struct {
@@ -67,7 +70,9 @@ func (h *Handler) getBringExport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	view, err := newBringExportView(plan)
+	canonicalURL := absoluteRequestURL(r, "/api/plans/"+url.PathEscape(planID)+"/bring-export")
+	canonicalURL.RawQuery = r.URL.RawQuery
+	view, err := newBringExportView(plan, canonicalURL.String())
 	if err != nil {
 		h.serverError(w, err)
 		return
@@ -147,7 +152,7 @@ func firstForwardedValue(value string) string {
 	return strings.TrimSpace(parts[0])
 }
 
-func newBringExportView(plan domain.Plan) (bringExportView, error) {
+func newBringExportView(plan domain.Plan, canonicalURL string) (bringExportView, error) {
 	shoppingItems := domain.ConsolidateShoppingList(plan)
 	items := make([]bringExportItem, 0, len(shoppingItems))
 	ingredients := make([]string, 0, len(shoppingItems))
@@ -170,19 +175,34 @@ func newBringExportView(plan domain.Plan) (bringExportView, error) {
 	if strings.TrimSpace(plan.WeekStart) != "" {
 		title = fmt.Sprintf("Mealplanner Einkaufsliste ab %s", strings.TrimSpace(plan.WeekStart))
 	}
+	imageURL := "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=1200&q=80"
+	description := "Ein vorbereitetes Wochenrezept fuer die Familienkueche mit allen Zutaten aus dem aktuellen Mealplanner-Wochenplan."
 	schema := map[string]any{
 		"@context":         "https://schema.org",
 		"@type":            "Recipe",
-		"author":           map[string]string{"@type": "Person", "name": "Mealplanner"},
-		"description":      "Konsolidierte Einkaufsliste aus dem Mealplanner Wochenplan.",
-		"image":            "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=1200&q=80",
+		"author":           "Mealplanner",
+		"cookTime":         "PT0M",
+		"description":      description,
+		"image":            []string{imageURL},
+		"keywords":         "Wochenplan, Einkaufsliste, Familienkueche",
 		"name":             title,
+		"prepTime":         "PT10M",
+		"recipeCategory":   "Wochenplan",
+		"recipeCuisine":    "Familienkueche",
 		"recipeYield":      "1 Wochenplan",
 		"recipeIngredient": ingredients,
 		"recipeInstructions": []map[string]string{{
 			"@type": "HowToStep",
-			"text":  "Alle Zutaten zur Einkaufsliste hinzufuegen.",
+			"text":  "Alle Zutaten in Bring uebernehmen und fuer die Woche einkaufen.",
 		}},
+		"totalTime": "PT10M",
+	}
+	if strings.TrimSpace(canonicalURL) != "" {
+		schema["url"] = strings.TrimSpace(canonicalURL)
+		schema["mainEntityOfPage"] = map[string]string{"@type": "WebPage", "@id": strings.TrimSpace(canonicalURL)}
+	}
+	if strings.TrimSpace(plan.WeekStart) != "" {
+		schema["datePublished"] = strings.TrimSpace(plan.WeekStart)
 	}
 	rawSchema, err := json.Marshal(schema)
 	if err != nil {
@@ -190,11 +210,14 @@ func newBringExportView(plan domain.Plan) (bringExportView, error) {
 	}
 
 	return bringExportView{
-		Title:       title,
-		WeekStart:   strings.TrimSpace(plan.WeekStart),
-		Items:       items,
-		Ingredients: ingredients,
-		SchemaJSON:  template.JS(rawSchema),
+		Title:        title,
+		WeekStart:    strings.TrimSpace(plan.WeekStart),
+		ImageURL:     imageURL,
+		Description:  description,
+		CanonicalURL: strings.TrimSpace(canonicalURL),
+		Items:        items,
+		Ingredients:  ingredients,
+		SchemaJSON:   template.JS(rawSchema),
 	}, nil
 }
 
@@ -232,6 +255,7 @@ var bringExportTemplate = template.Must(template.New("bring-export").Parse(`<!do
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ .Title }}</title>
+  {{ if .CanonicalURL }}<link rel="canonical" href="{{ .CanonicalURL }}">{{ end }}
   <script type="application/ld+json">{{ .SchemaJSON }}</script>
   <script async="async" src="https://platform.getbring.com/widgets/import.js"></script>
   <style>
@@ -287,6 +311,20 @@ var bringExportTemplate = template.Must(template.New("bring-export").Parse(`<!do
       margin: 0;
       color: var(--muted);
     }
+    .recipe-image {
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      margin: 0 0 20px;
+      object-fit: cover;
+      border-radius: 8px;
+    }
+    .instruction {
+      margin: 0 0 18px;
+      padding: 14px 0;
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      color: var(--muted);
+    }
     ul {
       display: grid;
       gap: 10px;
@@ -317,20 +355,34 @@ var bringExportTemplate = template.Must(template.New("bring-export").Parse(`<!do
   </style>
 </head>
 <body>
-  <main>
+  <main itemscope itemtype="https://schema.org/Recipe">
     <p class="eyebrow">Bring Import</p>
-    <h1>{{ .Title }}</h1>
-    <p class="lead">Oeffne den Bring-Import oder nutze die Liste darunter als schnelle Kopiervorlage.</p>
+    <h1 itemprop="name">{{ .Title }}</h1>
+    <meta itemprop="author" content="Mealplanner">
+    {{ if .CanonicalURL }}<meta itemprop="url" content="{{ .CanonicalURL }}">{{ end }}
+    <meta itemprop="recipeYield" content="1 Wochenplan">
+    <meta itemprop="prepTime" content="PT10M">
+    <meta itemprop="cookTime" content="PT0M">
+    <meta itemprop="totalTime" content="PT10M">
+    <meta itemprop="recipeCategory" content="Wochenplan">
+    <meta itemprop="recipeCuisine" content="Familienkueche">
+    {{ if .WeekStart }}<meta itemprop="datePublished" content="{{ .WeekStart }}">{{ end }}
+    <img class="recipe-image" itemprop="image" src="{{ .ImageURL }}" alt="">
+    <p class="lead" itemprop="description">{{ .Description }}</p>
     <section class="bring-box" aria-label="Bring Import">
       <div data-bring-import="" style="display:none"></div>
       <a href="https://www.getbring.com">Bring! Einkaufsliste App fuer iPhone und Android</a>
       <p>Falls Bring die Rezeptdaten nicht automatisch uebernimmt, kopiere die Liste direkt aus der Mealplanner-App.</p>
     </section>
+    <div class="instruction" itemprop="recipeInstructions" itemscope itemtype="https://schema.org/HowToStep">
+      <meta itemprop="position" content="1">
+      <span itemprop="text">Alle Zutaten in Bring uebernehmen und fuer die Woche einkaufen.</span>
+    </div>
     {{ if .Items }}
       <ul>
         {{ range .Items }}
           <li>
-            <strong>{{ .Line }}</strong>
+            <strong itemprop="recipeIngredient">{{ .Line }}</strong>
             {{ if .Category }}<span>{{ .Category }}</span>{{ end }}
           </li>
         {{ end }}
