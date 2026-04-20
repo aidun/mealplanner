@@ -31,7 +31,7 @@ spec:
             - name: OPENAI_API_KEY_PLACEHOLDER
               value: __set_openai_api_key__
             - name: AUTH_BASE_URL_PLACEHOLDER
-              value: __set_https_auth_base_url__
+              value: https://mealplanner.markushartmann.dev
             - name: SESSION_SECRET_PLACEHOLDER
               value: __set_random_session_secret_min_32_bytes__
             - name: AUTH_ALLOWED_SUBJECT_HASHES_PLACEHOLDER

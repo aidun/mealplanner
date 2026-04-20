@@ -4,7 +4,6 @@ kind: Service
 metadata:
   name: entrypoint
   annotations:
-    argocd.argoproj.io/sync-options: Force=true,Replace=true
     metallb.io/address-pool: lan-pool
     metallb.io/loadBalancerIPs: 192.168.2.204
   labels:

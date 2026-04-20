@@ -13,9 +13,26 @@ data:
       key="$1"
       value="$2"
 
-      if kubectl get secret api-secrets -o "jsonpath={.data.${key}}" 2>/dev/null | grep -q .; then
-        echo "api-secrets key ${key} already exists"
-        return
+      existing="$(kubectl get secret api-secrets -o "jsonpath={.data.${key}}" 2>/dev/null || true)"
+      if [ -n "${existing}" ]; then
+        decoded="$(printf '%s' "${existing}" | base64 -d 2>/dev/null || true)"
+        case "${decoded}" in
+          __set_*)
+            case "${value}" in
+              __set_*)
+                echo "api-secrets key ${key} still has placeholder"
+                return
+                ;;
+              *)
+                echo "api-secrets key ${key} replaces placeholder"
+                ;;
+            esac
+            ;;
+          *)
+            echo "api-secrets key ${key} already exists"
+            return
+            ;;
+        esac
       fi
 
       encoded="$(printf '%s' "${value}" | base64 | tr -d '\n')"
