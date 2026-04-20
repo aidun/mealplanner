@@ -11,6 +11,10 @@ resources:
   - postgres-pvc.yaml
   - postgres-service.yaml
   - postgres-statefulset.yaml
+  - cloudflared-configmap.yaml
+  - cloudflared-deployment.yaml
+  - cloudflared-service.yaml
+  - cloudflared-servicemonitor.yaml
   - entrypoint-acme-pvc.yaml
   - entrypoint-configmap.yaml
   - entrypoint-deployment.yaml
