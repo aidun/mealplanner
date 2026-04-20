@@ -21,7 +21,7 @@ spec:
             - --entryPoints.websecure.address=:8443/tcp
             - --entryPoints.traefik.address=:8080/tcp
             - --providers.file.filename=/etc/traefik/dynamic/dynamic.yaml
-            - --providers.file.watch=true
+            - --providers.file.watch=false
             - --certificatesresolvers.letsencrypt.acme.email=admin@markushartmann.dev
             - --certificatesresolvers.letsencrypt.acme.storage=/data/acme.json
             - --certificatesresolvers.letsencrypt.acme.dnschallenge.provider=cloudflare
