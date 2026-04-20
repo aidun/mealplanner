@@ -292,6 +292,11 @@ a {
   opacity: 0.65;
 }
 
+.button[aria-disabled='true'] {
+  cursor: wait;
+  opacity: 0.65;
+}
+
 .button:hover:not(:disabled) {
   transform: translateY(-1px);
 }
@@ -533,6 +538,11 @@ a:focus-visible {
   gap: 20px;
 }
 
+.workspace-main {
+  display: grid;
+  gap: 20px;
+}
+
 .surface {
   border: 1px solid rgba(18, 33, 29, 0.1);
   border-radius: 8px;
@@ -577,20 +587,74 @@ a:focus-visible {
   padding-bottom: 18px;
 }
 
-.board-grid {
+.meal-board-surface {
+  overflow: hidden;
+}
+
+.carousel-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.carousel-button {
+  min-height: 40px;
+}
+
+.day-tabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px 18px 14px;
+  border-bottom: 1px solid var(--line);
+  scrollbar-width: none;
+}
+
+.day-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.day-tab {
+  flex: 0 0 auto;
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 0;
-  border-top: 1px solid var(--line);
+  gap: 2px;
+  min-width: 88px;
+  min-height: 48px;
+  padding: 8px 10px;
+  border: 1px solid rgba(18, 33, 29, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--muted);
+  text-align: left;
+  cursor: pointer;
+}
+
+.day-tab span {
+  color: var(--text);
+  font-weight: 800;
+}
+
+.day-tab strong {
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.day-tab-active {
+  border-color: rgba(15, 118, 110, 0.42);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.board-carousel {
+  padding: 14px 18px 18px;
 }
 
 .day-column {
   min-width: 0;
-  border-right: 1px solid var(--line);
-}
-
-.day-column:last-child {
-  border-right: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  animation: carousel-day-in 180ms ease both;
 }
 
 .day-header {
@@ -612,14 +676,17 @@ a:focus-visible {
 
 .meal-stack {
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
   padding: 14px;
 }
 
 .meal-row {
   display: grid;
-  gap: 8px;
+  align-content: space-between;
+  gap: 12px;
   width: 100%;
+  min-height: 112px;
   text-align: left;
   padding: 14px;
   background: #f2faf5;
@@ -680,6 +747,18 @@ a:focus-visible {
 .nutrition-line {
   font-size: 0.85rem;
   color: var(--muted);
+}
+
+@keyframes carousel-day-in {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 .stack {
@@ -970,10 +1049,6 @@ a:focus-visible {
     align-content: end;
   }
 
-  .board-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .profile-section {
     grid-template-columns: 240px minmax(0, 1fr);
     padding: 24px;
@@ -988,12 +1063,6 @@ a:focus-visible {
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
     padding: 16px 18px;
-  }
-}
-
-@media (min-width: 1180px) {
-  .board-grid {
-    grid-template-columns: repeat(7, minmax(0, 1fr));
   }
 }
 
@@ -1093,33 +1162,17 @@ a:focus-visible {
     padding-bottom: 12px;
   }
 
-  .board-grid {
-    display: flex;
-    gap: 12px;
-    overflow-x: auto;
-    overscroll-behavior-x: contain;
-    scroll-snap-type: x mandatory;
-    padding: 0 14px 14px;
-    border-top: 0;
-    scrollbar-width: none;
+  .carousel-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
   }
 
-  .board-grid::-webkit-scrollbar {
-    display: none;
+  .day-tabs {
+    padding-inline: 14px;
   }
 
-  .day-column {
-    flex: 0 0 min(86vw, 380px);
-    overflow: hidden;
-    border-right: 0;
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    background: #ffffff;
-    scroll-snap-align: start;
-  }
-
-  .day-column:last-child {
-    border-bottom: 1px solid var(--line);
+  .board-carousel {
+    padding: 12px 14px 14px;
   }
 
   .day-header {
@@ -1127,6 +1180,7 @@ a:focus-visible {
   }
 
   .meal-stack {
+    grid-template-columns: 1fr;
     gap: 6px;
     padding: 10px;
   }
@@ -1135,21 +1189,6 @@ a:focus-visible {
     gap: 6px;
     min-height: 112px;
     padding: 10px 12px;
-  }
-
-  .meal-row p {
-    display: -webkit-box;
-    overflow: hidden;
-    -webkit-line-clamp: 1;
-    -webkit-box-orient: vertical;
-  }
-
-  .meal-row .tag:nth-child(n + 3) {
-    display: none;
-  }
-
-  .nutrition-line {
-    display: none;
   }
 
   .auth-shell {

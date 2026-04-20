@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { getBringExportUrl } from '../api';
 import type { ShoppingList, ShoppingListItem } from '../types';
 
@@ -10,23 +10,34 @@ interface ShoppingListPanelProps {
 
 export function ShoppingListPanel({ planId, shoppingList, loading }: ShoppingListPanelProps) {
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
-  const [bringState, setBringState] = useState<'idle' | 'opening' | 'failed'>('idle');
+  const [bringState, setBringState] = useState<'idle' | 'loading' | 'ready' | 'failed'>('idle');
+  const [bringUrl, setBringUrl] = useState('');
   const items = useMemo(() => flattenShoppingList(shoppingList), [shoppingList]);
   const categories = useMemo(() => uniqueCategories(items), [items]);
   const canExport = Boolean(planId && items.length > 0);
 
-  const openBringExport = async () => {
-    if (!planId) return;
-    setBringState('opening');
-    try {
-      const response = await getBringExportUrl(planId);
-      if (!response?.url) throw new Error('missing bring export url');
-      window.open(response.url, '_blank', 'noopener,noreferrer');
+  useEffect(() => {
+    let cancelled = false;
+    setBringUrl('');
+    if (!canExport || !planId) {
       setBringState('idle');
-    } catch {
-      setBringState('failed');
+      return;
     }
-  };
+    setBringState('loading');
+    getBringExportUrl(planId)
+      .then((response) => {
+        if (cancelled) return;
+        if (!response?.url) throw new Error('missing bring export url');
+        setBringUrl(response.url);
+        setBringState('ready');
+      })
+      .catch(() => {
+        if (!cancelled) setBringState('failed');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [canExport, planId]);
 
   const copyList = async () => {
     if (items.length === 0) return;
@@ -54,14 +65,16 @@ export function ShoppingListPanel({ planId, shoppingList, loading }: ShoppingLis
             <button type="button" className="button button-secondary bring-export-button" onClick={copyList}>
               {copyState === 'copied' ? 'Kopiert' : 'Liste kopieren'}
             </button>
-            <button
-              type="button"
+            <a
               className="button button-primary bring-export-button"
-              onClick={openBringExport}
-              disabled={bringState === 'opening'}
+              href={bringUrl || undefined}
+              aria-disabled={bringState !== 'ready'}
+              onClick={(event) => {
+                if (bringState !== 'ready') event.preventDefault();
+              }}
             >
-              {bringState === 'opening' ? 'Öffnet ...' : 'Zu Bring'}
-            </button>
+              {bringState === 'loading' ? 'Bring wird vorbereitet' : 'Zu Bring'}
+            </a>
           </div>
         ) : null}
       </div>

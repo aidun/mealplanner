@@ -197,6 +197,11 @@ export function DashboardPage() {
               selectedMealId={selectedMealId}
               onSelectMeal={(meal) => setSelectedMealId(meal.id)}
             />
+            <MealInspector
+              meal={selectedMeal}
+              onRegenerate={handleRegenerate}
+              isRegenerating={regenerateMealMutation.isPending}
+            />
           </div>
 
           <div className="workspace-side">
@@ -204,11 +209,6 @@ export function DashboardPage() {
               planId={currentPlanQuery.data?.id}
               shoppingList={shoppingListQuery.data ?? null}
               loading={shoppingListQuery.isLoading}
-            />
-            <MealInspector
-              meal={selectedMeal}
-              onRegenerate={handleRegenerate}
-              isRegenerating={regenerateMealMutation.isPending}
             />
           </div>
         </div>

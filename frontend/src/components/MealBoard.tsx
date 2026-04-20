@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import type { Day, Meal } from '../types';
 import { formatDate, formatNutrition } from '../lib/format';
 
@@ -8,69 +9,107 @@ interface MealBoardProps {
 }
 
 export function MealBoard({ days = [], selectedMealId, onSelectMeal }: MealBoardProps) {
+  const [activeDayIndex, setActiveDayIndex] = useState(0);
+  const safeDayIndex = days.length === 0 ? 0 : Math.min(activeDayIndex, days.length - 1);
+  const activeDay = days[safeDayIndex];
+
+  useEffect(() => {
+    if (activeDayIndex > 0 && activeDayIndex >= days.length) {
+      setActiveDayIndex(Math.max(days.length - 1, 0));
+    }
+  }, [activeDayIndex, days.length]);
+
+  const selectDay = (index: number) => {
+    setActiveDayIndex(index);
+    const firstMeal = days[index]?.meals[0];
+    if (firstMeal) {
+      onSelectMeal(firstMeal);
+    }
+  };
+
+  const moveDay = (direction: -1 | 1) => {
+    if (days.length === 0) return;
+    selectDay((safeDayIndex + direction + days.length) % days.length);
+  };
+
   return (
     <section className="surface meal-board-surface">
       <div className="surface-header">
         <div>
           <h2>Diese Woche auf dem Tisch</h2>
-          <p>Frühstück, Mittag, Abendessen und Extras. Auf dem Handy wischt ihr durch die Tage.</p>
+          <p>Ein Tag nach dem anderen. Details öffnen direkt darunter.</p>
         </div>
+        {days.length > 0 ? (
+          <div className="carousel-actions" aria-label="Tage wechseln">
+            <button type="button" className="button button-secondary carousel-button" onClick={() => moveDay(-1)}>
+              Zurück
+            </button>
+            <button type="button" className="button button-secondary carousel-button" onClick={() => moveDay(1)}>
+              Weiter
+            </button>
+          </div>
+        ) : null}
       </div>
 
-      <div className="board-grid">
+      <div className="day-tabs" aria-label="Wochentage">
+        {days.map((day, index) => (
+          <button
+            key={day.date}
+            type="button"
+            className={`day-tab${index === safeDayIndex ? ' day-tab-active' : ''}`}
+            aria-current={index === safeDayIndex ? 'date' : undefined}
+            onClick={() => selectDay(index)}
+          >
+            <span>{day.label ?? formatDate(day.date)}</span>
+            <strong>{formatDate(day.date)}</strong>
+          </button>
+        ))}
+      </div>
+
+      <div className="board-carousel" aria-live="polite">
         {days.length === 0 ? (
           <div className="empty-state">
             <h3>Noch kein Wochenplan</h3>
             <p>Startet eine neue Woche mit Gerichten, die zu eurem Alltag passen.</p>
           </div>
-        ) : (
-          days.map((day) => (
-            <section key={day.date} className="day-column" aria-label={day.label ?? day.date}>
-              <header className="day-header">
-                <div>
-                  <h3>{day.label ?? formatDate(day.date)}</h3>
-                  <p>{formatDate(day.date)}</p>
-                </div>
-              </header>
-
-              <div className="meal-stack">
-                {day.meals.length === 0 ? (
-                  <p className="muted">Keine Mahlzeiten eingeplant.</p>
-                ) : (
-                  day.meals.map((meal) => {
-                    const active = meal.id === selectedMealId;
-                    return (
-                      <button
-                        key={meal.id}
-                        type="button"
-                        className={`meal-row${active ? ' meal-row-active' : ''}`}
-                        aria-pressed={active}
-                        onClick={() => onSelectMeal(meal)}
-                      >
-                        <div className="meal-row-topline">
-                          <span className="slot-label">{meal.slot ?? 'Mahlzeit'}</span>
-                          <span className="meal-title">{meal.title}</span>
-                        </div>
-                        {meal.description ? <p>{meal.description}</p> : null}
-                        <div className="tag-row">
-                          {meal.tags.slice(0, 3).map((tag) => (
-                            <span key={tag} className="tag">
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                        <div className="nutrition-line">
-                          {formatNutrition(meal.nutrition)}
-                          {meal.estimatedNutrition ? ' · geschätzt' : ''}
-                        </div>
-                      </button>
-                    );
-                  })
-                )}
+        ) : activeDay ? (
+          <section key={activeDay.date} className="day-column" aria-label={activeDay.label ?? activeDay.date}>
+            <header className="day-header">
+              <div>
+                <h3>{activeDay.label ?? formatDate(activeDay.date)}</h3>
+                <p>{formatDate(activeDay.date)}</p>
               </div>
-            </section>
-          ))
-        )}
+            </header>
+
+            <div className="meal-stack">
+              {activeDay.meals.length === 0 ? (
+                <p className="muted">Keine Mahlzeiten eingeplant.</p>
+              ) : (
+                activeDay.meals.map((meal) => {
+                  const active = meal.id === selectedMealId;
+                  return (
+                    <button
+                      key={meal.id}
+                      type="button"
+                      className={`meal-row${active ? ' meal-row-active' : ''}`}
+                      aria-pressed={active}
+                      onClick={() => onSelectMeal(meal)}
+                    >
+                      <div className="meal-row-topline">
+                        <span className="slot-label">{meal.slot ?? 'Mahlzeit'}</span>
+                        <span className="meal-title">{meal.title}</span>
+                      </div>
+                      <div className="nutrition-line">
+                        {formatNutrition(meal.nutrition)}
+                        {meal.estimatedNutrition ? ' · geschätzt' : ''}
+                      </div>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </section>
+        ) : null}
       </div>
     </section>
   );

@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -41,6 +41,24 @@ const plan = {
           nutrition: { calories: 560, proteinG: 24, carbsG: 72, fatG: 14 },
           estimatedNutrition: true,
           tags: ['schnell', 'vegetarisch'],
+        },
+      ],
+    },
+    {
+      date: '2026-04-14',
+      label: 'Di',
+      meals: [
+        {
+          id: 'meal-2',
+          slot: 'breakfast',
+          title: 'Beeren-Porridge',
+          description: 'Warm, schnell und gut vorzubereiten.',
+          servings: [{ memberId: 'anna', name: 'Anna', portion: '100% Portion', factor: 1 }],
+          ingredients: [{ name: 'Haferflocken', amount: 80, unit: 'g' }],
+          instructions: ['Haferflocken kochen', 'Beeren dazugeben'],
+          nutrition: { calories: 410, proteinG: 18, carbsG: 58, fatG: 11 },
+          estimatedNutrition: true,
+          tags: ['schnell'],
         },
       ],
     },
@@ -176,26 +194,35 @@ describe('Mealplanner app', () => {
     renderApp('/');
 
     expect(await screen.findByText('Diese Woche auf dem Tisch')).toBeInTheDocument();
-    expect(await screen.findByRole('button', { name: /Pasta mit Gemüse/ })).toBeInTheDocument();
+    const mealButton = await screen.findByRole('button', { name: /Pasta mit Gemüse/ });
+    expect(mealButton).toBeInTheDocument();
+    expect(within(mealButton).queryByText('Familienfreundlich und schnell.')).not.toBeInTheDocument();
+    expect(await screen.findByText('Familienfreundlich und schnell.')).toBeInTheDocument();
     expect(await screen.findByText('Einkaufsliste')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Zu Bring' })).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: 'Zu Bring' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Liste kopieren' })).toBeInTheDocument();
     expect(screen.getByText('1 Artikel · 1 Bereiche')).toBeInTheDocument();
     expect(screen.getByText('Zucchini')).toBeInTheDocument();
   });
 
-  it('opens the Bring export page for the current plan', async () => {
+  it('renders the Bring export as a direct link without opening a popup', async () => {
     renderApp('/');
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Zu Bring' }));
+    const bringLink = await screen.findByRole('link', { name: 'Zu Bring' });
 
-    await waitFor(() => {
-      expect(window.open).toHaveBeenCalledWith(
-        '/api/plans/plan-1/bring-export?token=test-token',
-        '_blank',
-        'noopener,noreferrer'
-      );
-    });
+    expect(bringLink).toHaveAttribute('href', '/api/plans/plan-1/bring-export?token=test-token');
+    expect(bringLink).not.toHaveAttribute('target');
+    expect(window.open).not.toHaveBeenCalled();
+  });
+
+  it('moves through days as a carousel', async () => {
+    renderApp('/');
+
+    expect(await screen.findByRole('button', { name: /Pasta mit Gemüse/ })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+
+    expect(await screen.findByRole('button', { name: /Beeren-Porridge/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Pasta mit Gemüse/ })).not.toBeInTheDocument();
   });
 
   it('shows the updated meal after regeneration', async () => {
@@ -228,6 +255,8 @@ describe('Mealplanner app', () => {
     expect(styles).toContain('min-height: 44px');
     expect(styles).toContain('@media (max-width: 760px)');
     expect(styles).toContain('.surface-actions,\n  .bring-export-button {\n    width: 100%;');
+    expect(styles).toContain('.board-carousel');
+    expect(styles).toContain('.day-tabs');
   });
 
   it('opens onboarding and saves the profile', async () => {
