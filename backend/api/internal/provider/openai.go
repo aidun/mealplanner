@@ -44,7 +44,7 @@ func NewOpenAIGenerator(cfg OpenAIConfig) (OpenAIGenerator, error) {
 
 func (g OpenAIGenerator) GenerateWeek(ctx context.Context, profile domain.Profile, weekStart time.Time) (domain.Plan, error) {
 	var plan domain.Plan
-	if err := g.call(ctx, planner.WeekPrompt(profile, weekStart), planSchema(), &plan); err != nil {
+	if err := g.call(ctx, "generate_week", planner.WeekPrompt(profile, weekStart), planSchema(), &plan); err != nil {
 		return domain.Plan{}, err
 	}
 	plan.WeekStart = weekStart.Format("2006-01-02")
@@ -57,7 +57,7 @@ func (g OpenAIGenerator) GenerateWeek(ctx context.Context, profile domain.Profil
 
 func (g OpenAIGenerator) RegenerateMeal(ctx context.Context, profile domain.Profile, plan domain.Plan, mealID string, note string) (domain.Meal, error) {
 	var meal domain.Meal
-	if err := g.call(ctx, planner.RegeneratePrompt(profile, plan, mealID, note), mealSchema(), &meal); err != nil {
+	if err := g.call(ctx, "regenerate_meal", planner.RegeneratePrompt(profile, plan, mealID, note), mealSchema(), &meal); err != nil {
 		return domain.Meal{}, err
 	}
 	meal.ID = mealID
@@ -67,7 +67,13 @@ func (g OpenAIGenerator) RegenerateMeal(ctx context.Context, profile domain.Prof
 	return meal, nil
 }
 
-func (g OpenAIGenerator) call(ctx context.Context, prompt string, schema map[string]any, target any) error {
+func (g OpenAIGenerator) call(ctx context.Context, operation string, prompt string, schema map[string]any, target any) error {
+	start := time.Now()
+	status := "error"
+	defer func() {
+		recordOpenAIRequest(operation, g.model, status, time.Since(start))
+	}()
+
 	payload := map[string]any{
 		"model": g.model,
 		"input": []map[string]string{
@@ -106,6 +112,7 @@ func (g OpenAIGenerator) call(ctx context.Context, prompt string, schema map[str
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return fmt.Errorf("openai responses api failed: status=%d body=%s", resp.StatusCode, string(respBody))
 	}
+	recordOpenAIUsage(operation, g.model, parseUsage(respBody))
 
 	text, err := extractOutputText(respBody)
 	if err != nil {
@@ -114,7 +121,42 @@ func (g OpenAIGenerator) call(ctx context.Context, prompt string, schema map[str
 	if err := json.Unmarshal([]byte(text), target); err != nil {
 		return fmt.Errorf("decode structured output: %w", err)
 	}
+	status = "success"
 	return nil
+}
+
+type openAIUsage struct {
+	InputTokens     int
+	OutputTokens    int
+	ReasoningTokens int
+	CachedTokens    int
+	TotalTokens     int
+}
+
+func parseUsage(body []byte) openAIUsage {
+	var parsed struct {
+		Usage struct {
+			InputTokens  int `json:"input_tokens"`
+			OutputTokens int `json:"output_tokens"`
+			TotalTokens  int `json:"total_tokens"`
+			InputDetails struct {
+				CachedTokens int `json:"cached_tokens"`
+			} `json:"input_tokens_details"`
+			OutputDetails struct {
+				ReasoningTokens int `json:"reasoning_tokens"`
+			} `json:"output_tokens_details"`
+		} `json:"usage"`
+	}
+	if err := json.Unmarshal(body, &parsed); err != nil {
+		return openAIUsage{}
+	}
+	return openAIUsage{
+		InputTokens:     parsed.Usage.InputTokens,
+		OutputTokens:    parsed.Usage.OutputTokens,
+		ReasoningTokens: parsed.Usage.OutputDetails.ReasoningTokens,
+		CachedTokens:    parsed.Usage.InputDetails.CachedTokens,
+		TotalTokens:     parsed.Usage.TotalTokens,
+	}
 }
 
 func extractOutputText(body []byte) (string, error) {

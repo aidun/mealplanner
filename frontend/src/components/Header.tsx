@@ -22,7 +22,7 @@ export function Header({
         <Link to="/" className="brand-mark" aria-label="Mealplanner Startseite">
           Mealplanner
         </Link>
-        <p className="brand-subtitle">Wochenboard für Familien, Profile und Einkaufsliste</p>
+        <p className="brand-subtitle">Wochenplan, Einkauf und Familienprofil</p>
       </div>
 
       <div className="header-meta">
@@ -31,11 +31,9 @@ export function Header({
           <strong>{formatWeekRange(weekStart)}</strong>
         </div>
 
-        <img
-          className="header-image"
-          src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=320&q=80"
-          alt="Zubereitetes Familienessen"
-        />
+        <div className="header-plate" aria-hidden="true">
+          <span />
+        </div>
       </div>
 
       <nav className="header-actions" aria-label="Primäre Aktionen">

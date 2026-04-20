@@ -8,6 +8,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/aidun/mealplanner/backend/api/internal/provider"
 )
 
 type Metrics struct {
@@ -107,6 +109,7 @@ func (m *Metrics) ServeHTTP(w http.ResponseWriter, _ *http.Request) {
 		metric := snapshot[key]
 		fmt.Fprintf(w, "mealplanner_http_request_duration_seconds_count{method=%q,path=%q,status=%q} %d\n", key.Method, key.Path, key.Status, metric.Count)
 	}
+	provider.WriteOpenAIMetrics(w)
 }
 
 func (r *statusRecorder) WriteHeader(status int) {

@@ -58,141 +58,167 @@ export function OnboardingPage() {
       </header>
 
       <main className="app-main">
-        <section className="surface onboarding-surface">
-          <div className="surface-header">
-            <div>
-              <h1>Profil anlegen</h1>
-              <p>Die Angaben werden für Planerstellung, Wiederholungen und Einkaufslogik verwendet.</p>
-            </div>
+        <section className="profile-page">
+          <div className="profile-page-intro">
+            <span className="eyebrow">Profil</span>
+            <h1>Profil anlegen</h1>
+            <p>Alles, was die Planung persönlicher macht: Personen, Alltag, Vorlieben und feste Regeln.</p>
           </div>
 
           <form
-            className="form-grid"
+            className="profile-form"
             onSubmit={(event) => {
               event.preventDefault();
               saveMutation.mutate(formToProfile(form));
             }}
           >
-            <label className="field">
-              <span className="field-label">Haushaltsname</span>
-              <input
-                className="input"
-                value={form.householdName}
-                onChange={(event) => update('householdName', event.target.value)}
-                placeholder="Familie Weber"
-              />
-            </label>
+            <section className="profile-section" aria-labelledby="household-section">
+              <div className="profile-section-copy">
+                <span className="section-index">01</span>
+                <h2 id="household-section">Haushalt</h2>
+                <p>Name, Personen und grobe Mengenlogik.</p>
+              </div>
+              <div className="profile-section-fields">
+                <label className="field">
+                  <span className="field-label">Haushaltsname</span>
+                  <input
+                    className="input"
+                    value={form.householdName}
+                    onChange={(event) => update('householdName', event.target.value)}
+                    placeholder="Familie Weber"
+                  />
+                </label>
 
-            <label className="field">
-              <span className="field-label">Mitglieder</span>
-              <textarea
-                className="input textarea"
-                rows={4}
-                value={form.members}
-                onChange={(event) => update('members', event.target.value)}
-                placeholder="Anna\nBen\nMia"
-              />
-            </label>
+                <label className="field">
+                  <span className="field-label">Mitglieder</span>
+                  <textarea
+                    className="input textarea"
+                    rows={5}
+                    value={form.members}
+                    onChange={(event) => update('members', event.target.value)}
+                    placeholder={'Anna: vegetarisch, mag Bowls\nBen: Pasta, mild\nMia: keine Tomaten'}
+                  />
+                </label>
 
-            <div className="field-group">
-              <label className="field">
-                <span className="field-label">Standard-Portionen</span>
-                <input
-                  className="input"
-                  inputMode="numeric"
-                  value={form.servingsPerMeal}
-                  onChange={(event) => update('servingsPerMeal', event.target.value)}
-                  placeholder="4"
-                />
-              </label>
+                <label className="field">
+                  <span className="field-label">Standard-Portionen</span>
+                  <input
+                    className="input"
+                    inputMode="numeric"
+                    value={form.servingsPerMeal}
+                    onChange={(event) => update('servingsPerMeal', event.target.value)}
+                    placeholder="4"
+                  />
+                </label>
+              </div>
+            </section>
 
-              <label className="field">
-                <span className="field-label">Kochstil</span>
-                <input
-                  className="input"
-                  value={form.cookingStyle}
-                  onChange={(event) => update('cookingStyle', event.target.value)}
-                  placeholder="Schnell, warm, familienfreundlich"
-                />
-              </label>
-            </div>
+            <section className="profile-section" aria-labelledby="taste-section">
+              <div className="profile-section-copy">
+                <span className="section-index">02</span>
+                <h2 id="taste-section">Geschmack</h2>
+                <p>Küchen, Kochstil und Zutaten, die draußen bleiben.</p>
+              </div>
+              <div className="profile-section-fields two-column">
+                <label className="field">
+                  <span className="field-label">Kochstil</span>
+                  <input
+                    className="input"
+                    value={form.cookingStyle}
+                    onChange={(event) => update('cookingStyle', event.target.value)}
+                    placeholder="Schnell, warm, familienfreundlich"
+                  />
+                </label>
 
-            <label className="field">
-              <span className="field-label">Bevorzugte Küchen</span>
-              <textarea
-                className="input textarea"
-                rows={3}
-                value={form.preferredCuisines}
-                onChange={(event) => update('preferredCuisines', event.target.value)}
-                placeholder="Mediterran\nAsiatisch\nDeutsch"
-              />
-            </label>
+                <label className="field">
+                  <span className="field-label">Bevorzugte Küchen</span>
+                  <textarea
+                    className="input textarea"
+                    rows={4}
+                    value={form.preferredCuisines}
+                    onChange={(event) => update('preferredCuisines', event.target.value)}
+                    placeholder="Mediterran\nAsiatisch\nDeutsch"
+                  />
+                </label>
 
-            <label className="field">
-              <span className="field-label">Auszuschließende Zutaten</span>
-              <textarea
-                className="input textarea"
-                rows={3}
-                value={form.excludedIngredients}
-                onChange={(event) => update('excludedIngredients', event.target.value)}
-                placeholder="Koriander\nSellerie"
-              />
-            </label>
+                <label className="field">
+                  <span className="field-label">Auszuschließende Zutaten</span>
+                  <textarea
+                    className="input textarea"
+                    rows={4}
+                    value={form.excludedIngredients}
+                    onChange={(event) => update('excludedIngredients', event.target.value)}
+                    placeholder="Koriander\nSellerie"
+                  />
+                </label>
 
-            <label className="field">
-              <span className="field-label">Planungsregeln</span>
-              <textarea
-                className="input textarea"
-                rows={4}
-                value={form.mealPlanningRules}
-                onChange={(event) => update('mealPlanningRules', event.target.value)}
-                placeholder="Wochentags schnell, am Wochenende etwas ausführlicher."
-              />
-            </label>
+                <label className="field">
+                  <span className="field-label">Planungsregeln</span>
+                  <textarea
+                    className="input textarea"
+                    rows={4}
+                    value={form.mealPlanningRules}
+                    onChange={(event) => update('mealPlanningRules', event.target.value)}
+                    placeholder="Wochentags schnell, am Wochenende etwas ausführlicher."
+                  />
+                </label>
+              </div>
+            </section>
 
-            <div className="preset-grid">
-              <label className="field">
-                <span className="field-label">Frühstücks-Presets</span>
-                <textarea
-                  className="input textarea"
-                  rows={3}
-                  value={form.breakfastPresets}
-                  onChange={(event) => update('breakfastPresets', event.target.value)}
-                />
-              </label>
+            <section className="profile-section" aria-labelledby="preset-section">
+              <div className="profile-section-copy">
+                <span className="section-index">03</span>
+                <h2 id="preset-section">Mahlzeiten</h2>
+                <p>Vorgaben pro Tageszeit, die OpenAI als Leitplanke nutzt.</p>
+              </div>
+              <div className="profile-section-fields preset-grid">
+                <label className="field">
+                  <span className="field-label">Frühstücks-Presets</span>
+                  <textarea
+                    className="input textarea"
+                    rows={3}
+                    value={form.breakfastPresets}
+                    onChange={(event) => update('breakfastPresets', event.target.value)}
+                  />
+                </label>
 
-              <label className="field">
-                <span className="field-label">Mittags-Presets</span>
-                <textarea
-                  className="input textarea"
-                  rows={3}
-                  value={form.lunchPresets}
-                  onChange={(event) => update('lunchPresets', event.target.value)}
-                />
-              </label>
+                <label className="field">
+                  <span className="field-label">Mittags-Presets</span>
+                  <textarea
+                    className="input textarea"
+                    rows={3}
+                    value={form.lunchPresets}
+                    onChange={(event) => update('lunchPresets', event.target.value)}
+                  />
+                </label>
 
-              <label className="field">
-                <span className="field-label">Abendessen-Presets</span>
-                <textarea
-                  className="input textarea"
-                  rows={3}
-                  value={form.dinnerPresets}
-                  onChange={(event) => update('dinnerPresets', event.target.value)}
-                />
-              </label>
+                <label className="field">
+                  <span className="field-label">Abendessen-Presets</span>
+                  <textarea
+                    className="input textarea"
+                    rows={3}
+                    value={form.dinnerPresets}
+                    onChange={(event) => update('dinnerPresets', event.target.value)}
+                  />
+                </label>
 
-              <label className="field">
-                <span className="field-label">Snack-Presets</span>
-                <textarea
-                  className="input textarea"
-                  rows={3}
-                  value={form.snackPresets}
-                  onChange={(event) => update('snackPresets', event.target.value)}
-                />
-              </label>
-            </div>
+                <label className="field">
+                  <span className="field-label">Snack-Presets</span>
+                  <textarea
+                    className="input textarea"
+                    rows={3}
+                    value={form.snackPresets}
+                    onChange={(event) => update('snackPresets', event.target.value)}
+                  />
+                </label>
+              </div>
+            </section>
 
-            <div className="form-actions">
+            <div className="profile-save-bar">
+              <div>
+                <strong>Profil speichern</strong>
+                <p>Änderungen gelten für die nächste Planerstellung und Regeneration.</p>
+              </div>
               <button type="submit" className="button button-primary" disabled={saveMutation.isPending}>
                 {saveMutation.isPending ? 'Wird gespeichert' : 'Profil speichern'}
               </button>
