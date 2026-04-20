@@ -5,6 +5,7 @@ import (
 	"crypto/subtle"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -27,6 +28,7 @@ type Repository interface {
 	SavePlan(r *http.Request, plan domain.Plan) (domain.Plan, error)
 	GetCurrentPlan(r *http.Request) (domain.Plan, error)
 	GetPlan(r *http.Request, id string) (domain.Plan, error)
+	GetPlanByID(r *http.Request, id string) (domain.Plan, error)
 }
 
 type StoreRepository struct {
@@ -73,6 +75,10 @@ func (r StoreRepository) GetPlan(req *http.Request, id string) (domain.Plan, err
 	return r.Store.GetPlan(req.Context(), mustUserID(req.Context()), id)
 }
 
+func (r StoreRepository) GetPlanByID(req *http.Request, id string) (domain.Plan, error) {
+	return r.Store.GetPlanByID(req.Context(), id)
+}
+
 type Handler struct {
 	repo        Repository
 	planner     planner.Planner
@@ -103,7 +109,8 @@ func New(repo Repository, planner planner.Planner, authService auth.Service, api
 	mux.HandleFunc("PUT /api/profile", h.withSession(h.withCSRF(h.putProfile)))
 	mux.HandleFunc("POST /api/plans", h.withSession(h.withCSRF(h.createPlan)))
 	mux.HandleFunc("GET /api/plans/current", h.withSession(h.getCurrentPlan))
-	mux.HandleFunc("GET /api/plans/{planID}/bring-export", h.withSession(h.getBringExport))
+	mux.HandleFunc("GET /api/plans/{planID}/bring-export", h.getBringExport)
+	mux.HandleFunc("GET /api/plans/{planID}/bring-export-url", h.withSession(h.getBringExportURL))
 	mux.HandleFunc("GET /api/plans/{planID}/shopping-list", h.withSession(h.getShoppingList))
 	mux.HandleFunc("POST /api/plans/{planID}/meals/{mealID}/regenerate", h.withSession(h.withCSRF(h.regenerateMeal)))
 	return h.metrics.Middleware(h.withCORS(mux))
@@ -128,9 +135,13 @@ func (h *Handler) putProfile(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
+	if err := profile.Validate(); err != nil {
+		writeError(w, http.StatusBadRequest, "Bitte prüfe die Profilangaben.")
+		return
+	}
 	saved, err := h.repo.SaveProfile(r, profile)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+		h.serverError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, saved)
@@ -308,8 +319,12 @@ func originAllowed(origin string, allowed []string) bool {
 }
 
 func (h *Handler) serverError(w http.ResponseWriter, err error) {
-	h.logger.Error("api error", "error", err)
-	writeError(w, http.StatusInternalServerError, err.Error())
+	requestID := fmt.Sprintf("%x", time.Now().UnixNano())
+	h.logger.Error("api error", "request_id", requestID, "error", err)
+	writeJSON(w, http.StatusInternalServerError, map[string]string{
+		"error":     "Das hat gerade nicht geklappt. Bitte versuche es erneut.",
+		"requestId": requestID,
+	})
 }
 
 func decodeJSON(r *http.Request, target any) error {

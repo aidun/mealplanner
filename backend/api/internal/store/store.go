@@ -117,10 +117,10 @@ func (s Store) SaveProfile(ctx context.Context, userID string, profile domain.Pr
 	var updatedAt time.Time
 	err = s.pool.QueryRow(ctx, `
 		INSERT INTO profiles(id, user_id, data, updated_at)
-		VALUES ($1, $1::uuid, $2, now())
+		VALUES ($1, $2::uuid, $3, now())
 		ON CONFLICT (user_id) WHERE user_id IS NOT NULL DO UPDATE SET data = EXCLUDED.data, updated_at = now()
 		RETURNING updated_at
-	`, userID, data).Scan(&updatedAt)
+	`, userID, userID, data).Scan(&updatedAt)
 	if err != nil {
 		return domain.Profile{}, err
 	}
@@ -168,6 +168,18 @@ func (s Store) GetCurrentPlan(ctx context.Context, userID string) (domain.Plan, 
 func (s Store) GetPlan(ctx context.Context, userID string, id string) (domain.Plan, error) {
 	var data []byte
 	err := s.pool.QueryRow(ctx, `SELECT data FROM plans WHERE user_id = $1 AND id = $2`, userID, id).Scan(&data)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return domain.Plan{}, ErrNotFound
+	}
+	if err != nil {
+		return domain.Plan{}, err
+	}
+	return decodePlan(data)
+}
+
+func (s Store) GetPlanByID(ctx context.Context, id string) (domain.Plan, error) {
+	var data []byte
+	err := s.pool.QueryRow(ctx, `SELECT data FROM plans WHERE id = $1`, id).Scan(&data)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return domain.Plan{}, ErrNotFound
 	}

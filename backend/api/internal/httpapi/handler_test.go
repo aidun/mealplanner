@@ -112,10 +112,19 @@ func (m *memoryRepo) GetPlan(r *http.Request, id string) (domain.Plan, error) {
 	return plan, nil
 }
 
+func (m *memoryRepo) GetPlanByID(_ *http.Request, id string) (domain.Plan, error) {
+	for key, plan := range m.plans {
+		if strings.HasSuffix(key, "|"+id) {
+			return plan, nil
+		}
+	}
+	return domain.Plan{}, store.ErrNotFound
+}
+
 func TestCreatePlanAndShoppingList(t *testing.T) {
 	repo := newMemoryRepo()
 	repo.profiles["user-1"] = domain.DefaultProfile()
-	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil)
+	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "test-secret", nil, nil)
 
 	body := bytes.NewBufferString(`{"weekStart":"2026-04-20"}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/plans", body)
@@ -170,7 +179,7 @@ func TestBringExport(t *testing.T) {
 			}},
 		}},
 	}
-	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil)
+	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "test-secret", nil, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/plans/plan-1/bring-export", nil)
 	setAuth(repo, req, "user-1")
@@ -189,13 +198,36 @@ func TestBringExport(t *testing.T) {
 			t.Fatalf("bring export missing %q in body: %s", expected, body)
 		}
 	}
+
+	req = httptest.NewRequest(http.MethodGet, "/api/plans/plan-1/bring-export-url", nil)
+	req.Host = "mealplanner.test"
+	req.Header.Set("X-Forwarded-Proto", "https")
+	setAuth(repo, req, "user-1")
+	rec = httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected signed url 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+	var payload map[string]string
+	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasPrefix(payload["url"], "https://mealplanner.test/api/plans/plan-1/bring-export?token=") {
+		t.Fatalf("unexpected signed url %q", payload["url"])
+	}
+
+	req = httptest.NewRequest(http.MethodGet, payload["url"], nil)
+	rec = httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected public signed export 200, got %d: %s", rec.Code, rec.Body.String())
+	}
 }
 
 func TestBringExportPlanNotFound(t *testing.T) {
 	repo := newMemoryRepo()
-	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil)
+	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "test-secret", nil, nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/plans/missing/bring-export", nil)
-	setAuth(repo, req, "user-1")
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 

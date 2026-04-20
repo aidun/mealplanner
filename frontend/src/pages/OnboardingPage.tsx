@@ -198,7 +198,7 @@ export function OnboardingPage() {
               <div className="profile-section-copy">
                 <span className="section-index">03</span>
                 <h2 id="preset-section">Mahlzeiten</h2>
-                <p>Vorgaben pro Tageszeit, die OpenAI als Leitplanke nutzt.</p>
+                <p>Lieblingsgerichte und feste Ideen für Frühstück, Mittag, Abendessen und Snacks.</p>
               </div>
               <div className="profile-section-fields preset-grid">
                 <label className="field">

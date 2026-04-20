@@ -24,7 +24,7 @@ export function MealInspector({ meal, onRegenerate, isRegenerating }: MealInspec
             <p>Wähle eine Mahlzeit im Wochenboard aus.</p>
           </div>
         </div>
-        <p className="muted">Hier erscheinen Zutaten, Zubereitung und die Regenerierung mit Notiz.</p>
+        <p className="muted">Hier erscheinen Zutaten, Zubereitung und die schnelle Änderung.</p>
       </section>
     );
   }
@@ -70,7 +70,7 @@ export function MealInspector({ meal, onRegenerate, isRegenerating }: MealInspec
 
         <div>
           <label className="field-label" htmlFor="regenerate-note">
-            Notiz für Neu-Generierung
+            Wunsch zur Änderung
           </label>
           <textarea
             id="regenerate-note"
@@ -87,7 +87,7 @@ export function MealInspector({ meal, onRegenerate, isRegenerating }: MealInspec
             onClick={() => onRegenerate(note)}
             disabled={isRegenerating}
           >
-            {isRegenerating ? 'Wird neu generiert' : 'Mahlzeit neu generieren'}
+            {isRegenerating ? 'Wir suchen ein anderes Gericht' : 'Gericht austauschen'}
           </button>
         </div>
       </div>

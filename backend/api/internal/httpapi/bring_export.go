@@ -1,11 +1,16 @@
 package httpapi
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html/template"
 	"math"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -29,9 +34,31 @@ type bringExportItem struct {
 	Line     string
 }
 
+func (h *Handler) getBringExportURL(w http.ResponseWriter, r *http.Request) {
+	planID := r.PathValue("planID")
+	if _, err := h.repo.GetPlan(r, planID); errors.Is(err, store.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "plan not found")
+		return
+	} else if err != nil {
+		h.serverError(w, err)
+		return
+	}
+	token, ok := h.signBringExport(planID)
+	if !ok {
+		writeError(w, http.StatusServiceUnavailable, "bring export is not configured")
+		return
+	}
+	exportURL := absoluteRequestURL(r, "/api/plans/"+url.PathEscape(planID)+"/bring-export")
+	query := exportURL.Query()
+	query.Set("token", token)
+	exportURL.RawQuery = query.Encode()
+	writeJSON(w, http.StatusOK, map[string]string{"url": exportURL.String()})
+}
+
 func (h *Handler) getBringExport(w http.ResponseWriter, r *http.Request) {
-	plan, err := h.repo.GetPlan(r, r.PathValue("planID"))
-	if err == store.ErrNotFound {
+	planID := r.PathValue("planID")
+	plan, err := h.planForBringExport(r, planID)
+	if errors.Is(err, store.ErrNotFound) {
 		writeError(w, http.StatusNotFound, "plan not found")
 		return
 	}
@@ -51,6 +78,73 @@ func (h *Handler) getBringExport(w http.ResponseWriter, r *http.Request) {
 	if err := bringExportTemplate.Execute(w, view); err != nil {
 		h.logger.Error("bring export render error", "error", err)
 	}
+}
+
+func (h *Handler) planForBringExport(r *http.Request, planID string) (domain.Plan, error) {
+	token := strings.TrimSpace(r.URL.Query().Get("token"))
+	if token != "" {
+		if !h.verifyBringExport(planID, token) {
+			return domain.Plan{}, store.ErrNotFound
+		}
+		return h.repo.GetPlanByID(r, planID)
+	}
+
+	userID, _, _, ok := h.readSession(r)
+	if !ok {
+		return domain.Plan{}, store.ErrNotFound
+	}
+	return h.repo.GetPlan(withUserID(r, userID), planID)
+}
+
+func (h *Handler) signBringExport(planID string) (string, bool) {
+	if !configuredSecret(h.apiSecret) {
+		return "", false
+	}
+	mac := hmac.New(sha256.New, []byte(h.apiSecret))
+	mac.Write([]byte("bring-export:"))
+	mac.Write([]byte(planID))
+	return base64.RawURLEncoding.EncodeToString(mac.Sum(nil)), true
+}
+
+func (h *Handler) verifyBringExport(planID string, token string) bool {
+	expected, ok := h.signBringExport(planID)
+	if !ok {
+		return false
+	}
+	expectedBytes, err := base64.RawURLEncoding.DecodeString(expected)
+	if err != nil {
+		return false
+	}
+	tokenBytes, err := base64.RawURLEncoding.DecodeString(token)
+	if err != nil {
+		return false
+	}
+	return hmac.Equal(tokenBytes, expectedBytes)
+}
+
+func absoluteRequestURL(r *http.Request, path string) *url.URL {
+	scheme := firstForwardedValue(r.Header.Get("X-Forwarded-Proto"))
+	if scheme == "" {
+		if r.TLS != nil {
+			scheme = "https"
+		} else {
+			scheme = "http"
+		}
+	}
+	host := firstForwardedValue(r.Header.Get("X-Forwarded-Host"))
+	if host == "" {
+		host = r.Host
+	}
+	return &url.URL{Scheme: scheme, Host: host, Path: path}
+}
+
+func firstForwardedValue(value string) string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return ""
+	}
+	parts := strings.Split(value, ",")
+	return strings.TrimSpace(parts[0])
 }
 
 func newBringExportView(plan domain.Plan) (bringExportView, error) {
@@ -226,11 +320,11 @@ var bringExportTemplate = template.Must(template.New("bring-export").Parse(`<!do
   <main>
     <p class="eyebrow">Bring Import</p>
     <h1>{{ .Title }}</h1>
-    <p class="lead">Diese Seite enthaelt die Zutaten als Rezeptdaten, Bring-Import und als lesbare Einkaufsliste.</p>
+    <p class="lead">Oeffne den Bring-Import oder nutze die Liste darunter als schnelle Kopiervorlage.</p>
     <section class="bring-box" aria-label="Bring Import">
       <div data-bring-import="" style="display:none"></div>
       <a href="https://www.getbring.com">Bring! Einkaufsliste App fuer iPhone und Android</a>
-      <p>Wenn Bring die lokale Test-URL nicht importiert, kopiere die Liste aus der Mealplanner-App und fuege sie in Bring ein.</p>
+      <p>Falls Bring die Rezeptdaten nicht automatisch uebernimmt, kopiere die Liste direkt aus der Mealplanner-App.</p>
     </section>
     {{ if .Items }}
       <ul>

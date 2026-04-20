@@ -14,11 +14,10 @@ import {
   logout,
   regenerateMeal,
 } from '../api';
-import type { Meal } from '../types';
 
 export function DashboardPage() {
   const queryClient = useQueryClient();
-  const [selectedMeal, setSelectedMeal] = useState<Meal | undefined>();
+  const [selectedMealId, setSelectedMealId] = useState<string | undefined>();
   const [loggedOut, setLoggedOut] = useState(false);
 
   const profileQuery = useQuery({
@@ -48,8 +47,10 @@ export function DashboardPage() {
   const regenerateMealMutation = useMutation({
     mutationFn: ({ planId, mealId, note }: { planId: string; mealId: string; note: string }) =>
       regenerateMeal(planId, mealId, note),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['current-plan'] });
+    onSuccess: async (updatedPlan) => {
+      if (updatedPlan) {
+        queryClient.setQueryData(['current-plan'], updatedPlan);
+      }
       await queryClient.invalidateQueries({ queryKey: ['shopping-list'] });
     },
   });
@@ -63,21 +64,24 @@ export function DashboardPage() {
     },
   });
 
-  const selectedMealId = selectedMeal?.id;
-
   const allMeals = useMemo(() => currentPlanQuery.data?.days.flatMap((day) => day.meals) ?? [], [
     currentPlanQuery.data,
   ]);
 
+  const selectedMeal = useMemo(
+    () => allMeals.find((meal) => meal.id === selectedMealId) ?? allMeals[0],
+    [allMeals, selectedMealId]
+  );
+
   useEffect(() => {
-    if (!selectedMeal && allMeals[0]) {
-      setSelectedMeal(allMeals[0]);
+    if (!selectedMealId && allMeals[0]) {
+      setSelectedMealId(allMeals[0].id);
     }
-  }, [allMeals, selectedMeal]);
+  }, [allMeals, selectedMealId]);
 
   useEffect(() => {
     if (selectedMealId && !allMeals.some((meal) => meal.id === selectedMealId)) {
-      setSelectedMeal(allMeals[0]);
+      setSelectedMealId(allMeals[0]?.id);
     }
   }, [allMeals, selectedMealId]);
 
@@ -96,18 +100,18 @@ export function DashboardPage() {
   const profileMembers = profile?.members ?? [];
   const profilePresets = profile?.presets ?? [];
   const planMessage = createPlanMutation.isPending
-    ? 'Der neue Wochenplan wird erstellt.'
+    ? 'Wir stellen eure Woche zusammen.'
     : createPlanMutation.isError
       ? errorMessage(createPlanMutation.error)
       : createPlanMutation.isSuccess
-        ? 'Neuer Wochenplan ist bereit.'
+        ? 'Der neue Wochenplan ist fertig.'
         : currentPlanQuery.isError
           ? 'Der aktuelle Plan konnte nicht geladen werden.'
           : '';
   const regenerateMessage = regenerateMealMutation.isError
     ? errorMessage(regenerateMealMutation.error)
     : regenerateMealMutation.isSuccess
-      ? 'Mahlzeit wurde ersetzt.'
+      ? 'Das Gericht wurde ausgetauscht.'
       : '';
 
   return loggedOut ? (
@@ -132,8 +136,8 @@ export function DashboardPage() {
             <h1 id="home-title">Was essen wir diese Woche?</h1>
             <p>
               {profile
-                ? `${profile.householdName}: Frühstück, Mittag, Abendessen und Einkauf in einem ruhigen Plan.`
-                : 'Erfasse kurz eure Familie, dann entsteht der erste Wochenplan.'}
+                ? `${profile.householdName}: Mahlzeiten, Mengen und Einkauf auf einen Blick.`
+                : 'Legt kurz eure Familie an. Danach steht euer erster Wochenplan bereit.'}
             </p>
             <div className="profile-chip-row" aria-label="Familienzusammenfassung">
               {profileMembers.length > 0 ? (
@@ -160,7 +164,7 @@ export function DashboardPage() {
               onClick={() => createPlanMutation.mutate()}
               disabled={createPlanMutation.isPending}
             >
-              {createPlanMutation.isPending ? 'Plan wird erstellt' : 'Wochenplan erstellen'}
+              {createPlanMutation.isPending ? 'Woche entsteht' : 'Woche planen'}
             </button>
             <div className="profile-stat">
               <span>{profileMembers.length}</span>
@@ -191,7 +195,7 @@ export function DashboardPage() {
             <MealBoard
               days={currentPlanQuery.data?.days}
               selectedMealId={selectedMealId}
-              onSelectMeal={setSelectedMeal}
+              onSelectMeal={(meal) => setSelectedMealId(meal.id)}
             />
           </div>
 

@@ -29,19 +29,25 @@ Familienprofil:
 }
 
 func RegeneratePrompt(profile domain.Profile, plan domain.Plan, mealID string, note string) string {
+	cleanNote := strings.TrimSpace(note)
 	body, _ := json.MarshalIndent(struct {
 		Profile domain.Profile `json:"profile"`
 		Plan    domain.Plan    `json:"plan"`
 		MealID  string         `json:"mealId"`
 		Note    string         `json:"note"`
-	}{Profile: profile, Plan: plan, MealID: mealID, Note: strings.TrimSpace(note)}, "", "  ")
+	}{Profile: profile, Plan: plan, MealID: mealID, Note: cleanNote}, "", "  ")
 	return fmt.Sprintf(`Erzeuge genau eine Ersatz-Mahlzeit fuer mealId %s.
 
 Regeln:
 - Erhalte Slot, Datumskontext und Familienlogik.
-- Beachte die Nutzer-Anmerkung.
+- Die Nutzer-Anmerkung ist verbindlich.
+- Wenn die Anmerkung eine Zutat ausschliesst, darf sie weder in Titel, Zutaten noch Anleitung vorkommen.
+- Wenn die Anmerkung Tempo, Kindertauglichkeit, Aufwand oder Stil nennt, muss das in Beschreibung, Zutaten und Anleitung sichtbar umgesetzt werden.
 - Gib nur die einzelne Mahlzeit im vereinbarten JSON-Schema zurueck.
 
+Nutzer-Anmerkung:
+%s
+
 Kontext:
-%s`, mealID, string(body))
+%s`, mealID, cleanNote, string(body))
 }

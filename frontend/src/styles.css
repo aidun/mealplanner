@@ -559,6 +559,13 @@ a:focus-visible {
   white-space: nowrap;
 }
 
+.panel-feedback {
+  margin: 0;
+  padding: 0 18px 12px;
+  color: #b42318;
+  font-weight: 700;
+}
+
 .shopping-list-panel {
   position: sticky;
   top: 92px;
@@ -997,7 +1004,18 @@ a:focus-visible {
     width: 100%;
   }
 
-  .app-header,
+  .app-header {
+    position: sticky;
+    top: 0;
+    padding: calc(10px + env(safe-area-inset-top)) 12px 10px;
+    gap: 8px;
+  }
+
+  .brand-subtitle,
+  .header-plate {
+    display: none;
+  }
+
   .header-actions {
     position: static;
   }
@@ -1008,6 +1026,7 @@ a:focus-visible {
 
   .header-actions {
     grid-template-columns: 1fr 1fr;
+    gap: 8px;
   }
 
   .header-actions .button-primary {
@@ -1018,6 +1037,28 @@ a:focus-visible {
   .home-hero-actions,
   .status-strip {
     grid-template-columns: 1fr;
+  }
+
+  .home-hero {
+    min-height: auto;
+    margin-bottom: 12px;
+    padding: 16px;
+    gap: 14px;
+  }
+
+  .home-hero h1 {
+    max-width: 14ch;
+    font-size: 2.05rem;
+    line-height: 0.98;
+  }
+
+  .home-hero p {
+    font-size: 0.95rem;
+  }
+
+  .profile-chip-row,
+  .profile-stat {
+    display: none;
   }
 
   .status-strip {
@@ -1044,17 +1085,71 @@ a:focus-visible {
     display: grid;
   }
 
+  .meal-board-surface {
+    overflow: hidden;
+  }
+
+  .meal-board-surface .surface-header {
+    padding-bottom: 12px;
+  }
+
   .board-grid {
-    grid-template-columns: 1fr;
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+    padding: 0 14px 14px;
+    border-top: 0;
+    scrollbar-width: none;
+  }
+
+  .board-grid::-webkit-scrollbar {
+    display: none;
   }
 
   .day-column {
+    flex: 0 0 min(86vw, 380px);
+    overflow: hidden;
     border-right: 0;
-    border-bottom: 1px solid var(--line);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #ffffff;
+    scroll-snap-align: start;
   }
 
   .day-column:last-child {
-    border-bottom: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .day-header {
+    padding: 12px;
+  }
+
+  .meal-stack {
+    gap: 6px;
+    padding: 10px;
+  }
+
+  .meal-row {
+    gap: 6px;
+    min-height: 112px;
+    padding: 10px 12px;
+  }
+
+  .meal-row p {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+  }
+
+  .meal-row .tag:nth-child(n + 3) {
+    display: none;
+  }
+
+  .nutrition-line {
+    display: none;
   }
 
   .auth-shell {

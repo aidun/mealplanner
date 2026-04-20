@@ -47,6 +47,25 @@ const plan = {
   ],
 };
 
+const baseDay = plan.days[0]!;
+const baseMeal = baseDay.meals[0]!;
+
+const regeneratedPlan = {
+  ...plan,
+  days: [
+    {
+      ...baseDay,
+      meals: [
+        {
+          ...baseMeal,
+          title: 'Cremige Gemüsepasta',
+          description: 'Mit extra Gemüse und mild gewürzt.',
+        },
+      ],
+    },
+  ],
+};
+
 const shoppingList = [{ name: 'Zucchini', amount: 2, unit: 'Stk', category: 'Gemüse' }];
 const session = { authenticated: true, csrfToken: 'csrf-token-1' };
 const providers = {
@@ -115,8 +134,14 @@ function createFetchMock(options: { authenticated?: boolean } = {}) {
       return new Response(JSON.stringify(shoppingList), { status: 200 });
     }
 
+    if (url.endsWith('/api/plans/plan-1/bring-export-url')) {
+      return new Response(JSON.stringify({ url: '/api/plans/plan-1/bring-export?token=test-token' }), {
+        status: 200,
+      });
+    }
+
     if (url.includes('/regenerate')) {
-      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      return new Response(JSON.stringify(regeneratedPlan), { status: 200 });
     }
 
     if (url.endsWith('/api/plans') && init?.method === 'POST') {
@@ -164,11 +189,27 @@ describe('Mealplanner app', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Zu Bring' }));
 
-    expect(window.open).toHaveBeenCalledWith(
-      '/api/plans/plan-1/bring-export',
-      '_blank',
-      'noopener,noreferrer'
-    );
+    await waitFor(() => {
+      expect(window.open).toHaveBeenCalledWith(
+        '/api/plans/plan-1/bring-export?token=test-token',
+        '_blank',
+        'noopener,noreferrer'
+      );
+    });
+  });
+
+  it('shows the updated meal after regeneration', async () => {
+    renderApp('/');
+
+    fireEvent.change(await screen.findByLabelText('Wunsch zur Änderung'), {
+      target: { value: 'mehr Gemüse' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Gericht austauschen' }));
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Cremige Gemüsepasta').length).toBeGreaterThan(0);
+    });
+    expect(screen.getByText('Das Gericht wurde ausgetauscht.')).toBeInTheDocument();
   });
 
   it('copies the shopping list as Bring fallback', async () => {
@@ -228,7 +269,9 @@ describe('Mealplanner app', () => {
           return new Response('', { status: 404 });
         }
         if (url.endsWith('/api/plans') && init?.method === 'POST') {
-          return new Response(JSON.stringify({ error: 'openai unavailable' }), { status: 500 });
+          return new Response(JSON.stringify({ error: 'Das hat gerade nicht geklappt. Bitte versuche es erneut.' }), {
+            status: 500,
+          });
         }
         return new Response('', { status: 404 });
       }) as unknown as typeof fetch
@@ -236,9 +279,11 @@ describe('Mealplanner app', () => {
 
     renderApp('/');
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Wochenplan erstellen' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Woche planen' }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('openai unavailable');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Das hat gerade nicht geklappt. Bitte versuche es erneut.'
+    );
   });
 
   it('sends a note when regenerating a meal', async () => {
@@ -246,10 +291,10 @@ describe('Mealplanner app', () => {
 
     const user = userEvent.setup();
     await screen.findByRole('button', { name: /Pasta mit Gemüse/ });
-    const noteField = screen.getByLabelText('Notiz für Neu-Generierung');
+    const noteField = screen.getByLabelText('Wunsch zur Änderung');
     await user.click(noteField);
     await user.type(noteField, 'Weniger Salz, mehr Gemüse.');
-    fireEvent.click(screen.getByRole('button', { name: 'Mahlzeit neu generieren' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Gericht austauschen' }));
 
     await waitFor(() => {
       expect(fetch).toHaveBeenCalledWith(

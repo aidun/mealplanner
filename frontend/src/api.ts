@@ -1,4 +1,4 @@
-import type { AuthProvidersResponse, Meal, Plan, Profile, Session, ShoppingList } from './types';
+import type { AuthProvidersResponse, Plan, Profile, Session, ShoppingList } from './types';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
 
@@ -102,13 +102,17 @@ export async function createPlan(payload: Record<string, unknown> = {}) {
 }
 
 export async function regenerateMeal(planId: string, mealId: string, note: string) {
-  return request<Meal | Plan | { plan?: Plan; meal?: Meal }>(
+  return request<Plan>(
     `/api/plans/${encodeURIComponent(planId)}/meals/${encodeURIComponent(mealId)}/regenerate`,
     {
       method: 'POST',
       body: JSON.stringify({ note }),
     }
   );
+}
+
+export async function getBringExportUrl(planId: string) {
+  return request<{ url: string }>(`/api/plans/${encodeURIComponent(planId)}/bring-export-url`);
 }
 
 export async function getShoppingList(planId: string) {

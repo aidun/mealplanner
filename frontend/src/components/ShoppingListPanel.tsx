@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { getBringExportUrl } from '../api';
 import type { ShoppingList, ShoppingListItem } from '../types';
 
 interface ShoppingListPanelProps {
@@ -9,14 +10,22 @@ interface ShoppingListPanelProps {
 
 export function ShoppingListPanel({ planId, shoppingList, loading }: ShoppingListPanelProps) {
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
-  const canExport = Boolean(planId && shoppingList);
+  const [bringState, setBringState] = useState<'idle' | 'opening' | 'failed'>('idle');
   const items = useMemo(() => flattenShoppingList(shoppingList), [shoppingList]);
   const categories = useMemo(() => uniqueCategories(items), [items]);
+  const canExport = Boolean(planId && items.length > 0);
 
-  const openBringExport = () => {
+  const openBringExport = async () => {
     if (!planId) return;
-    const url = `/api/plans/${encodeURIComponent(planId)}/bring-export`;
-    window.open(url, '_blank', 'noopener,noreferrer');
+    setBringState('opening');
+    try {
+      const response = await getBringExportUrl(planId);
+      if (!response?.url) throw new Error('missing bring export url');
+      window.open(response.url, '_blank', 'noopener,noreferrer');
+      setBringState('idle');
+    } catch {
+      setBringState('failed');
+    }
   };
 
   const copyList = async () => {
@@ -45,12 +54,27 @@ export function ShoppingListPanel({ planId, shoppingList, loading }: ShoppingLis
             <button type="button" className="button button-secondary bring-export-button" onClick={copyList}>
               {copyState === 'copied' ? 'Kopiert' : 'Liste kopieren'}
             </button>
-            <button type="button" className="button button-primary bring-export-button" onClick={openBringExport}>
-              Zu Bring
+            <button
+              type="button"
+              className="button button-primary bring-export-button"
+              onClick={openBringExport}
+              disabled={bringState === 'opening'}
+            >
+              {bringState === 'opening' ? 'Öffnet ...' : 'Zu Bring'}
             </button>
           </div>
         ) : null}
       </div>
+      {bringState === 'failed' ? (
+        <p className="panel-feedback" role="alert">
+          Bring-Link gerade nicht verfügbar. Kopiere die Liste als Fallback.
+        </p>
+      ) : null}
+      {copyState === 'failed' ? (
+        <p className="panel-feedback" role="alert">
+          Kopieren nicht möglich. Markiere die Liste manuell.
+        </p>
+      ) : null}
 
       {loading ? <p className="muted">Lädt ...</p> : null}
 

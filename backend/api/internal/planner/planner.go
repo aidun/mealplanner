@@ -58,6 +58,9 @@ func (p Planner) RegenerateMeal(ctx context.Context, profile domain.Profile, pla
 	for dayIndex := range plan.Days {
 		for mealIndex := range plan.Days[dayIndex].Meals {
 			if plan.Days[dayIndex].Meals[mealIndex].ID == mealID {
+				original := plan.Days[dayIndex].Meals[mealIndex]
+				meal.ID = mealID
+				meal.Slot = original.Slot
 				plan.Days[dayIndex].Meals[mealIndex] = meal
 				found = true
 			}

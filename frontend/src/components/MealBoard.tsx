@@ -9,11 +9,11 @@ interface MealBoardProps {
 
 export function MealBoard({ days = [], selectedMealId, onSelectMeal }: MealBoardProps) {
   return (
-    <section className="surface">
+    <section className="surface meal-board-surface">
       <div className="surface-header">
         <div>
           <h2>Diese Woche auf dem Tisch</h2>
-          <p>Frühstück, Mittag, Abendessen und Snacks für eure Familie.</p>
+          <p>Frühstück, Mittag, Abendessen und Extras. Auf dem Handy wischt ihr durch die Tage.</p>
         </div>
       </div>
 
@@ -21,7 +21,7 @@ export function MealBoard({ days = [], selectedMealId, onSelectMeal }: MealBoard
         {days.length === 0 ? (
           <div className="empty-state">
             <h3>Noch kein Wochenplan</h3>
-            <p>Starte eine neue Woche und lass den Plan aus eurem Familienprofil entstehen.</p>
+            <p>Startet eine neue Woche mit Gerichten, die zu eurem Alltag passen.</p>
           </div>
         ) : (
           days.map((day) => (
