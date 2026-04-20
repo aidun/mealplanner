@@ -1,0 +1,29 @@
+import { describe, expect, it } from 'vitest';
+import { formToProfile, profileToForm } from '../lib/profile-form';
+
+describe('profile form mapping', () => {
+  it('keeps form-only planning fields separated in profile notes', () => {
+    const form = {
+      householdName: 'Familie Weber',
+      members: 'Anna\nBen',
+      servingsPerMeal: '4',
+      preferredCuisines: 'Mediterran\nAsiatisch',
+      excludedIngredients: 'Koriander\nSellerie',
+      cookingStyle: 'Schnell und warm',
+      mealPlanningRules: 'Wochentags unter 30 Minuten',
+      breakfastPresets: 'Oats',
+      lunchPresets: 'Bowl',
+      dinnerPresets: 'Pasta',
+      snackPresets: 'Obst',
+    };
+
+    const profile = formToProfile(form);
+    const roundtrip = profileToForm(profile);
+
+    expect(roundtrip.servingsPerMeal).toBe('4');
+    expect(roundtrip.cookingStyle).toBe('Schnell und warm');
+    expect(roundtrip.mealPlanningRules).toBe('Wochentags unter 30 Minuten');
+    expect(roundtrip.excludedIngredients).toBe('Koriander\nSellerie');
+    expect(roundtrip.cookingStyle).not.toContain('Wochentags unter 30 Minuten');
+  });
+});

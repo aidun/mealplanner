@@ -20,9 +20,9 @@ export function Header({
     <header className="app-header">
       <div className="brand-block">
         <Link to="/" className="brand-mark" aria-label="Mealplanner Startseite">
-          Mealplanner
+          Familienküche
         </Link>
-        <p className="brand-subtitle">Wochenplan, Einkauf und Familienprofil</p>
+        <p className="brand-subtitle">Essen planen, einkaufen, entspannt kochen</p>
       </div>
 
       <div className="header-meta">
@@ -41,7 +41,7 @@ export function Header({
           Profil
         </NavLink>
         <button type="button" className="button button-primary" onClick={onCreatePlan} disabled={creatingPlan}>
-          {creatingPlan ? 'Plan wird erstellt' : 'Plan generieren'}
+          {creatingPlan ? 'Wird gekocht' : 'Neue Woche'}
         </button>
         <button type="button" className="button button-secondary" onClick={onLogout} disabled={loggingOut}>
           {loggingOut ? 'Logout läuft' : 'Logout'}

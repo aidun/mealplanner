@@ -27,16 +27,17 @@ function objectToBlock(value: unknown) {
 }
 
 export function profileToForm(profile?: Profile | null): ProfileFormState {
+  const noteSections = parseNoteSections(profile?.notes ?? '');
   return {
     householdName: profile?.householdName ?? '',
     members: joinLines(profile?.members.map(formatMemberLine)),
-    servingsPerMeal: '',
+    servingsPerMeal: noteSections['Standard-Portionen'] ?? '',
     preferredCuisines: joinLines(profile?.presets),
-    excludedIngredients: joinLines(
-      profile?.members.flatMap((member) => splitLines(member.restrictions ?? '').map((entry) => `${member.name}: ${entry}`))
-    ),
-    cookingStyle: profile?.notes ?? '',
-    mealPlanningRules: profile?.notes ?? '',
+    excludedIngredients:
+      noteSections['Ausgeschlossene Zutaten'] ??
+      joinLines(profile?.members.flatMap((member) => splitLines(member.restrictions ?? '').map((entry) => `${member.name}: ${entry}`))),
+    cookingStyle: noteSections['Kochstil'] ?? profile?.notes ?? '',
+    mealPlanningRules: noteSections['Planungsregeln'] ?? '',
     breakfastPresets: objectToBlock(profile?.defaults?.breakfast),
     lunchPresets: objectToBlock(profile?.defaults?.lunch),
     dinnerPresets: objectToBlock(profile?.defaults?.dinner),
@@ -55,10 +56,12 @@ export function formToProfile(state: ProfileFormState): Profile {
       snacks: state.snackPresets.trim(),
     },
     presets: splitLines(state.preferredCuisines),
-    notes: [state.cookingStyle, state.mealPlanningRules, state.excludedIngredients]
-      .map((entry) => entry.trim())
-      .filter(Boolean)
-      .join('\n'),
+    notes: formatNoteSections({
+      'Standard-Portionen': state.servingsPerMeal,
+      Kochstil: state.cookingStyle,
+      Planungsregeln: state.mealPlanningRules,
+      'Ausgeschlossene Zutaten': state.excludedIngredients,
+    }),
   };
 }
 
@@ -88,4 +91,41 @@ function slugify(value: string) {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
+}
+
+function formatNoteSections(sections: Record<string, string>) {
+  return Object.entries(sections)
+    .map(([title, value]) => [title, value.trim()] as const)
+    .filter(([, value]) => value !== '')
+    .map(([title, value]) => `${title}:\n${value}`)
+    .join('\n\n');
+}
+
+function parseNoteSections(notes: string) {
+  const sections: Record<string, string> = {};
+  const knownTitles = ['Standard-Portionen', 'Kochstil', 'Planungsregeln', 'Ausgeschlossene Zutaten'];
+  let currentTitle = '';
+  let currentLines: string[] = [];
+
+  const flush = () => {
+    if (currentTitle) {
+      sections[currentTitle] = currentLines.join('\n').trim();
+    }
+  };
+
+  for (const rawLine of notes.split(/\r?\n/)) {
+    const line = rawLine.trimEnd();
+    const title = knownTitles.find((candidate) => line === `${candidate}:`);
+    if (title) {
+      flush();
+      currentTitle = title;
+      currentLines = [];
+      continue;
+    }
+    if (currentTitle) {
+      currentLines.push(line);
+    }
+  }
+  flush();
+  return sections;
 }

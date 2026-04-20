@@ -150,7 +150,7 @@ describe('Mealplanner app', () => {
   it('renders the weekly board and shopping list', async () => {
     renderApp('/');
 
-    expect(await screen.findByText('Wochenboard')).toBeInTheDocument();
+    expect(await screen.findByText('Diese Woche auf dem Tisch')).toBeInTheDocument();
     expect(await screen.findByRole('button', { name: /Pasta mit Gemüse/ })).toBeInTheDocument();
     expect(await screen.findByText('Einkaufsliste')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Zu Bring' })).toBeInTheDocument();
@@ -208,6 +208,37 @@ describe('Mealplanner app', () => {
         })
       );
     });
+    await waitFor(() => {
+      expect(screen.getAllByText('Profil gespeichert. Der nächste Wochenplan nutzt diese Angaben.').length).toBeGreaterThan(0);
+    });
+  });
+
+  it('shows feedback when plan generation fails', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        if (url.endsWith('/api/session')) {
+          return new Response(JSON.stringify(session), { status: 200 });
+        }
+        if (url.endsWith('/api/profile')) {
+          return new Response(JSON.stringify(profile), { status: 200 });
+        }
+        if (url.endsWith('/api/plans/current')) {
+          return new Response('', { status: 404 });
+        }
+        if (url.endsWith('/api/plans') && init?.method === 'POST') {
+          return new Response(JSON.stringify({ error: 'openai unavailable' }), { status: 500 });
+        }
+        return new Response('', { status: 404 });
+      }) as unknown as typeof fetch
+    );
+
+    renderApp('/');
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Wochenplan erstellen' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('openai unavailable');
   });
 
   it('sends a note when regenerating a meal', async () => {

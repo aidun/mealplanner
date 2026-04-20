@@ -12,16 +12,16 @@ export function MealBoard({ days = [], selectedMealId, onSelectMeal }: MealBoard
     <section className="surface">
       <div className="surface-header">
         <div>
-          <h2>Wochenboard</h2>
-          <p>Alle Mahlzeiten der aktuellen Woche auf einen Blick.</p>
+          <h2>Diese Woche auf dem Tisch</h2>
+          <p>Frühstück, Mittag, Abendessen und Snacks für eure Familie.</p>
         </div>
       </div>
 
       <div className="board-grid">
         {days.length === 0 ? (
           <div className="empty-state">
-            <h3>Kein Plan geladen</h3>
-            <p>Erzeuge einen neuen Wochenplan oder warte auf den aktuellen Plan vom Server.</p>
+            <h3>Noch kein Wochenplan</h3>
+            <p>Starte eine neue Woche und lass den Plan aus eurem Familienprofil entstehen.</p>
           </div>
         ) : (
           days.map((day) => (
@@ -44,6 +44,7 @@ export function MealBoard({ days = [], selectedMealId, onSelectMeal }: MealBoard
                         key={meal.id}
                         type="button"
                         className={`meal-row${active ? ' meal-row-active' : ''}`}
+                        aria-pressed={active}
                         onClick={() => onSelectMeal(meal)}
                       >
                         <div className="meal-row-topline">

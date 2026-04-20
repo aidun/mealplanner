@@ -81,6 +81,7 @@ export interface Profile {
   defaults: MealDefaults;
   presets: string[];
   notes?: string;
+  updatedAt?: string;
 }
 
 export interface ShoppingListItem {

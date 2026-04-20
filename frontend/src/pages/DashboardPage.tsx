@@ -95,6 +95,20 @@ export function DashboardPage() {
   const profile = profileQuery.data;
   const profileMembers = profile?.members ?? [];
   const profilePresets = profile?.presets ?? [];
+  const planMessage = createPlanMutation.isPending
+    ? 'Der neue Wochenplan wird erstellt.'
+    : createPlanMutation.isError
+      ? errorMessage(createPlanMutation.error)
+      : createPlanMutation.isSuccess
+        ? 'Neuer Wochenplan ist bereit.'
+        : currentPlanQuery.isError
+          ? 'Der aktuelle Plan konnte nicht geladen werden.'
+          : '';
+  const regenerateMessage = regenerateMealMutation.isError
+    ? errorMessage(regenerateMealMutation.error)
+    : regenerateMealMutation.isSuccess
+      ? 'Mahlzeit wurde ersetzt.'
+      : '';
 
   return loggedOut ? (
     <LoginPage />
@@ -112,16 +126,16 @@ export function DashboardPage() {
       />
 
       <main className="app-main">
-        <section className="profile-studio" aria-labelledby="profile-studio-title">
-          <div className="profile-studio-copy">
-            <span className="eyebrow">Familienprofil</span>
-            <h1 id="profile-studio-title">{profile ? profile.householdName : 'Profil noch nicht eingerichtet'}</h1>
+        <section className="home-hero" aria-labelledby="home-title">
+          <div className="home-hero-copy">
+            <span className="eyebrow">Familien-Essensplan</span>
+            <h1 id="home-title">Was essen wir diese Woche?</h1>
             <p>
               {profile
-                ? 'Vorlieben, Alltag und Einschränkungen steuern die nächste Planung.'
-                : 'Erfasse Haushalt, Personen und Essensregeln, damit die Planung direkt passt.'}
+                ? `${profile.householdName}: Frühstück, Mittag, Abendessen und Einkauf in einem ruhigen Plan.`
+                : 'Erfasse kurz eure Familie, dann entsteht der erste Wochenplan.'}
             </p>
-            <div className="profile-chip-row" aria-label="Profilzusammenfassung">
+            <div className="profile-chip-row" aria-label="Familienzusammenfassung">
               {profileMembers.length > 0 ? (
                 profileMembers.map((member) => (
                   <span key={member.id} className="profile-chip">
@@ -139,7 +153,15 @@ export function DashboardPage() {
             </div>
           </div>
 
-          <div className="profile-studio-actions">
+          <div className="home-hero-actions">
+            <button
+              type="button"
+              className="button button-primary home-primary-action"
+              onClick={() => createPlanMutation.mutate()}
+              disabled={createPlanMutation.isPending}
+            >
+              {createPlanMutation.isPending ? 'Plan wird erstellt' : 'Wochenplan erstellen'}
+            </button>
             <div className="profile-stat">
               <span>{profileMembers.length}</span>
               <strong>Personen</strong>
@@ -153,6 +175,16 @@ export function DashboardPage() {
             </Link>
           </div>
         </section>
+
+        {planMessage || regenerateMessage ? (
+          <div
+            className={`status-strip${createPlanMutation.isError || regenerateMealMutation.isError || currentPlanQuery.isError ? ' status-strip-error' : ' status-strip-success'}`}
+            role={createPlanMutation.isError || regenerateMealMutation.isError || currentPlanQuery.isError ? 'alert' : 'status'}
+            aria-live="polite"
+          >
+            <span>{planMessage || regenerateMessage}</span>
+          </div>
+        ) : null}
 
         <div className="workspace">
           <div className="workspace-main">
@@ -179,4 +211,16 @@ export function DashboardPage() {
       </main>
     </div>
   );
+}
+
+function errorMessage(error: unknown) {
+  if (error instanceof Error) {
+    try {
+      const parsed = JSON.parse(error.message) as { error?: string };
+      return parsed.error ?? error.message;
+    } catch {
+      return error.message;
+    }
+  }
+  return 'Aktion konnte nicht ausgeführt werden.';
 }

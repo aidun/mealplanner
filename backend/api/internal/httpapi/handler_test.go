@@ -234,6 +234,26 @@ func TestMutatingRequestRequiresCSRF(t *testing.T) {
 	}
 }
 
+func TestCORSAllowsCSRFCredentials(t *testing.T) {
+	handler := New(newMemoryRepo(), planner.New(provider.NewMockGenerator()), testAuth(), "", []string{"http://localhost:4173"}, nil)
+	req := httptest.NewRequest(http.MethodOptions, "/api/profile", nil)
+	req.Header.Set("Origin", "http://localhost:4173")
+	req.Header.Set("Access-Control-Request-Method", "PUT")
+	req.Header.Set("Access-Control-Request-Headers", "Content-Type, X-CSRF-Token")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("expected 204, got %d", rec.Code)
+	}
+	if got := rec.Header().Get("Access-Control-Allow-Credentials"); got != "true" {
+		t.Fatalf("expected credentials true, got %q", got)
+	}
+	if headers := rec.Header().Get("Access-Control-Allow-Headers"); !strings.Contains(headers, "X-CSRF-Token") {
+		t.Fatalf("expected csrf header to be allowed, got %q", headers)
+	}
+}
+
 func TestInternalWeeklyPlanUsesAPISecret(t *testing.T) {
 	repo := newMemoryRepo()
 	repo.profiles["user-1"] = domain.DefaultProfile()

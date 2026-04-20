@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { getProfile, saveProfile } from '../api';
@@ -27,24 +27,40 @@ export function OnboardingPage() {
     queryFn: getProfile,
   });
   const [form, setForm] = useState<ProfileFormState>(EMPTY_FORM);
+  const [hasEdited, setHasEdited] = useState(false);
 
   useEffect(() => {
     if (profileQuery.data) {
       setForm(profileToForm(profileQuery.data));
+      setHasEdited(false);
     }
   }, [profileQuery.data]);
 
   const saveMutation = useMutation({
     mutationFn: saveProfile,
-    onSuccess: async () => {
+    onSuccess: async (savedProfile) => {
+      if (savedProfile) {
+        setForm(profileToForm(savedProfile));
+      }
+      setHasEdited(false);
       await queryClient.invalidateQueries({ queryKey: ['profile'] });
-      navigate('/');
     },
   });
 
   const update = (key: keyof ProfileFormState, value: string) => {
     setForm((current) => ({ ...current, [key]: value }));
+    setHasEdited(true);
   };
+
+  const statusMessage = useMemo(() => {
+    if (saveMutation.isPending) return 'Profil wird gespeichert.';
+    if (saveMutation.isError) return errorMessage(saveMutation.error);
+    if (saveMutation.isSuccess && !hasEdited) return 'Profil gespeichert. Der nächste Wochenplan nutzt diese Angaben.';
+    if (hasEdited) return 'Ungespeicherte Änderungen.';
+    return 'Bereit zum Speichern.';
+  }, [hasEdited, saveMutation.error, saveMutation.isError, saveMutation.isPending, saveMutation.isSuccess]);
+
+  const profileExists = Boolean(profileQuery.data?.updatedAt);
 
   return (
     <div className="app-shell">
@@ -61,8 +77,21 @@ export function OnboardingPage() {
         <section className="profile-page">
           <div className="profile-page-intro">
             <span className="eyebrow">Profil</span>
-            <h1>Profil anlegen</h1>
-            <p>Alles, was die Planung persönlicher macht: Personen, Alltag, Vorlieben und feste Regeln.</p>
+            <h1>{profileExists ? 'Profil bearbeiten' : 'Profil anlegen'}</h1>
+            <p>Personen, Alltag, Vorlieben und feste Regeln für den nächsten Familienplan.</p>
+          </div>
+
+          <div
+            className={`status-strip${saveMutation.isError ? ' status-strip-error' : ''}${saveMutation.isSuccess && !hasEdited ? ' status-strip-success' : ''}`}
+            role={saveMutation.isError ? 'alert' : 'status'}
+            aria-live="polite"
+          >
+            <span>{statusMessage}</span>
+            {saveMutation.isSuccess && !hasEdited ? (
+              <button type="button" className="button button-secondary" onClick={() => navigate('/')}>
+                Zum Wochenplan
+              </button>
+            ) : null}
           </div>
 
           <form
@@ -217,10 +246,10 @@ export function OnboardingPage() {
             <div className="profile-save-bar">
               <div>
                 <strong>Profil speichern</strong>
-                <p>Änderungen gelten für die nächste Planerstellung und Regeneration.</p>
+                <p aria-live="polite">{statusMessage}</p>
               </div>
               <button type="submit" className="button button-primary" disabled={saveMutation.isPending}>
-                {saveMutation.isPending ? 'Wird gespeichert' : 'Profil speichern'}
+                {saveMutation.isPending ? 'Wird gespeichert' : saveMutation.isSuccess && !hasEdited ? 'Gespeichert' : 'Profil speichern'}
               </button>
             </div>
           </form>
@@ -228,4 +257,19 @@ export function OnboardingPage() {
       </main>
     </div>
   );
+}
+
+function errorMessage(error: unknown) {
+  if (error instanceof Error) {
+    try {
+      const parsed = JSON.parse(error.message) as { error?: string };
+      if (parsed.error) {
+        return parsed.error;
+      }
+    } catch {
+      return error.message;
+    }
+    return error.message;
+  }
+  return 'Profil konnte nicht gespeichert werden.';
 }
