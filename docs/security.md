@@ -7,8 +7,9 @@ Breaking Changes muessen vorab angekuendigt werden.
 
 - App-Zugriff laeuft ueber Google OIDC und eine Allowlist.
 - Login-Daten werden minimiert: dauerhaft gespeichert werden nur Provider und pseudonyme Subject-Hashes.
-- E-Mail-Adressen duerfen nicht im Repo, in Dokus oder in Datenbanktabellen gespeichert werden. Fuer Allowlist-Eintraege wird `HMAC-SHA256("email:<lowercase-mail>", SESSION_SECRET)` in `AUTH_ALLOWED_EMAIL_HASHES` hinterlegt.
+- E-Mail-Adressen duerfen nicht im Repo, in Dokus oder in Datenbanktabellen gespeichert werden. Fuer Allowlist-Eintraege wird `HMAC-SHA256("email:<lowercase-mail>", SESSION_SECRET)` in `AUTH_ALLOWED_EMAIL_HASHES` hinterlegt. E-Mail-Allowlisting akzeptiert nur Google-ID-Tokens mit verifizierter E-Mail.
 - Sessions laufen ueber `HttpOnly`, `Secure`, `SameSite=Lax` Cookies. Mutierende API-Requests brauchen `X-CSRF-Token`.
+- OpenAI-Prompts muessen minimiert bleiben: keine Haushaltsnamen, keine Personennamen, keine Login-Daten, keine vollstaendige Wochen-Einkaufsliste.
 - Der Bring-Export ist nur ueber signierte Links oeffentlich lesbar. Diese Links sind fuer Bring noetig und duerfen nicht hinter Cloudflare Access liegen.
 
 ## Betrieb
@@ -18,6 +19,7 @@ Breaking Changes muessen vorab angekuendigt werden.
 - Tunnel-Credentials liegen nur lokal unter `~/.cloudflared/` und im Kubernetes Secret `cloudflared-credentials`.
 - Secrets werden nicht committed. Bei Neuaufbau des Namespace muessen `api-secrets`, `mealplanner-database`, `ghcr-pull-secret` und `cloudflared-credentials` vorhanden sein.
 - `entrypoint` bleibt fuer LAN/Traefik vorhanden. Der oeffentliche Internetpfad geht ueber Cloudflare Tunnel.
+- GitHub Actions ist ein Pflicht-Gate. Wenn Jobs ohne Runner/Steps fehlschlagen, zuerst GitHub Billing/Spending-Limit pruefen; das ist ein Infrastrukturblocker, kein Code-Gate.
 
 ## Security Checks
 
@@ -57,3 +59,5 @@ Nicht ohne explizite Freigabe:
 
 - Egress-NetworkPolicies sind noch nicht strikt. Das ist absichtlich nicht in einem produktiven Quick-Hardening umgesetzt, weil DNS, OpenAI und Cloudflare-Tunnel sonst leicht gebrochen werden koennen. Naechster Schritt: Egress-Policy mit expliziten DNS- und HTTPS-Ausnahmen in einem separaten Change.
 - Bring-Export-Tokens sind statische HMAC-Links pro Plan. Fuer v2 sollte ein expirierendes Tokenformat eingefuehrt werden, ohne bestehende Links sofort zu brechen.
+- Der LAN-LoadBalancer auf dem `entrypoint` ist ein zweiter Origin-Zugang neben Cloudflare Tunnel. Ein Wechsel auf `ClusterIP` wuerde den direkten LAN-Zugang entfernen und ist deshalb ein angekuendigtes Breaking Change.
+- Datenschutz und Impressum enthalten technische Platzhalter. Fuer produktive externe Nutzung fehlen echte Betreiberangaben und rechtlich gepruefte Texte.

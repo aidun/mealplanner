@@ -9,8 +9,53 @@ import (
 	"github.com/aidun/mealplanner/backend/api/internal/domain"
 )
 
+type promptProfile struct {
+	Household string              `json:"household"`
+	Members   []promptMember      `json:"members"`
+	Defaults  domain.MealDefaults `json:"defaults"`
+	Presets   []string            `json:"presets,omitempty"`
+	Notes     string              `json:"notes,omitempty"`
+}
+
+type promptMember struct {
+	ID             string   `json:"id"`
+	Role           string   `json:"role,omitempty"`
+	AgeGroup       string   `json:"ageGroup,omitempty"`
+	CaloriesTarget int      `json:"caloriesTarget,omitempty"`
+	Presets        []string `json:"presets,omitempty"`
+	Likes          string   `json:"likes,omitempty"`
+	Dislikes       string   `json:"dislikes,omitempty"`
+	Restrictions   string   `json:"restrictions,omitempty"`
+}
+
+type promptPlanContext struct {
+	WeekStart     string              `json:"weekStart"`
+	TargetMeal    promptMealDetail    `json:"targetMeal"`
+	ExistingMeals []promptMealSummary `json:"existingMeals"`
+}
+
+type promptMealDetail struct {
+	ID                 string              `json:"id"`
+	Slot               string              `json:"slot"`
+	Title              string              `json:"title"`
+	Description        string              `json:"description"`
+	Ingredients        []domain.Ingredient `json:"ingredients"`
+	Instructions       []string            `json:"instructions"`
+	Nutrition          domain.Nutrition    `json:"nutrition"`
+	Tags               []string            `json:"tags"`
+	Warnings           []string            `json:"warnings,omitempty"`
+	EstimatedNutrition bool                `json:"estimatedNutrition"`
+}
+
+type promptMealSummary struct {
+	Date  string   `json:"date"`
+	Slot  string   `json:"slot"`
+	Title string   `json:"title"`
+	Tags  []string `json:"tags,omitempty"`
+}
+
 func WeekPrompt(profile domain.Profile, weekStart time.Time) string {
-	body, _ := json.MarshalIndent(profile, "", "  ")
+	body, _ := json.MarshalIndent(minimizeProfile(profile), "", "  ")
 	return fmt.Sprintf(`Erstelle einen Wochen-Essensplan fuer eine Familie.
 
 Woche startet am %s.
@@ -31,11 +76,11 @@ Familienprofil:
 func RegeneratePrompt(profile domain.Profile, plan domain.Plan, mealID string, note string) string {
 	cleanNote := strings.TrimSpace(note)
 	body, _ := json.MarshalIndent(struct {
-		Profile domain.Profile `json:"profile"`
-		Plan    domain.Plan    `json:"plan"`
-		MealID  string         `json:"mealId"`
-		Note    string         `json:"note"`
-	}{Profile: profile, Plan: plan, MealID: mealID, Note: cleanNote}, "", "  ")
+		Profile promptProfile     `json:"profile"`
+		Plan    promptPlanContext `json:"plan"`
+		MealID  string            `json:"mealId"`
+		Note    string            `json:"note"`
+	}{Profile: minimizeProfile(profile), Plan: minimizePlanContext(plan, mealID), MealID: mealID, Note: cleanNote}, "", "  ")
 	return fmt.Sprintf(`Erzeuge genau eine Ersatz-Mahlzeit fuer mealId %s.
 
 Regeln:
@@ -50,4 +95,79 @@ Nutzer-Anmerkung:
 
 Kontext:
 %s`, mealID, cleanNote, string(body))
+}
+
+func minimizeProfile(profile domain.Profile) promptProfile {
+	members := make([]promptMember, 0, len(profile.Members))
+	for i, member := range profile.Members {
+		members = append(members, promptMember{
+			ID:             fmt.Sprintf("person-%d", i+1),
+			Role:           trimPromptText(member.Role, 80),
+			AgeGroup:       ageGroup(member.Age),
+			CaloriesTarget: member.CaloriesTarget,
+			Presets:        member.Presets,
+			Likes:          trimPromptText(member.Likes, 300),
+			Dislikes:       trimPromptText(member.Dislikes, 300),
+			Restrictions:   trimPromptText(member.Restrictions, 300),
+		})
+	}
+	return promptProfile{
+		Household: "privater Haushalt",
+		Members:   members,
+		Defaults:  profile.Defaults,
+		Presets:   profile.Presets,
+		Notes:     trimPromptText(profile.Notes, 500),
+	}
+}
+
+func minimizePlanContext(plan domain.Plan, mealID string) promptPlanContext {
+	context := promptPlanContext{WeekStart: plan.WeekStart}
+	for _, day := range plan.Days {
+		for _, meal := range day.Meals {
+			if meal.ID == mealID {
+				context.TargetMeal = promptMealDetail{
+					ID:                 meal.ID,
+					Slot:               meal.Slot,
+					Title:              meal.Title,
+					Description:        meal.Description,
+					Ingredients:        meal.Ingredients,
+					Instructions:       meal.Instructions,
+					Nutrition:          meal.Nutrition,
+					Tags:               meal.Tags,
+					Warnings:           meal.Warnings,
+					EstimatedNutrition: meal.EstimatedNutrition,
+				}
+			}
+			context.ExistingMeals = append(context.ExistingMeals, promptMealSummary{
+				Date:  day.Date,
+				Slot:  meal.Slot,
+				Title: meal.Title,
+				Tags:  meal.Tags,
+			})
+		}
+	}
+	return context
+}
+
+func ageGroup(age int) string {
+	switch {
+	case age <= 0:
+		return ""
+	case age < 3:
+		return "Kleinkind"
+	case age < 13:
+		return "Kind"
+	case age < 18:
+		return "Teenager"
+	default:
+		return "Erwachsen"
+	}
+}
+
+func trimPromptText(value string, limit int) string {
+	value = strings.TrimSpace(value)
+	if limit <= 0 || len(value) <= limit {
+		return value
+	}
+	return strings.TrimSpace(value[:limit])
 }

@@ -214,6 +214,41 @@ describe('Mealplanner app', () => {
     expect(screen.queryByRole('link', { name: 'Mit Google anmelden' })).not.toBeInTheDocument();
   });
 
+  it('falls back to same-origin auth paths when provider start urls are unsafe', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.endsWith('/api/session')) {
+          return new Response(JSON.stringify({ authenticated: false }), { status: 200 });
+        }
+        if (url.endsWith('/api/auth/providers')) {
+          return new Response(
+            JSON.stringify({
+              providers: [
+                { id: 'google', name: 'Google', enabled: true, startUrl: 'https://evil.example/login' },
+                { id: 'apple', name: 'Apple', enabled: true, startUrl: '//evil.example/apple' },
+              ],
+            }),
+            { status: 200 }
+          );
+        }
+        return new Response('', { status: 404 });
+      }) as unknown as typeof fetch
+    );
+
+    renderApp('/');
+
+    expect(await screen.findByRole('link', { name: 'Mit Google anmelden' })).toHaveAttribute(
+      'href',
+      '/api/auth/google/start'
+    );
+    expect(await screen.findByRole('link', { name: 'Mit Apple anmelden' })).toHaveAttribute(
+      'href',
+      '/api/auth/apple/start'
+    );
+  });
+
   it('renders the weekly board and shopping list', async () => {
     renderApp('/');
 
@@ -449,15 +484,16 @@ describe('Mealplanner app', () => {
     expect(screen.queryByRole('link', { name: 'Mit Google anmelden' })).not.toBeInTheDocument();
   });
 
-  it('renders legal placeholder pages', async () => {
+  it('renders legal pages with explicit review status', async () => {
     renderApp('/datenschutz');
 
     expect(await screen.findByRole('heading', { name: 'Datenschutz' })).toBeInTheDocument();
-    expect(screen.getByText('TODO: Verantwortlicher')).toBeInTheDocument();
+    expect(screen.getByText('Rechtliche Prüfung ausstehend')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Verantwortlicher' })).toBeInTheDocument();
 
     renderApp('/impressum');
 
     expect(await screen.findByRole('heading', { name: 'Impressum' })).toBeInTheDocument();
-    expect(screen.getByText('TODO: Anbieterkennzeichnung')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Anbieterkennzeichnung' })).toBeInTheDocument();
   });
 });

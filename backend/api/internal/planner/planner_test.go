@@ -48,10 +48,13 @@ func TestRegenerateMealReplacesMealAndStoresNote(t *testing.T) {
 	}
 }
 
-func TestWeekPromptIncludesProfile(t *testing.T) {
+func TestWeekPromptIncludesMinimizedProfile(t *testing.T) {
 	prompt := WeekPrompt(domain.DefaultProfile(), time.Date(2026, 4, 19, 0, 0, 0, 0, time.UTC))
-	if !strings.Contains(prompt, "Familie Hartmann") {
-		t.Fatalf("prompt should include profile")
+	if strings.Contains(prompt, "Familie Hartmann") || strings.Contains(prompt, `"name"`) {
+		t.Fatalf("prompt should not include personal profile names: %s", prompt)
+	}
+	if !strings.Contains(prompt, "privater Haushalt") || !strings.Contains(prompt, "familientauglich") {
+		t.Fatalf("prompt should include minimized meal planning profile: %s", prompt)
 	}
 }
 

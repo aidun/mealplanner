@@ -353,6 +353,76 @@ func TestSessionEndpoint(t *testing.T) {
 	}
 }
 
+func TestAuthProvidersEndpoint(t *testing.T) {
+	handler := New(newMemoryRepo(), planner.New(provider.NewMockGenerator()), configuredTestAuth(), "", nil, nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/auth/providers", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"id":"google"`) || !strings.Contains(rec.Body.String(), `"startUrl":"/api/auth/google/start"`) {
+		t.Fatalf("unexpected providers response: %s", rec.Body.String())
+	}
+}
+
+func TestGoogleStartSetsSecureStateCookie(t *testing.T) {
+	handler := New(newMemoryRepo(), planner.New(provider.NewMockGenerator()), configuredTestAuth(), "", nil, nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/auth/google/start", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusFound {
+		t.Fatalf("expected 302, got %d: %s", rec.Code, rec.Body.String())
+	}
+	if location := rec.Header().Get("Location"); !strings.HasPrefix(location, "https://accounts.google.com/o/oauth2/v2/auth?") {
+		t.Fatalf("unexpected google redirect location %q", location)
+	}
+	var stateCookie *http.Cookie
+	for _, cookie := range rec.Result().Cookies() {
+		if cookie.Name == auth.StateCookieName {
+			stateCookie = cookie
+			break
+		}
+	}
+	if stateCookie == nil {
+		t.Fatal("expected oauth state cookie")
+	}
+	if !stateCookie.HttpOnly || !stateCookie.Secure || stateCookie.SameSite != http.SameSiteLaxMode {
+		t.Fatalf("state cookie is not hardened: %+v", stateCookie)
+	}
+}
+
+func TestLogoutDeletesSessionAndClearsSecureCookie(t *testing.T) {
+	repo := newMemoryRepo()
+	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil)
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/logout", nil)
+	setAuth(repo, req, "user-1")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+	if _, ok := repo.sessions["session-user-1"]; ok {
+		t.Fatal("expected session to be deleted")
+	}
+	var sessionCookie *http.Cookie
+	for _, cookie := range rec.Result().Cookies() {
+		if cookie.Name == auth.SessionCookieName {
+			sessionCookie = cookie
+			break
+		}
+	}
+	if sessionCookie == nil {
+		t.Fatal("expected cleared session cookie")
+	}
+	if sessionCookie.MaxAge != -1 || !sessionCookie.HttpOnly || !sessionCookie.Secure || sessionCookie.SameSite != http.SameSiteLaxMode {
+		t.Fatalf("session cookie is not cleared securely: %+v", sessionCookie)
+	}
+}
+
 func TestBringExportURLUsesConfiguredBaseURL(t *testing.T) {
 	repo := newMemoryRepo()
 	repo.plans["user-1|plan-1"] = domain.Plan{ID: "plan-1", WeekStart: "2026-04-20"}
@@ -384,6 +454,15 @@ func testAuth() auth.Service {
 	return auth.NewService(auth.Config{
 		BaseURL:       "https://mealplanner.test",
 		SessionSecret: "test-secret",
+	})
+}
+
+func configuredTestAuth() auth.Service {
+	return auth.NewService(auth.Config{
+		BaseURL:            "https://mealplanner.test",
+		SessionSecret:      "test-secret",
+		GoogleClientID:     "google-client",
+		GoogleClientSecret: "google-secret",
 	})
 }
 

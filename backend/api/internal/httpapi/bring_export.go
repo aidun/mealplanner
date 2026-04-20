@@ -21,7 +21,6 @@ import (
 type bringExportView struct {
 	Title        string
 	WeekStart    string
-	ImageURL     string
 	Description  string
 	CanonicalURL string
 	Items        []bringExportItem
@@ -181,7 +180,6 @@ func newBringExportView(plan domain.Plan, canonicalURL string) (bringExportView,
 	if strings.TrimSpace(plan.WeekStart) != "" {
 		title = fmt.Sprintf("Mealplanner Einkaufsliste ab %s", strings.TrimSpace(plan.WeekStart))
 	}
-	imageURL := "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=1200&q=80"
 	description := "Ein vorbereitetes Wochenrezept fuer die Familienkueche mit allen Zutaten aus dem aktuellen Mealplanner-Wochenplan."
 	schema := map[string]any{
 		"@context":         "https://schema.org",
@@ -189,7 +187,6 @@ func newBringExportView(plan domain.Plan, canonicalURL string) (bringExportView,
 		"author":           "Mealplanner",
 		"cookTime":         "PT0M",
 		"description":      description,
-		"image":            []string{imageURL},
 		"keywords":         "Wochenplan, Einkaufsliste, Familienkueche",
 		"name":             title,
 		"prepTime":         "PT10M",
@@ -218,7 +215,6 @@ func newBringExportView(plan domain.Plan, canonicalURL string) (bringExportView,
 	return bringExportView{
 		Title:        title,
 		WeekStart:    strings.TrimSpace(plan.WeekStart),
-		ImageURL:     imageURL,
 		Description:  description,
 		CanonicalURL: strings.TrimSpace(canonicalURL),
 		Items:        items,
@@ -318,13 +314,6 @@ var bringExportTemplate = template.Must(template.New("bring-export").Parse(`<!do
       margin: 0;
       color: var(--muted);
     }
-    .recipe-image {
-      width: 100%;
-      aspect-ratio: 16 / 9;
-      margin: 0 0 20px;
-      object-fit: cover;
-      border-radius: 8px;
-    }
     .instruction {
       margin: 0 0 18px;
       padding: 14px 0;
@@ -374,7 +363,6 @@ var bringExportTemplate = template.Must(template.New("bring-export").Parse(`<!do
     <meta itemprop="recipeCategory" content="Wochenplan">
     <meta itemprop="recipeCuisine" content="Familienkueche">
     {{ if .WeekStart }}<meta itemprop="datePublished" content="{{ .WeekStart }}">{{ end }}
-    <img class="recipe-image" itemprop="image" src="{{ .ImageURL }}" alt="">
     <p class="lead" itemprop="description">{{ .Description }}</p>
     <section class="bring-box" aria-label="Bring Import">
       <div data-bring-import="" style="display:none"></div>

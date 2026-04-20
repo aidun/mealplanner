@@ -60,9 +60,11 @@ type Identity struct {
 }
 
 type GoogleTokenInfo struct {
-	Audience string `json:"aud"`
-	Subject  string `json:"sub"`
-	Email    string `json:"email"`
+	Issuer        string `json:"iss"`
+	Audience      string `json:"aud"`
+	Subject       string `json:"sub"`
+	Email         string `json:"email"`
+	EmailVerified string `json:"email_verified"`
 }
 
 func NewService(cfg Config) Service {
@@ -168,6 +170,9 @@ func (s Service) VerifyGoogleIDToken(ctx context.Context, idToken string, expect
 	if info.Audience != s.cfg.GoogleClientID {
 		return Identity{}, errors.New("google token audience mismatch")
 	}
+	if info.Issuer != "https://accounts.google.com" && info.Issuer != "accounts.google.com" {
+		return Identity{}, errors.New("google token issuer mismatch")
+	}
 	if strings.TrimSpace(expectedNonce) != "" {
 		nonce, err := idTokenNonce(idToken)
 		if err != nil {
@@ -182,12 +187,19 @@ func (s Service) VerifyGoogleIDToken(ctx context.Context, idToken string, expect
 		SubjectHash: s.Hash("google:" + info.Subject),
 	}
 	if strings.TrimSpace(info.Email) != "" {
+		if len(s.cfg.AllowedEmailHashes) > 0 && !googleEmailVerified(info.EmailVerified) {
+			return Identity{}, errors.New("google token email is not verified")
+		}
 		identity.EmailHash = s.Hash("email:" + strings.ToLower(strings.TrimSpace(info.Email)))
 	}
 	if !s.Allowed(identity) {
 		return Identity{}, ErrNotAllowed
 	}
 	return identity, nil
+}
+
+func googleEmailVerified(value string) bool {
+	return strings.EqualFold(strings.TrimSpace(value), "true")
 }
 
 func idTokenNonce(idToken string) (string, error) {

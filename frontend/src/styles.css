@@ -336,7 +336,7 @@ a:focus-visible {
   border-radius: 8px;
   background:
     linear-gradient(135deg, rgba(15, 118, 110, 0.96), rgba(18, 33, 29, 0.92)),
-    url('https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=1600&q=80') center/cover;
+    repeating-linear-gradient(120deg, rgba(255, 255, 255, 0.08) 0 1px, transparent 1px 18px);
   color: #f7fffb;
   box-shadow: var(--shadow-strong);
 }
@@ -429,7 +429,7 @@ a:focus-visible {
   border-radius: 8px;
   background:
     linear-gradient(135deg, rgba(18, 33, 29, 0.92), rgba(15, 118, 110, 0.88)),
-    url('https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=1600&q=80') center/cover;
+    repeating-linear-gradient(120deg, rgba(255, 255, 255, 0.08) 0 1px, transparent 1px 18px);
   color: #f7fffb;
   box-shadow: var(--shadow-strong);
 }

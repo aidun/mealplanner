@@ -22,7 +22,7 @@ export function LegalPage({ kind }: LegalPageProps) {
         <section className="surface legal-surface">
           <div className="surface-header">
             <div>
-              <p className="eyebrow">TODO: rechtlich prüfen</p>
+              <p className="eyebrow">Rechtliche Prüfung ausstehend</p>
               <h1>{isPrivacy ? 'Datenschutz' : 'Impressum'}</h1>
               <p>
                 Diese Seite ist ein technischer Platzhalter. Betreiberangaben und Rechtstexte müssen vor öffentlicher
@@ -41,16 +41,16 @@ export function LegalPage({ kind }: LegalPageProps) {
 function PrivacyContent() {
   return (
     <div className="legal-content">
-      <h2>TODO: Verantwortlicher</h2>
+      <h2>Verantwortlicher</h2>
       <p>Name, Anschrift und Kontakt des Verantwortlichen ergänzen.</p>
 
-      <h2>TODO: Login-Daten</h2>
+      <h2>Login-Daten</h2>
       <p>
         Beschreiben, dass Social Login nur zur Authentifizierung genutzt wird und keine Namen, E-Mail-Adressen oder
         Profilbilder dauerhaft gespeichert werden.
       </p>
 
-      <h2>TODO: OpenAI-Verarbeitung</h2>
+      <h2>OpenAI-Verarbeitung</h2>
       <p>
         Beschreiben, welche Essensplanungsdaten zur Generierung verarbeitet werden und welche Aufbewahrungsregeln
         gelten.
@@ -62,10 +62,10 @@ function PrivacyContent() {
 function ImprintContent() {
   return (
     <div className="legal-content">
-      <h2>TODO: Anbieterkennzeichnung</h2>
+      <h2>Anbieterkennzeichnung</h2>
       <p>Name, ladungsfähige Anschrift, Kontakt-E-Mail und weitere Pflichtangaben ergänzen.</p>
 
-      <h2>TODO: Verantwortlichkeit</h2>
+      <h2>Verantwortlichkeit</h2>
       <p>Verantwortliche Person und technische Kontaktadresse ergänzen.</p>
     </div>
   );

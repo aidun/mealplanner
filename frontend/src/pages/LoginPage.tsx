@@ -11,7 +11,8 @@ export function LoginPage() {
   const google = providers.find((provider) => provider.id === 'google');
   const apple = providers.find((provider) => provider.id === 'apple');
   const googleEnabled = google?.enabled ?? true;
-  const googleStartUrl = google?.startUrl ?? '/api/auth/google/start';
+  const googleStartUrl = safeAuthStartUrl(google?.startUrl, '/api/auth/google/start');
+  const appleStartUrl = safeAuthStartUrl(apple?.startUrl, '/api/auth/apple/start');
 
   return (
     <div className="auth-shell">
@@ -36,8 +37,8 @@ export function LoginPage() {
             </button>
           )}
 
-          {apple?.enabled ? (
-            <a className="button button-secondary login-button" href={apple.startUrl}>
+          {apple?.enabled && appleStartUrl ? (
+            <a className="button button-secondary login-button" href={appleStartUrl}>
               Mit Apple anmelden
             </a>
           ) : null}
@@ -54,4 +55,15 @@ export function LoginPage() {
       </main>
     </div>
   );
+}
+
+function safeAuthStartUrl(value: string | undefined, fallback: string) {
+  const candidate = value?.trim() || fallback;
+  if (!candidate.startsWith('/api/auth/')) {
+    return fallback;
+  }
+  if (candidate.startsWith('//') || candidate.includes('\\')) {
+    return fallback;
+  }
+  return candidate;
 }
