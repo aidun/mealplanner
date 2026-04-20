@@ -15,12 +15,17 @@ spec:
     spec:
       automountServiceAccountToken: false
       securityContext:
+        runAsUser: 70
+        runAsGroup: 70
+        fsGroup: 70
         seccompProfile:
           type: RuntimeDefault
       containers:
         - name: postgres
           image: postgres:17-alpine
           securityContext:
+            runAsUser: 70
+            runAsGroup: 70
             runAsNonRoot: true
             allowPrivilegeEscalation: false
             capabilities:
