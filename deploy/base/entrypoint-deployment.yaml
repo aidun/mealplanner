@@ -36,6 +36,12 @@ spec:
                   name: entrypoint-secrets
                   key: CF_DNS_API_TOKEN
                   optional: true
+            - name: CF_ZONE_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: entrypoint-secrets
+                  key: CF_ZONE_API_TOKEN
+                  optional: true
           ports:
             - name: web
               containerPort: 8000
