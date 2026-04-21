@@ -223,6 +223,10 @@ flowchart LR
 - CSRF-Schutz über `X-CSRF-Token`
 - Security Headers in API/Frontend-Pfad
 - signierte Bring-Export-Links
+- Namespace-Segmentierung aktuell auf `security.aidun.dev/segmentation=planned`
+- Workloads tragen `security.aidun.dev/owner=mealplanner`
+- Baseline-NetworkPolicies sind mit `security.aidun.dev/baseline=true` markiert
+- Laufzeit-Secrets werden aktuell als `live-only` klassifiziert; `SealedSecret`-Migration ist vorbereitet, aber noch nicht umgesetzt
 - NetworkPolicies:
   - [deploy/base/network-policy.yaml](/Users/markus/repo/mealplanner/deploy/base/network-policy.yaml)
 

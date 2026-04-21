@@ -21,6 +21,18 @@ Diese Werte muessen fuer einen echten Production-Rollout gesetzt und geprueft se
   - oder `AUTH_ALLOWED_EMAIL_HASHES`
 - `OPENAI_API_KEY`, falls `PROVIDER_MODE=live`
 
+## Secret-Management fuer Production
+
+Vor Production muss die Secret-Klassifizierung fachlich klar sein:
+
+- `mealplanner-database`: `generated`
+- `ghcr-pull-secret`: `live-only`
+- `entrypoint-secrets`: `live-only`
+- `cloudflared-credentials`: `live-only`
+- `api-secrets`: dokumentierte Phase-1-Ausnahme mit `secret-exception=true`, bis das Sammel-Secret spaeter getrennt wird
+
+Die Details und die key-genaue Einordnung von `api-secrets` stehen in [security.md](/Users/markus/repo/mealplanner/docs/security.md).
+
 ## Rechtliche Angaben im Frontend
 
 Die Legal-Seiten lesen optional diese Build-Variablen:

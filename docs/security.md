@@ -21,6 +21,62 @@ Breaking Changes muessen vorab angekuendigt werden.
 - `entrypoint` bleibt fuer LAN/Traefik vorhanden. Der oeffentliche Internetpfad geht ueber Cloudflare Tunnel.
 - GitHub Actions ist ein Pflicht-Gate. Wenn Jobs ohne Runner/Steps fehlschlagen, zuerst GitHub Billing/Spending-Limit pruefen; das ist ein Infrastrukturblocker, kein Code-Gate.
 
+## Cluster Security Status
+
+### Segmentierung
+
+- Der Namespace wird auf `security.aidun.dev/segmentation=planned` gehalten.
+- Workloads tragen `security.aidun.dev/owner=mealplanner`.
+- Baseline-NetworkPolicies tragen `security.aidun.dev/baseline=true`.
+- Aktuell sind nur explizite Ingress-Flows abgesichert. Namespace-weites Default-Deny und Egress-Allowlisting folgen in einem separaten Change, damit DNS, OpenAI, Google OIDC, Resend, Bring, Cloudflare Tunnel und Monitoring nicht unbeabsichtigt brechen.
+
+### Secret-Klassifizierung
+
+Aktueller Zielzustand fuer `mealplanner-test` und spaeter `mealplanner`:
+
+| Secret | Klasse | Begruendung |
+| --- | --- | --- |
+| `api-secrets` | `live-only` | Phase-1-Sammel-Secret mit gemischten Laufzeitwerten und Fremd-Credentials |
+| `mealplanner-database` | `generated` | wird im Namespace initial erzeugt und enthaelt lokale DB-Zugangsdaten |
+| `ghcr-pull-secret` | `live-only` | Registry-Zugang ausserhalb von Git |
+| `entrypoint-secrets` | `live-only` | Edge-/DNS-Credentials fuer Traefik |
+| `cloudflared-credentials` | `live-only` | Tunnel-Credentials aus Cloudflare |
+
+- Diese Secrets muessen im Cluster mit `security.aidun.dev/management=*` und `security.aidun.dev/owner=mealplanner` markiert sein.
+- `api-secrets` traegt in Phase 1 zusaetzlich `security.aidun.dev/secret-exception=true`, weil das Objekt noch nicht sauber nach Management-Klassen getrennt ist.
+- Das Bootstrap-Script labelt die von ihm erzeugten oder vorgefundenen App-Secrets entsprechend nach.
+- Eine spaetere Migration auf `SealedSecret` bleibt moeglich, ist aber nicht Teil des aktuellen Schritts.
+
+#### Phase-1-Ausnahme `api-secrets`
+
+`api-secrets` bleibt vorerst ein Sammel-Secret. Fuer die Betriebsdokumentation gilt:
+
+- klar `live-only`:
+  - `OPENAI_API_KEY`
+  - `RESEND_API_KEY`
+  - `GOOGLE_CLIENT_SECRET`
+  - `APPLE_PRIVATE_KEY`
+- sicherheitsrelevante Laufzeit-Secrets:
+  - `SESSION_SECRET`
+  - `API_SECRET`
+  - `AUTH_ALLOWED_SUBJECT_HASHES`
+  - `AUTH_ALLOWED_EMAIL_HASHES`
+- Konfigurationswerte ohne eigentlichen Secret-Charakter:
+  - `AUTH_BASE_URL`
+  - `EMAIL_ENABLED`
+  - `EMAIL_PROVIDER`
+  - `EMAIL_FROM`
+  - `EMAIL_REPLY_TO`
+  - `GOOGLE_CLIENT_ID`
+  - `APPLE_CLIENT_ID`
+  - `APPLE_TEAM_ID`
+  - `APPLE_KEY_ID`
+
+### Betriebsgrenze von Phase 1
+
+- Phase 1 schafft Sichtbarkeit und Klassifizierung, aber noch keine vollstaendige erzwungene Segmentierung.
+- Solange `security.aidun.dev/segmentation=planned` gilt, ist der Namespace gehaertet, aber nicht im Zielbild der Cluster-Baseline angekommen.
+
 ## Security Checks
 
 Vor jedem produktiven Rollout ausfuehren:

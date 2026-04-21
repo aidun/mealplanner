@@ -9,6 +9,20 @@ data:
     #!/bin/sh
     set -eu
 
+    label_secret() {
+      name="$1"
+      management="$2"
+      exception="${3:-false}"
+
+      if kubectl get secret "${name}" >/dev/null 2>&1; then
+        kubectl label secret "${name}" \
+          security.aidun.dev/management="${management}" \
+          security.aidun.dev/owner="mealplanner" \
+          security.aidun.dev/secret-exception="${exception}" \
+          --overwrite >/dev/null
+      fi
+    }
+
     ensure_api_secret_key() {
       key="$1"
       value="$2"
@@ -53,6 +67,7 @@ data:
         --from-literal=POSTGRES_PASSWORD="${postgres_password}" \
         --from-literal=DATABASE_URL="${database_url}"
     fi
+    label_secret mealplanner-database generated
 
     if kubectl get secret api-secrets >/dev/null 2>&1; then
       echo "api-secrets already exists"
@@ -79,6 +94,7 @@ data:
         --from-literal=APPLE_KEY_ID="${APPLE_KEY_ID_PLACEHOLDER:-}" \
         --from-literal=APPLE_PRIVATE_KEY="${APPLE_PRIVATE_KEY_PLACEHOLDER:-}"
     fi
+    label_secret api-secrets live-only true
 
     ensure_api_secret_key AUTH_BASE_URL "${AUTH_BASE_URL_PLACEHOLDER:-__set_https_auth_base_url__}"
     ensure_api_secret_key API_SECRET "${API_SECRET_PLACEHOLDER:-__set_api_secret__}"
@@ -109,3 +125,6 @@ data:
     else
       echo "ghcr-pull-secret not created; set GHCR_USERNAME and GHCR_TOKEN to bootstrap it"
     fi
+    label_secret ghcr-pull-secret live-only
+    label_secret entrypoint-secrets live-only
+    label_secret cloudflared-credentials live-only

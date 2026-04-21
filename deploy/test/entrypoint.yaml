@@ -9,6 +9,7 @@ metadata:
   labels:
     app.kubernetes.io/component: entrypoint
     app.kubernetes.io/part-of: mealplanner-test
+    security.aidun.dev/owner: mealplanner
 spec:
   type: LoadBalancer
   selector:

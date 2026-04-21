@@ -28,6 +28,7 @@ Last updated: 2026-04-21
 - Admin kann Mail-Templates fuer `family_invite`, `premium_invite` und `weekly_plan_ready` direkt in der App pflegen; die Vorlagen werden in `mail_templates` gespeichert und zur Laufzeit mit festen Platzhaltern wie `{{family_name}}`, `{{invite_link}}`, `{{week_start}}`, `{{plan_url}}`, `{{app_url}}` und `{{support_email}}` gerendert.
 - Test-Deployments aktivieren Mail jetzt standardmaessig ueber `EMAIL_ENABLED=true` und `EMAIL_PROVIDER=resend`; fuer echte Zustellung werden weiterhin ein gueltiger `RESEND_API_KEY` und eine bei Resend verifizierte Sender-Domain fuer `markushartmann.dev` benoetigt.
 - Seit 2026-04-21 gibt es eine zentrale Architekturseite unter `docs/ARCHITECTURE.md`, die Frontend, API, Postgres, Traefik/Entrypoint, Cloudflare Tunnel, OpenAI, Google OIDC, Resend, Bring, Monitoring, GitOps und Umgebungen zusammenfasst.
+- Seit 2026-04-21 ist Phase 1 der Cluster-Security-Anpassung im Repo verankert: Namespace-Segmentierung bleibt `planned`, Workloads tragen `security.aidun.dev/owner=mealplanner`, Baseline-NetworkPolicies sind markiert und App-Secrets werden als `live-only` klassifiziert und im Bootstrap nachgelabelt.
 
 ## Wichtige Arbeitsregeln
 
