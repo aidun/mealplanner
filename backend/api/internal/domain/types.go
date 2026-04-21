@@ -60,6 +60,18 @@ type PremiumUser struct {
 	CreatedAt time.Time `json:"createdAt,omitempty"`
 }
 
+type FeedbackEntry struct {
+	ID        string    `json:"id"`
+	Message   string    `json:"message"`
+	Page      string    `json:"page,omitempty"`
+	CreatedAt time.Time `json:"createdAt,omitempty"`
+}
+
+type CreateFeedbackRequest struct {
+	Message string `json:"message"`
+	Page    string `json:"page,omitempty"`
+}
+
 type CreatePremiumUserRequest struct {
 	Email string `json:"email"`
 }
@@ -83,8 +95,9 @@ type AdminStats struct {
 }
 
 type AdminOverview struct {
-	PremiumUsers []PremiumUser `json:"premiumUsers,omitempty"`
-	Stats        AdminStats    `json:"stats"`
+	PremiumUsers []PremiumUser   `json:"premiumUsers,omitempty"`
+	Feedback     []FeedbackEntry `json:"feedback,omitempty"`
+	Stats        AdminStats      `json:"stats"`
 }
 
 type AcceptFamilyInviteRequest struct {

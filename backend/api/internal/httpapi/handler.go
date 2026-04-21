@@ -27,6 +27,7 @@ import (
 type Repository interface {
 	UpsertUser(r *http.Request, provider, subjectHash string, email string, emailHash string) (string, error)
 	GetUserEmail(r *http.Request, userID string) (string, error)
+	IsPremiumUser(r *http.Request, userID string) (bool, error)
 	LoginAllowed(r *http.Request, email string, emailHash string) (bool, error)
 	CreateSession(r *http.Request, userID string, ttl time.Duration) (string, string, time.Time, error)
 	GetSession(r *http.Request, sessionID string) (string, string, time.Time, error)
@@ -54,6 +55,8 @@ type Repository interface {
 	ListPremiumUsers(r *http.Request) ([]domain.PremiumUser, error)
 	SavePremiumUser(r *http.Request, email string, emailHash string) (domain.PremiumUser, error)
 	DeletePremiumUser(r *http.Request, id string) error
+	SaveFeedback(r *http.Request, message string, page string) (domain.FeedbackEntry, error)
+	ListFeedback(r *http.Request, limit int) ([]domain.FeedbackEntry, error)
 	AdminStats(r *http.Request) (domain.AdminStats, error)
 	RecordGenerationEvent(r *http.Request, category string) error
 }
@@ -68,6 +71,10 @@ func (r StoreRepository) UpsertUser(req *http.Request, provider, subjectHash str
 
 func (r StoreRepository) GetUserEmail(req *http.Request, userID string) (string, error) {
 	return r.Store.GetUserEmail(req.Context(), userID)
+}
+
+func (r StoreRepository) IsPremiumUser(req *http.Request, userID string) (bool, error) {
+	return r.Store.IsPremiumUser(req.Context(), userID)
 }
 
 func (r StoreRepository) LoginAllowed(req *http.Request, email string, emailHash string) (bool, error) {
@@ -178,6 +185,14 @@ func (r StoreRepository) DeletePremiumUser(req *http.Request, id string) error {
 	return r.Store.DeletePremiumUser(req.Context(), id)
 }
 
+func (r StoreRepository) SaveFeedback(req *http.Request, message string, page string) (domain.FeedbackEntry, error) {
+	return r.Store.SaveFeedback(req.Context(), mustUserID(req.Context()), message, page)
+}
+
+func (r StoreRepository) ListFeedback(req *http.Request, limit int) ([]domain.FeedbackEntry, error) {
+	return r.Store.ListFeedback(req.Context(), limit)
+}
+
 func (r StoreRepository) AdminStats(req *http.Request) (domain.AdminStats, error) {
 	return r.Store.AdminStats(req.Context())
 }
@@ -234,6 +249,7 @@ func New(repo Repository, planner planner.Planner, authService auth.Service, api
 	mux.HandleFunc("GET /api/auth/apple/callback", h.appleNotConfigured)
 	mux.HandleFunc("GET /api/session", h.getSession)
 	mux.HandleFunc("POST /api/auth/logout", h.withSession(h.withCSRF(h.logout)))
+	mux.HandleFunc("POST /api/feedback", h.withSession(h.withPremium(h.withCSRF(h.createFeedback))))
 	mux.HandleFunc("POST /api/internal/plans/weekly", h.withAPI(h.createPlansForAllUsers))
 	mux.HandleFunc("GET /api/profile", h.withSession(h.getProfile))
 	mux.HandleFunc("PUT /api/profile", h.withSession(h.withCSRF(h.putProfile)))
@@ -425,6 +441,11 @@ func (h *Handler) getAdminOverview(w http.ResponseWriter, r *http.Request) {
 		h.serverError(w, r, err)
 		return
 	}
+	feedback, err := h.repo.ListFeedback(r, 50)
+	if err != nil && !errors.Is(err, store.ErrNotFound) {
+		h.serverError(w, r, err)
+		return
+	}
 	stats, err := h.repo.AdminStats(r)
 	if err != nil {
 		h.serverError(w, r, err)
@@ -432,6 +453,7 @@ func (h *Handler) getAdminOverview(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, domain.AdminOverview{
 		PremiumUsers: premiumUsers,
+		Feedback:     feedback,
 		Stats:        stats,
 	})
 }
@@ -465,6 +487,29 @@ func (h *Handler) deletePremiumUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) createFeedback(w http.ResponseWriter, r *http.Request) {
+	var req domain.CreateFeedbackRequest
+	if err := decodeJSON(w, r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	message := strings.TrimSpace(req.Message)
+	if message == "" {
+		writeError(w, http.StatusBadRequest, "Bitte schreibe dein Feedback dazu.")
+		return
+	}
+	if len([]rune(message)) > 2000 {
+		writeError(w, http.StatusBadRequest, "Bitte kuerze dein Feedback auf maximal 2000 Zeichen.")
+		return
+	}
+	entry, err := h.repo.SaveFeedback(r, message, strings.TrimSpace(req.Page))
+	if err != nil {
+		h.serverError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, entry)
 }
 
 func (h *Handler) getFavorites(w http.ResponseWriter, r *http.Request) {

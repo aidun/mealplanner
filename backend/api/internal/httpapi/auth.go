@@ -16,10 +16,11 @@ import (
 type contextKey string
 
 const (
-	userIDKey contextKey = "userID"
-	csrfKey   contextKey = "csrf"
-	emailKey  contextKey = "email"
-	adminKey  contextKey = "admin"
+	userIDKey  contextKey = "userID"
+	csrfKey    contextKey = "csrf"
+	emailKey   contextKey = "email"
+	adminKey   contextKey = "admin"
+	premiumKey contextKey = "premium"
 )
 
 type oauthState struct {
@@ -43,11 +44,17 @@ func (h *Handler) getSession(w http.ResponseWriter, r *http.Request) {
 		h.serverError(w, r, err)
 		return
 	}
+	isPremium, err := h.repo.IsPremiumUser(r, userID)
+	if err != nil {
+		h.serverError(w, r, err)
+		return
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"authenticated": true,
 		"userID":        userID,
 		"email":         email,
 		"isAdmin":       isAdminEmail(email),
+		"isPremium":     isPremium,
 		"csrfToken":     csrf,
 	})
 }
@@ -150,10 +157,16 @@ func (h *Handler) withSession(next http.HandlerFunc) http.HandlerFunc {
 			h.serverError(w, r, err)
 			return
 		}
+		isPremium, err := h.repo.IsPremiumUser(r, userID)
+		if err != nil {
+			h.serverError(w, r, err)
+			return
+		}
 		ctx := context.WithValue(r.Context(), userIDKey, userID)
 		ctx = context.WithValue(ctx, csrfKey, csrf)
 		ctx = context.WithValue(ctx, emailKey, email)
 		ctx = context.WithValue(ctx, adminKey, isAdminEmail(email))
+		ctx = context.WithValue(ctx, premiumKey, isPremium)
 		next(w, r.WithContext(ctx))
 	}
 }
@@ -174,6 +187,17 @@ func (h *Handler) withAdmin(next http.HandlerFunc) http.HandlerFunc {
 		isAdmin, _ := r.Context().Value(adminKey).(bool)
 		if !isAdmin {
 			writeError(w, http.StatusForbidden, "forbidden")
+			return
+		}
+		next(w, r)
+	}
+}
+
+func (h *Handler) withPremium(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		isPremium, _ := r.Context().Value(premiumKey).(bool)
+		if !isPremium {
+			writeError(w, http.StatusForbidden, "premium required")
 			return
 		}
 		next(w, r)

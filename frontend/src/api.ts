@@ -10,6 +10,7 @@ import type {
   Plan,
   Profile,
   Session,
+  FeedbackEntry,
   ShoppingList,
   UpdateFamilyMemberLinkRequest,
 } from './types';
@@ -203,4 +204,11 @@ export async function createPremiumUser(email: string) {
 
 export async function deletePremiumUser(premiumUserId: string) {
   return request<null>(`/api/admin/premium-users/${encodeURIComponent(premiumUserId)}`, { method: 'DELETE' });
+}
+
+export async function createFeedback(message: string, page: string) {
+  return request<FeedbackEntry>('/api/feedback', {
+    method: 'POST',
+    body: JSON.stringify({ message, page }),
+  });
 }

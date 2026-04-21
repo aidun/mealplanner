@@ -1256,6 +1256,100 @@ a:focus-visible {
   font-weight: 700;
 }
 
+.feedback-widget {
+  position: fixed;
+  right: 16px;
+  bottom: 88px;
+  z-index: 35;
+  width: min(360px, calc(100vw - 32px));
+}
+
+.feedback-widget-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: var(--shadow-strong);
+  backdrop-filter: blur(12px);
+}
+
+.feedback-widget-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+}
+
+.feedback-widget-toggle-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+}
+
+.feedback-widget-toggle-state {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.feedback-widget-panel {
+  display: grid;
+  gap: 12px;
+  padding: 0 16px 16px;
+}
+
+.feedback-widget-copy {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.feedback-widget-textarea {
+  min-height: 124px;
+  resize: vertical;
+}
+
+.feedback-widget-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.feedback-widget-counter {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.feedback-widget-counter-tight {
+  color: #b54708;
+}
+
+.feedback-widget-status {
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.feedback-widget-status-success {
+  color: #027a48;
+}
+
+.feedback-widget-status-error {
+  color: #b42318;
+}
+
+.family-account-row-stacked {
+  align-items: flex-start;
+}
+
 .profile-inline-note {
   margin: -2px 0 0;
   color: var(--muted);
@@ -2759,6 +2853,22 @@ a:focus-visible {
   .prompt-debug-op,
   .prompt-debug-metrics {
     grid-template-columns: 1fr;
+  }
+
+  .feedback-widget {
+    right: 12px;
+    left: 12px;
+    bottom: 82px;
+    width: auto;
+  }
+
+  .feedback-widget-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .feedback-widget-footer .button {
+    width: 100%;
   }
 
   .favorite-pill {

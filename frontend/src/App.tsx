@@ -2,6 +2,7 @@ import type { ReactElement } from 'react';
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { acceptFamilyInvite, getSession } from './api';
+import { FeedbackWidget } from './components/FeedbackWidget';
 import { readableApiError } from './lib/api-error';
 import { DashboardPage } from './pages/DashboardPage';
 import { AdminPage } from './pages/AdminPage';
@@ -91,5 +92,10 @@ function AuthenticatedRoute({ element }: { element: ReactElement }) {
     return <LoginPage />;
   }
 
-  return element;
+  return (
+    <>
+      {element}
+      {sessionQuery.data?.isPremium ? <FeedbackWidget /> : null}
+    </>
+  );
 }

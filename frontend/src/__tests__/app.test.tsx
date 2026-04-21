@@ -108,6 +108,7 @@ const family = {
 const session = { authenticated: true, csrfToken: 'csrf-token-1', email: 'anna@example.test', isAdmin: false };
 const adminOverview = {
   premiumUsers: [{ id: 'premium-1', email: 'premium@example.test' }],
+  feedback: [{ id: 'feedback-1', message: 'Die Auswahl im Profil ist zu versteckt.', page: '/onboarding', createdAt: '2026-04-21T09:30:00Z' }],
   stats: {
     averageActiveAccountsPerFamily: 1.5,
     averageProfileMembersPerFamily: 2.5,
@@ -172,7 +173,14 @@ function createFetchMock(options: { authenticated?: boolean; familyOverride?: ty
     const url = String(input);
 
     if (url.endsWith('/api/session')) {
-      return new Response(JSON.stringify(authenticated ? { ...session, isAdmin: options.isAdmin ?? false } : { authenticated: false }), { status: 200 });
+      return new Response(
+        JSON.stringify(
+          authenticated
+            ? { ...session, isAdmin: options.isAdmin ?? false, isPremium: options.isAdmin ? false : true }
+            : { authenticated: false }
+        ),
+        { status: 200 }
+      );
     }
 
     if (url.endsWith('/api/auth/providers')) {
@@ -185,6 +193,11 @@ function createFetchMock(options: { authenticated?: boolean; familyOverride?: ty
 
     if (url.endsWith('/api/auth/logout') && init?.method === 'POST') {
       return new Response(null, { status: 204 });
+    }
+
+    if (url.endsWith('/api/feedback') && init?.method === 'POST') {
+      const payload = JSON.parse(String(init.body ?? '{}'));
+      return new Response(JSON.stringify({ id: 'feedback-new', message: payload.message, page: payload.page }), { status: 201 });
     }
 
     if (url.endsWith('/api/profile') && (!init || !init.method || init.method === 'GET')) {
@@ -421,6 +434,26 @@ describe('Mealplanner app', () => {
     expect(screen.getByRole('button', { name: 'Liste aufklappen' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Liste aufklappen' }));
     expect(screen.getByText(/Vor dem Einkauf prüfen/)).toBeInTheDocument();
+    expect(screen.getByRole('complementary', { name: 'Premium Feedback' })).toBeInTheDocument();
+  });
+
+  it('sends premium feedback with page context', async () => {
+    const fetchMock = vi.mocked(fetch);
+    renderApp('/');
+
+    await userEvent.type(await screen.findByRole('textbox', { name: 'Feedback' }), 'Die Tagesauswahl braucht mehr Kontext.');
+    fireEvent.click(screen.getByRole('button', { name: 'Feedback senden' }));
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('/api/feedback'),
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ message: 'Die Tagesauswahl braucht mehr Kontext.', page: '/' }),
+        })
+      )
+    );
+    expect(await screen.findByText(/Feedback gespeichert/)).toBeInTheDocument();
   });
 
   it('renders the Bring export as a direct link without opening a popup', async () => {
@@ -578,6 +611,7 @@ describe('Mealplanner app', () => {
     expect(await screen.findByRole('heading', { name: 'Admin' })).toBeInTheDocument();
     expect(await screen.findByText('premium@example.test')).toBeInTheDocument();
     expect(await screen.findByText('weekly_cron')).toBeInTheDocument();
+    expect(await screen.findByText('Die Auswahl im Profil ist zu versteckt.')).toBeInTheDocument();
   });
 
   it('creates a family invite link from onboarding', async () => {

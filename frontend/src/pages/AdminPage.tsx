@@ -193,6 +193,35 @@ export function AdminPage() {
               </article>
             </div>
           </div>
+
+          <div className="profile-section">
+            <div className="profile-section-copy">
+              <span className="section-index">03</span>
+              <h2>Feedback</h2>
+              <p>Aktuelle Rueckmeldungen aus der Premium-Feedbackbox.</p>
+            </div>
+            <div className="profile-section-fields">
+              <div className="family-account-list">
+                {(adminOverview?.feedback ?? []).length === 0 ? (
+                  <p className="section-note">Noch kein Feedback eingegangen.</p>
+                ) : (
+                  (adminOverview?.feedback ?? []).map((entry) => (
+                    <article key={entry.id} className="family-account-row family-account-row-stacked">
+                      <div className="family-account-copy">
+                        <div className="family-account-head">
+                          <strong>{entry.page || 'Unbekannte Seite'}</strong>
+                          <span className="account-role-badge">
+                            {entry.createdAt ? new Date(entry.createdAt).toLocaleString('de-DE') : 'Neu'}
+                          </span>
+                        </div>
+                        <p>{entry.message}</p>
+                      </div>
+                    </article>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
         </section>
       </main>
     </div>

@@ -198,11 +198,19 @@ export interface Session {
   userID?: string;
   email?: string;
   isAdmin?: boolean;
+  isPremium?: boolean;
 }
 
 export interface PremiumUser {
   id: string;
   email: string;
+  createdAt?: string;
+}
+
+export interface FeedbackEntry {
+  id: string;
+  message: string;
+  page?: string;
   createdAt?: string;
 }
 
@@ -226,6 +234,7 @@ export interface AdminStats {
 
 export interface AdminOverview {
   premiumUsers?: PremiumUser[];
+  feedback?: FeedbackEntry[];
   stats: AdminStats;
 }
 

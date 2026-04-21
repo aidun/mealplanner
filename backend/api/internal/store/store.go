@@ -84,6 +84,33 @@ func (s Store) GetUserEmail(ctx context.Context, userID string) (string, error) 
 	return strings.TrimSpace(email), err
 }
 
+func (s Store) IsPremiumUser(ctx context.Context, userID string) (bool, error) {
+	var email string
+	var emailHash string
+	err := s.pool.QueryRow(ctx, `SELECT COALESCE(email, ''), COALESCE(email_hash, '') FROM users WHERE id = $1`, userID).Scan(&email, &emailHash)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, ErrNotFound
+	}
+	if err != nil {
+		return false, err
+	}
+	if normalizeEmail(email) == adminEmail {
+		return false, nil
+	}
+	if strings.TrimSpace(emailHash) == "" {
+		return false, nil
+	}
+	var id string
+	err = s.pool.QueryRow(ctx, `SELECT id::text FROM premium_users WHERE email_hash = $1`, emailHash).Scan(&id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
 func (s Store) LoginAllowed(ctx context.Context, email string, emailHash string) (bool, error) {
 	email = normalizeEmail(email)
 	if email == adminEmail {
@@ -106,6 +133,55 @@ func (s Store) LoginAllowed(ctx context.Context, email string, emailHash string)
 func (s Store) DeleteSession(ctx context.Context, sessionID string) error {
 	_, err := s.pool.Exec(ctx, `DELETE FROM sessions WHERE id = $1`, sessionID)
 	return err
+}
+
+func (s Store) SaveFeedback(ctx context.Context, userID, message, page string) (domain.FeedbackEntry, error) {
+	familyID, err := s.activeFamilyID(ctx, userID)
+	if err != nil {
+		return domain.FeedbackEntry{}, err
+	}
+	var entry domain.FeedbackEntry
+	err = s.pool.QueryRow(ctx, `
+		INSERT INTO feedback_entries(user_id, family_id, message, page)
+		VALUES ($1, $2::uuid, $3, NULLIF($4, ''))
+		RETURNING id::text, message, COALESCE(page, ''), created_at
+	`, userID, familyID, strings.TrimSpace(message), strings.TrimSpace(page)).Scan(&entry.ID, &entry.Message, &entry.Page, &entry.CreatedAt)
+	if err != nil {
+		return domain.FeedbackEntry{}, err
+	}
+	return entry, nil
+}
+
+func (s Store) ListFeedback(ctx context.Context, limit int) ([]domain.FeedbackEntry, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+	rows, err := s.pool.Query(ctx, `
+		SELECT id::text, message, COALESCE(page, ''), created_at
+		FROM feedback_entries
+		ORDER BY created_at DESC
+		LIMIT $1
+	`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	entries := make([]domain.FeedbackEntry, 0, limit)
+	for rows.Next() {
+		var entry domain.FeedbackEntry
+		if err := rows.Scan(&entry.ID, &entry.Message, &entry.Page, &entry.CreatedAt); err != nil {
+			return nil, err
+		}
+		entries = append(entries, entry)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if len(entries) == 0 {
+		return nil, ErrNotFound
+	}
+	return entries, nil
 }
 
 func (s Store) ListUserIDs(ctx context.Context) ([]string, error) {

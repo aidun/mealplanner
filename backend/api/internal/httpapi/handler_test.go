@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -35,6 +36,7 @@ type memoryRepo struct {
 	favorites      map[string][]domain.FavoriteRecipe
 	prompts        map[string][]domain.PromptDebugEntry
 	generation     map[string]int
+	feedback       []domain.FeedbackEntry
 }
 
 type memorySession struct {
@@ -85,6 +87,7 @@ func newMemoryRepo() *memoryRepo {
 		favorites:      map[string][]domain.FavoriteRecipe{},
 		prompts:        map[string][]domain.PromptDebugEntry{},
 		generation:     map[string]int{},
+		feedback:       []domain.FeedbackEntry{},
 	}
 }
 
@@ -109,6 +112,19 @@ func (m *memoryRepo) CreateSession(_ *http.Request, userID string, ttl time.Dura
 
 func (m *memoryRepo) GetUserEmail(_ *http.Request, userID string) (string, error) {
 	return m.emails[userID], nil
+}
+
+func (m *memoryRepo) IsPremiumUser(_ *http.Request, userID string) (bool, error) {
+	email := strings.TrimSpace(m.emails[userID])
+	if strings.EqualFold(email, "markush1986@gmail.com") {
+		return false, nil
+	}
+	for _, premiumUser := range m.premiumUsers {
+		if strings.EqualFold(strings.TrimSpace(premiumUser.Email), email) {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func (m *memoryRepo) LoginAllowed(_ *http.Request, email string, emailHash string) (bool, error) {
@@ -363,6 +379,29 @@ func (m *memoryRepo) DeletePremiumUser(_ *http.Request, id string) error {
 	return nil
 }
 
+func (m *memoryRepo) SaveFeedback(r *http.Request, message string, page string) (domain.FeedbackEntry, error) {
+	entry := domain.FeedbackEntry{
+		ID:        "feedback-" + strconv.Itoa(len(m.feedback)+1),
+		Message:   strings.TrimSpace(message),
+		Page:      strings.TrimSpace(page),
+		CreatedAt: time.Now(),
+	}
+	m.feedback = append([]domain.FeedbackEntry{entry}, m.feedback...)
+	return entry, nil
+}
+
+func (m *memoryRepo) ListFeedback(_ *http.Request, limit int) ([]domain.FeedbackEntry, error) {
+	if len(m.feedback) == 0 {
+		return nil, store.ErrNotFound
+	}
+	if limit <= 0 || limit > len(m.feedback) {
+		limit = len(m.feedback)
+	}
+	out := make([]domain.FeedbackEntry, limit)
+	copy(out, m.feedback[:limit])
+	return out, nil
+}
+
 func (m *memoryRepo) AdminStats(_ *http.Request) (domain.AdminStats, error) {
 	return domain.AdminStats{
 		AverageActiveAccountsPerFamily: 1.5,
@@ -479,6 +518,7 @@ func TestAdminOverviewListsPremiumUsersAndStats(t *testing.T) {
 	repo := newMemoryRepo()
 	repo.emails["user-1"] = "markush1986@gmail.com"
 	repo.premiumUsers["premium-anna"] = domain.PremiumUser{ID: "premium-anna", Email: "anna@example.test", CreatedAt: time.Now()}
+	repo.feedback = []domain.FeedbackEntry{{ID: "feedback-1", Message: "Die Profilnavigation ist zu versteckt.", Page: "/onboarding", CreatedAt: time.Now()}}
 	repo.generation["weekly_cron"] = 3
 	repo.generation["regenerate_dinner"] = 5
 	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil, nil)
@@ -492,7 +532,7 @@ func TestAdminOverviewListsPremiumUsersAndStats(t *testing.T) {
 		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
 	}
 	body := rec.Body.String()
-	if !strings.Contains(body, "anna@example.test") || !strings.Contains(body, `"averageActiveAccountsPerFamily":1.5`) || !strings.Contains(body, `"weekly_cron"`) {
+	if !strings.Contains(body, "anna@example.test") || !strings.Contains(body, `"averageActiveAccountsPerFamily":1.5`) || !strings.Contains(body, `"weekly_cron"`) || !strings.Contains(body, "Die Profilnavigation ist zu versteckt.") {
 		t.Fatalf("unexpected admin overview: %s", body)
 	}
 }
@@ -928,6 +968,52 @@ func TestWeeklyPlanSendsToAllFamilyAccountsWithEmail(t *testing.T) {
 	}
 	if !strings.Contains(rec.Body.String(), `"emailsSent":2`) {
 		t.Fatalf("expected email metrics in response, got %s", rec.Body.String())
+	}
+}
+
+func TestSessionIncludesPremiumFlag(t *testing.T) {
+	repo := newMemoryRepo()
+	repo.emails["user-1"] = "anna@example.test"
+	repo.premiumUsers["premium-anna"] = domain.PremiumUser{ID: "premium-anna", Email: "anna@example.test", CreatedAt: time.Now()}
+	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil, nil)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/session", nil)
+	setAuth(repo, req, "user-1")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected session 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"isPremium":true`) {
+		t.Fatalf("expected session to include premium flag, got %s", rec.Body.String())
+	}
+}
+
+func TestCreateFeedbackRequiresPremiumUser(t *testing.T) {
+	repo := newMemoryRepo()
+	repo.emails["user-1"] = "anna@example.test"
+	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil, nil)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/feedback", bytes.NewBufferString(`{"message":"Hallo"}`))
+	setAuth(repo, req, "user-1")
+	req.Header.Set("X-CSRF-Token", "csrf-user-1")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("expected feedback 403 for non premium user, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	repo.premiumUsers["premium-anna"] = domain.PremiumUser{ID: "premium-anna", Email: "anna@example.test", CreatedAt: time.Now()}
+	req = httptest.NewRequest(http.MethodPost, "/api/feedback", bytes.NewBufferString(`{"message":"Hallo","page":"/"}`))
+	setAuth(repo, req, "user-1")
+	req.Header.Set("X-CSRF-Token", "csrf-user-1")
+	rec = httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("expected feedback 201 for premium user, got %d: %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"message":"Hallo"`) || !strings.Contains(rec.Body.String(), `"page":"/"`) {
+		t.Fatalf("expected stored feedback in response, got %s", rec.Body.String())
 	}
 }
 
