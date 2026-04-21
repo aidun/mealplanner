@@ -15,11 +15,25 @@ type Profile struct {
 	UpdatedAt     time.Time    `json:"updatedAt,omitempty"`
 }
 
+type FamilyMemberSummary struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Alias string `json:"alias,omitempty"`
+}
+
+type FamilyAccount struct {
+	UserID         string `json:"userId"`
+	Email          string `json:"email,omitempty"`
+	Role           string `json:"role,omitempty"`
+	LinkedMemberID string `json:"linkedMemberId,omitempty"`
+}
+
 type FamilySummary struct {
 	ID            string    `json:"id"`
 	Name          string    `json:"name"`
 	MemberCount   int       `json:"memberCount"`
-	Members       []string  `json:"members,omitempty"`
+	Members       []FamilyMemberSummary `json:"members,omitempty"`
+	Accounts      []FamilyAccount       `json:"accounts,omitempty"`
 	Personal      bool      `json:"personal"`
 	CreatedAt     time.Time `json:"createdAt,omitempty"`
 	MergedWarning string    `json:"mergedWarning,omitempty"`
@@ -43,9 +57,15 @@ type AcceptFamilyInviteRequest struct {
 	Token string `json:"token"`
 }
 
+type UpdateFamilyMemberLinkRequest struct {
+	AccountUserID string `json:"accountUserId"`
+	MemberID      string `json:"memberId"`
+}
+
 type Member struct {
 	ID             string   `json:"id"`
 	Name           string   `json:"name"`
+	Alias          string   `json:"alias,omitempty"`
 	Role           string   `json:"role,omitempty"`
 	Age            int      `json:"age,omitempty"`
 	CaloriesTarget int      `json:"caloriesTarget,omitempty"`

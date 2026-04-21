@@ -24,9 +24,10 @@ type memoryRepo struct {
 	profiles       map[string]domain.Profile
 	plans          map[string]domain.Plan
 	sessions       map[string]memorySession
+	emails         map[string]string
 	emailHashes    map[string]string
 	activeFamilies map[string]string
-	familyMembers  map[string]map[string]bool
+	familyMembers  map[string]map[string]memoryFamilyMember
 	invites        map[string]memoryInvite
 	favorites      map[string][]domain.FavoriteRecipe
 	prompts        map[string]domain.PromptDebugEntry
@@ -45,25 +46,32 @@ type memoryInvite struct {
 	expiresAt      time.Time
 }
 
+type memoryFamilyMember struct {
+	role           string
+	linkedMemberID string
+}
+
 func newMemoryRepo() *memoryRepo {
 	return &memoryRepo{
 		profiles:       map[string]domain.Profile{},
 		plans:          map[string]domain.Plan{},
 		sessions:       map[string]memorySession{},
+		emails:         map[string]string{},
 		emailHashes:    map[string]string{},
 		activeFamilies: map[string]string{},
-		familyMembers:  map[string]map[string]bool{},
+		familyMembers:  map[string]map[string]memoryFamilyMember{},
 		invites:        map[string]memoryInvite{},
 		favorites:      map[string][]domain.FavoriteRecipe{},
 		prompts:        map[string]domain.PromptDebugEntry{},
 	}
 }
 
-func (m *memoryRepo) UpsertUser(_ *http.Request, _, subjectHash string, emailHash string) (string, error) {
+func (m *memoryRepo) UpsertUser(_ *http.Request, _, subjectHash string, email string, emailHash string) (string, error) {
 	userID := "user-" + subjectHash
 	if subjectHash == "" || subjectHash == "subject" {
 		userID = "user-1"
 	}
+	m.emails[userID] = email
 	m.emailHashes[userID] = emailHash
 	m.ensureFamily(userID)
 	return userID, nil
@@ -157,9 +165,21 @@ func (m *memoryRepo) GetFamily(r *http.Request) (domain.FamilySummary, error) {
 	familyID := m.familyID(mustUserID(r.Context()))
 	summary := domain.FamilySummary{ID: familyID, Name: "Familie", MemberCount: len(m.familyMembers[familyID]), Personal: len(m.familyMembers[familyID]) == 1}
 	for _, member := range m.profiles[familyID].Members {
-		if strings.TrimSpace(member.Name) != "" {
-			summary.Members = append(summary.Members, member.Name)
+		if strings.TrimSpace(member.Name) != "" && strings.TrimSpace(member.ID) != "" {
+			summary.Members = append(summary.Members, domain.FamilyMemberSummary{
+				ID:    member.ID,
+				Name:  member.Name,
+				Alias: member.Alias,
+			})
 		}
+	}
+	for userID, membership := range m.familyMembers[familyID] {
+		summary.Accounts = append(summary.Accounts, domain.FamilyAccount{
+			UserID:         userID,
+			Email:          m.emails[userID],
+			Role:           membership.role,
+			LinkedMemberID: membership.linkedMemberID,
+		})
 	}
 	return summary, nil
 }
@@ -181,9 +201,20 @@ func (m *memoryRepo) AcceptFamilyInvite(r *http.Request, token string, mergedPro
 	m.profiles[invite.targetFamilyID] = mergedProfile
 	m.activeFamilies[userID] = invite.targetFamilyID
 	if m.familyMembers[invite.targetFamilyID] == nil {
-		m.familyMembers[invite.targetFamilyID] = map[string]bool{}
+		m.familyMembers[invite.targetFamilyID] = map[string]memoryFamilyMember{}
 	}
-	m.familyMembers[invite.targetFamilyID][userID] = true
+	m.familyMembers[invite.targetFamilyID][userID] = memoryFamilyMember{role: "member"}
+	return m.GetFamily(r)
+}
+
+func (m *memoryRepo) UpdateFamilyMemberLink(r *http.Request, accountUserID string, memberID string) (domain.FamilySummary, error) {
+	familyID := m.familyID(mustUserID(r.Context()))
+	membership, ok := m.familyMembers[familyID][accountUserID]
+	if !ok {
+		return domain.FamilySummary{}, store.ErrNotFound
+	}
+	membership.linkedMemberID = memberID
+	m.familyMembers[familyID][accountUserID] = membership
 	return m.GetFamily(r)
 }
 
@@ -260,9 +291,13 @@ func (m *memoryRepo) ensureFamily(userID string) {
 	}
 	familyID := m.activeFamilies[userID]
 	if m.familyMembers[familyID] == nil {
-		m.familyMembers[familyID] = map[string]bool{}
+		m.familyMembers[familyID] = map[string]memoryFamilyMember{}
 	}
-	m.familyMembers[familyID][userID] = true
+	role := "member"
+	if len(m.familyMembers[familyID]) == 0 {
+		role = "owner"
+	}
+	m.familyMembers[familyID][userID] = memoryFamilyMember{role: role}
 }
 
 func (m *memoryRepo) GetPlanByID(_ *http.Request, id string) (domain.Plan, error) {
@@ -346,7 +381,7 @@ func TestBringExport(t *testing.T) {
 		t.Fatalf("expected text/html content type, got %q", contentType)
 	}
 	body := rec.Body.String()
-	for _, expected := range []string{"schema.org", `"@type":"Recipe"`, "recipeIngredient", `"author":"Mealplanner"`, `"prepTime":"PT10M"`, `"totalTime":"PT10M"`, "itemprop=\"recipeIngredient ingredients\"", "itemprop=\"author\"", "itemprop=\"recipeInstructions\"", "platform.getbring.com/widgets/import.js", "data-bring-import", "2 Stk Zucchini", "400 g Pasta"} {
+	for _, expected := range []string{"schema.org", `"@type":"Recipe"`, "recipeIngredient", `"author":"Mealplanner"`, `"prepTime":"PT10M"`, `"totalTime":"PT10M"`, "itemprop=\"recipeIngredient\"", "itemprop=\"author\"", "itemprop=\"recipeInstructions\"", "2 Stk Zucchini", "400 g Pasta"} {
 		if !strings.Contains(body, expected) {
 			t.Fatalf("bring export missing %q in body: %s", expected, body)
 		}
@@ -456,7 +491,7 @@ func TestBringExportCanScopeWeekDayAndMeal(t *testing.T) {
 		t.Fatalf("expected signed meal export 200, got %d: %s", rec.Code, rec.Body.String())
 	}
 	body := rec.Body.String()
-	for _, expected := range []string{"Pasta", "400 g Pasta", "Mealplanner Rezept: Pasta", "itemprop=\"yield\"", "itemprop=\"recipeIngredient ingredients\"", "Wasser kochen", "\"image\":\"data:image/svg+xml;utf8,"} {
+	for _, expected := range []string{"Pasta", "400 g Pasta", `"name":"Pasta"`, "itemprop=\"recipeYield\"", "itemprop=\"recipeIngredient\"", "Wasser kochen"} {
 		if !strings.Contains(body, expected) {
 			t.Fatalf("meal export missing %q in body: %s", expected, body)
 		}
@@ -698,7 +733,7 @@ func TestFamilyInviteMergesProfileOnlyWithMatchingEmailHash(t *testing.T) {
 	setAuth(repo, req, "user-2")
 	rec = httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
-	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"members":["A","B"]`) {
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"members":[{"id":"a","name":"A"},{"id":"b","name":"B"}]`) {
 		t.Fatalf("expected merged family members in summary, got %d: %s", rec.Code, rec.Body.String())
 	}
 }

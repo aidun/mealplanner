@@ -14,6 +14,7 @@ func TestWeekPromptMinimizesPersonalLoginContext(t *testing.T) {
 		Members: []domain.Member{{
 			ID:             "markus",
 			Name:           "Markus Hartmann",
+			Alias:          "Markus",
 			Role:           "Vater",
 			Age:            39,
 			CaloriesTarget: 2300,
@@ -25,12 +26,12 @@ func TestWeekPromptMinimizesPersonalLoginContext(t *testing.T) {
 
 	prompt := WeekPrompt(profile, time.Date(2026, 4, 20, 0, 0, 0, 0, time.UTC), nil)
 
-	for _, forbidden := range []string{"Familie Hartmann", "Markus Hartmann", `"name"`, `"markus"`} {
+	for _, forbidden := range []string{"Familie Hartmann", `"name"`, `"markus"`, "@gmail.com"} {
 		if strings.Contains(prompt, forbidden) {
 			t.Fatalf("prompt leaked personal profile value %q:\n%s", forbidden, prompt)
 		}
 	}
-	for _, expected := range []string{`"household": "privater Haushalt"`, `"id": "person-1"`, `"ageGroup": "Erwachsen"`, "keine Erdnuesse"} {
+	for _, expected := range []string{`"household": "privater Haushalt"`, `"id": "person-1"`, `"alias": "Markus"`, `"ageGroup": "Erwachsen"`, "keine Erdnuesse"} {
 		if !strings.Contains(prompt, expected) {
 			t.Fatalf("prompt missing minimized value %q:\n%s", expected, prompt)
 		}
@@ -40,7 +41,7 @@ func TestWeekPromptMinimizesPersonalLoginContext(t *testing.T) {
 func TestRegeneratePromptDoesNotSendFullPlanOrServingNames(t *testing.T) {
 	profile := domain.Profile{
 		HouseholdName: "Familie Hartmann",
-		Members:       []domain.Member{{ID: "alexandra", Name: "Alexandra"}},
+		Members:       []domain.Member{{ID: "alexandra", Name: "Alexandra Hartmann", Alias: "Alexandra"}},
 	}
 	plan := domain.Plan{
 		ID:           "plan-1",
@@ -61,12 +62,12 @@ func TestRegeneratePromptDoesNotSendFullPlanOrServingNames(t *testing.T) {
 
 	prompt := RegeneratePrompt(profile, plan, "meal-1", "ohne Tomaten", nil)
 
-	for _, forbidden := range []string{"Familie Hartmann", "Alexandra", "shoppingList", "servings"} {
+	for _, forbidden := range []string{"Familie Hartmann", "shoppingList", "servings", "@gmail.com"} {
 		if strings.Contains(prompt, forbidden) {
 			t.Fatalf("regeneration prompt leaked full context value %q:\n%s", forbidden, prompt)
 		}
 	}
-	for _, expected := range []string{`"targetMeal"`, `"existingMeals"`, "ohne Tomaten", "Pasta"} {
+	for _, expected := range []string{`"targetMeal"`, `"existingMeals"`, `"alias": "Alexandra"`, "ohne Tomaten", "Pasta"} {
 		if !strings.Contains(prompt, expected) {
 			t.Fatalf("regeneration prompt missing expected context %q:\n%s", expected, prompt)
 		}

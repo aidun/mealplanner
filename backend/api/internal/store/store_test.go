@@ -16,8 +16,8 @@ func TestLoadMigrations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(migrations) != 3 {
-		t.Fatalf("expected three migrations, got %d", len(migrations))
+	if len(migrations) != 4 {
+		t.Fatalf("expected four migrations, got %d", len(migrations))
 	}
 }
 
@@ -36,7 +36,7 @@ func TestStoreRoundtrip(t *testing.T) {
 		t.Fatal(err)
 	}
 	s := New(pool)
-	userID, err := s.UpsertUser(ctx, "google", "store-test-subject", "email-hash")
+	userID, err := s.UpsertUser(ctx, "google", "store-test-subject", "store@example.test", "email-hash")
 	if err != nil {
 		t.Fatal(err)
 	}

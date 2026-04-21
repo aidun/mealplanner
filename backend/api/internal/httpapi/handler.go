@@ -19,7 +19,7 @@ import (
 )
 
 type Repository interface {
-	UpsertUser(r *http.Request, provider, subjectHash string, emailHash string) (string, error)
+	UpsertUser(r *http.Request, provider, subjectHash string, email string, emailHash string) (string, error)
 	CreateSession(r *http.Request, userID string, ttl time.Duration) (string, string, time.Time, error)
 	GetSession(r *http.Request, sessionID string) (string, string, time.Time, error)
 	DeleteSession(r *http.Request, sessionID string) error
@@ -27,6 +27,7 @@ type Repository interface {
 	GetFamily(r *http.Request) (domain.FamilySummary, error)
 	CreateFamilyInvite(r *http.Request, emailHash string, ttl time.Duration) (domain.FamilyInvite, string, error)
 	AcceptFamilyInvite(r *http.Request, token string, mergedProfile domain.Profile) (domain.FamilySummary, error)
+	UpdateFamilyMemberLink(r *http.Request, accountUserID string, memberID string) (domain.FamilySummary, error)
 	UserEmailHash(r *http.Request) (string, error)
 	GetProfileByFamily(r *http.Request, familyID string) (domain.Profile, error)
 	InviteTargetFamily(r *http.Request, token string) (string, error)
@@ -47,8 +48,8 @@ type StoreRepository struct {
 	Store store.Store
 }
 
-func (r StoreRepository) UpsertUser(req *http.Request, provider, subjectHash string, emailHash string) (string, error) {
-	return r.Store.UpsertUser(req.Context(), provider, subjectHash, emailHash)
+func (r StoreRepository) UpsertUser(req *http.Request, provider, subjectHash string, email string, emailHash string) (string, error) {
+	return r.Store.UpsertUser(req.Context(), provider, subjectHash, email, emailHash)
 }
 
 func (r StoreRepository) CreateSession(req *http.Request, userID string, ttl time.Duration) (string, string, time.Time, error) {
@@ -77,6 +78,10 @@ func (r StoreRepository) CreateFamilyInvite(req *http.Request, emailHash string,
 
 func (r StoreRepository) AcceptFamilyInvite(req *http.Request, token string, mergedProfile domain.Profile) (domain.FamilySummary, error) {
 	return r.Store.AcceptFamilyInvite(req.Context(), mustUserID(req.Context()), token, mergedProfile)
+}
+
+func (r StoreRepository) UpdateFamilyMemberLink(req *http.Request, accountUserID string, memberID string) (domain.FamilySummary, error) {
+	return r.Store.UpdateFamilyMemberLink(req.Context(), mustUserID(req.Context()), accountUserID, memberID)
 }
 
 func (r StoreRepository) UserEmailHash(req *http.Request) (string, error) {
@@ -169,6 +174,7 @@ func New(repo Repository, planner planner.Planner, authService auth.Service, api
 	mux.HandleFunc("GET /api/family", h.withSession(h.getFamily))
 	mux.HandleFunc("POST /api/family/invites", h.withSession(h.withCSRF(h.createFamilyInvite)))
 	mux.HandleFunc("POST /api/family/invites/accept", h.withSession(h.withCSRF(h.acceptFamilyInvite)))
+	mux.HandleFunc("PUT /api/family/member-links", h.withSession(h.withCSRF(h.updateFamilyMemberLink)))
 	mux.HandleFunc("GET /api/favorites", h.withSession(h.getFavorites))
 	mux.HandleFunc("POST /api/favorites", h.withSession(h.withCSRF(h.createFavorite)))
 	mux.HandleFunc("DELETE /api/favorites/{favoriteID}", h.withSession(h.withCSRF(h.deleteFavorite)))
@@ -283,6 +289,28 @@ func (h *Handler) acceptFamilyInvite(w http.ResponseWriter, r *http.Request) {
 	family, err := h.repo.AcceptFamilyInvite(r, token, merged)
 	if errors.Is(err, store.ErrNotFound) {
 		writeError(w, http.StatusForbidden, "Einladung ist ungueltig oder abgelaufen.")
+		return
+	}
+	if err != nil {
+		h.serverError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, family)
+}
+
+func (h *Handler) updateFamilyMemberLink(w http.ResponseWriter, r *http.Request) {
+	var req domain.UpdateFamilyMemberLinkRequest
+	if err := decodeJSON(w, r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if strings.TrimSpace(req.AccountUserID) == "" {
+		writeError(w, http.StatusBadRequest, "Account fehlt.")
+		return
+	}
+	family, err := h.repo.UpdateFamilyMemberLink(r, strings.TrimSpace(req.AccountUserID), strings.TrimSpace(req.MemberID))
+	if errors.Is(err, store.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "Familienkonto-Zuordnung nicht gefunden.")
 		return
 	}
 	if err != nil {

@@ -290,10 +290,11 @@ func profileSchema() map[string]any {
 	member := map[string]any{
 		"type":                 "object",
 		"additionalProperties": false,
-		"required":             []string{"id", "name", "role", "age", "caloriesTarget", "presets", "likes", "dislikes", "restrictions"},
+		"required":             []string{"id", "name", "alias", "role", "age", "caloriesTarget", "presets", "likes", "dislikes", "restrictions"},
 		"properties": map[string]any{
 			"id":             stringSchema(),
 			"name":           stringSchema(),
+			"alias":          stringSchema(),
 			"role":           stringSchema(),
 			"age":            map[string]any{"type": "integer"},
 			"caloriesTarget": map[string]any{"type": "integer"},

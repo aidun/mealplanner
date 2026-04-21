@@ -327,6 +327,57 @@ a:focus-visible {
   animation: page-rise 420ms ease both;
 }
 
+.plan-stage {
+  position: relative;
+  display: grid;
+  gap: 18px;
+  margin-bottom: 18px;
+  padding: 22px;
+  overflow: hidden;
+  border: 1px solid rgba(18, 33, 29, 0.08);
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(238, 247, 243, 0.9));
+  box-shadow: 0 18px 54px rgba(18, 33, 29, 0.08);
+}
+
+.plan-stage-copy,
+.plan-stage-actions {
+  position: relative;
+  z-index: 1;
+}
+
+.plan-stage-copy {
+  display: grid;
+  gap: 12px;
+  max-width: 52rem;
+}
+
+.plan-stage-copy h1 {
+  margin: 0;
+  max-width: 12ch;
+  font-size: clamp(2.2rem, 8vw, 4.4rem);
+  line-height: 0.92;
+}
+
+.plan-stage-copy p {
+  margin: 0;
+  max-width: 56ch;
+  color: var(--muted);
+}
+
+.plan-stage-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.plan-backdrop-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
 .profile-studio {
   display: grid;
   gap: 20px;
@@ -1008,6 +1059,48 @@ a:focus-visible {
   gap: 14px;
 }
 
+.member-editor-list,
+.family-account-list {
+  display: grid;
+  gap: 12px;
+}
+
+.member-editor-card,
+.family-account-row {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid rgba(18, 33, 29, 0.08);
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(246, 251, 248, 0.96));
+  box-shadow: 0 12px 28px rgba(18, 33, 29, 0.05);
+}
+
+.member-editor-header,
+.family-account-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+}
+
+.member-editor-header p,
+.family-account-row p {
+  margin: 4px 0 0;
+  color: var(--muted);
+}
+
+.member-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.member-grid-wide {
+  grid-column: 1 / -1;
+}
+
+.member-editor-actions {
+  display: flex;
+  justify-content: flex-start;
+}
+
 .profile-save-bar {
   position: sticky;
   bottom: 12px;
@@ -1115,6 +1208,13 @@ a:focus-visible {
     align-content: end;
   }
 
+  .plan-stage {
+    grid-template-columns: minmax(0, 1fr) auto;
+    min-height: 240px;
+    padding: 30px;
+    align-items: end;
+  }
+
   .home-hero {
     grid-template-columns: minmax(0, 1fr) 280px;
     min-height: 430px;
@@ -1186,6 +1286,21 @@ a:focus-visible {
     grid-template-columns: 1fr;
   }
 
+  .plan-stage {
+    padding: 16px;
+    gap: 14px;
+  }
+
+  .plan-stage-copy h1 {
+    font-size: 2rem;
+    line-height: 0.98;
+  }
+
+  .plan-stage-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
   .home-hero {
     min-height: auto;
     margin-bottom: 12px;
@@ -1213,8 +1328,14 @@ a:focus-visible {
   }
 
   .workspace,
+  .member-grid,
   .field-group,
   .preset-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .member-editor-header,
+  .family-account-row {
     grid-template-columns: 1fr;
   }
 

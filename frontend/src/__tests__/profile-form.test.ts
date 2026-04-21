@@ -5,7 +5,28 @@ describe('profile form mapping', () => {
   it('keeps form-only planning fields separated in profile notes', () => {
     const form = {
       householdName: 'Familie Weber',
-      members: 'Anna\nBen',
+      members: [
+        {
+          id: 'anna',
+          name: 'Anna',
+          alias: 'Mama',
+          role: 'Erwachsen',
+          caloriesTarget: '',
+          likes: '',
+          dislikes: '',
+          restrictions: '',
+        },
+        {
+          id: 'ben',
+          name: 'Ben',
+          alias: '',
+          role: 'Kind',
+          caloriesTarget: '',
+          likes: '',
+          dislikes: '',
+          restrictions: '',
+        },
+      ],
       servingsPerMeal: '4',
       preferredCuisines: 'Mediterran\nAsiatisch',
       excludedIngredients: 'Koriander\nSellerie',
@@ -25,5 +46,6 @@ describe('profile form mapping', () => {
     expect(roundtrip.mealPlanningRules).toBe('Wochentags unter 30 Minuten');
     expect(roundtrip.excludedIngredients).toBe('Koriander\nSellerie');
     expect(roundtrip.cookingStyle).not.toContain('Wochentags unter 30 Minuten');
+    expect(roundtrip.members[0]?.alias).toBe('Mama');
   });
 });

@@ -129,7 +129,11 @@ func (g MockGenerator) meal(profile domain.Profile, date time.Time, slot string,
 		if member.CaloriesTarget > 0 && member.CaloriesTarget < 1800 {
 			factor = 0.75
 		}
-		servings = append(servings, domain.Serving{MemberID: member.ID, Name: member.Name, Portion: fmt.Sprintf("%.0f%% Portion", factor*100), Factor: factor})
+		name := member.Name
+		if strings.TrimSpace(member.Alias) != "" {
+			name = strings.TrimSpace(member.Alias)
+		}
+		servings = append(servings, domain.Serving{MemberID: member.ID, Name: name, Portion: fmt.Sprintf("%.0f%% Portion", factor*100), Factor: factor})
 	}
 	return domain.Meal{
 		ID:          fmt.Sprintf("%s-%s", date.Format("20060102"), slot),

@@ -26,6 +26,7 @@ type promptFavorite struct {
 
 type promptMember struct {
 	ID             string   `json:"id"`
+	Alias          string   `json:"alias,omitempty"`
 	Role           string   `json:"role,omitempty"`
 	AgeGroup       string   `json:"ageGroup,omitempty"`
 	CaloriesTarget int      `json:"caloriesTarget,omitempty"`
@@ -134,6 +135,7 @@ func minimizeProfile(profile domain.Profile) promptProfile {
 	for i, member := range profile.Members {
 		members = append(members, promptMember{
 			ID:             fmt.Sprintf("person-%d", i+1),
+			Alias:          trimPromptText(preferredAlias(member), 80),
 			Role:           trimPromptText(member.Role, 80),
 			AgeGroup:       ageGroup(member.Age),
 			CaloriesTarget: member.CaloriesTarget,
@@ -150,6 +152,13 @@ func minimizeProfile(profile domain.Profile) promptProfile {
 		Presets:   profile.Presets,
 		Notes:     trimPromptText(profile.Notes, 500),
 	}
+}
+
+func preferredAlias(member domain.Member) string {
+	if alias := strings.TrimSpace(member.Alias); alias != "" {
+		return alias
+	}
+	return strings.TrimSpace(member.Name)
 }
 
 func minimizeFavorites(favorites []domain.FavoriteRecipe) []promptFavorite {

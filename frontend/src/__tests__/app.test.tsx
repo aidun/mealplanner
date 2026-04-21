@@ -10,8 +10,8 @@ import styles from '../styles.css?raw';
 const profile = {
   householdName: 'Familie Weber',
   members: [
-    { id: 'anna', name: 'Anna', likes: 'Mediterran' },
-    { id: 'ben', name: 'Ben', likes: 'Pasta' },
+    { id: 'anna', name: 'Anna', alias: 'Mama', role: 'Erwachsen', likes: 'Mediterran' },
+    { id: 'ben', name: 'Ben', alias: 'Ben', role: 'Kind', likes: 'Pasta' },
   ],
   defaults: {
     breakfast: 'Overnight Oats',
@@ -90,7 +90,20 @@ const regeneratedPlan = {
 
 const shoppingList = [{ name: 'Zucchini', amount: 2, unit: 'Stk', category: 'Gemüse' }];
 const favorites = [{ id: 'favorite-meal-2', meal: plan.days[1]!.meals[0]! }];
-const family = { id: 'family-1', name: 'Familie Weber', memberCount: 2, members: ['Anna', 'Ben'], personal: false };
+const family = {
+  id: 'family-1',
+  name: 'Familie Weber',
+  memberCount: 2,
+  members: [
+    { id: 'anna', name: 'Anna', alias: 'Mama' },
+    { id: 'ben', name: 'Ben', alias: 'Ben' },
+  ],
+  accounts: [
+    { userId: 'user-1', email: 'anna@example.test', role: 'owner', linkedMemberId: 'anna' },
+    { userId: 'user-2', email: 'ben@example.test', role: 'member', linkedMemberId: 'ben' },
+  ],
+  personal: false,
+};
 const session = { authenticated: true, csrfToken: 'csrf-token-1' };
 const providers = {
   providers: [
@@ -189,6 +202,10 @@ function createFetchMock(options: { authenticated?: boolean } = {}) {
     }
 
     if (url.endsWith('/api/family/invites/accept') && init?.method === 'POST') {
+      return new Response(JSON.stringify(family), { status: 200 });
+    }
+
+    if (url.endsWith('/api/family/member-links') && init?.method === 'PUT') {
       return new Response(JSON.stringify(family), { status: 200 });
     }
 
@@ -454,9 +471,9 @@ describe('Mealplanner app', () => {
   it('opens onboarding and saves the profile', async () => {
     renderApp('/onboarding');
 
-    expect(await screen.findByText('Profil anlegen')).toBeInTheDocument();
+    expect(await screen.findByText('Familienkonto pflegen')).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Haushaltsname'), { target: { value: 'Familie Weber' } });
-    fireEvent.change(screen.getByLabelText('Mitglieder'), { target: { value: 'Anna\nBen' } });
+    fireEvent.change(screen.getAllByLabelText('Alias')[0]!, { target: { value: 'Mama' } });
     fireEvent.change(screen.getByLabelText('Standard-Portionen'), { target: { value: '4' } });
 
     fireEvent.click(screen.getByRole('button', { name: 'Profil speichern' }));
@@ -496,8 +513,8 @@ describe('Mealplanner app', () => {
     });
     expect(await screen.findByText('https://mealplanner.test/family/invites/accept?token=invite-token')).toBeInTheDocument();
     expect(screen.getByText(/persönliche Account geht im Familienkonto auf/i)).toBeInTheDocument();
-    expect(screen.getByLabelText('Familienkonto Übersicht')).toHaveTextContent('Anna');
-    expect(screen.getByLabelText('Familienkonto Übersicht')).toHaveTextContent('Ben');
+    expect(screen.getByText('anna@example.test')).toBeInTheDocument();
+    expect(screen.getAllByDisplayValue('Mama').length).toBeGreaterThan(0);
   });
 
   it('accepts an invite and lands on the merged family profile', async () => {
@@ -506,10 +523,7 @@ describe('Mealplanner app', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Einladung annehmen' }));
 
     expect(await screen.findByText('Familienkonto aktiv. Das gemeinsame Profil wurde geladen.')).toBeInTheDocument();
-    await screen.findByText('Anna');
-    await screen.findByText('Ben');
-    expect(screen.getByLabelText('Familienkonto Übersicht')).toHaveTextContent('Anna');
-    expect(screen.getByLabelText('Familienkonto Übersicht')).toHaveTextContent('Ben');
+    expect(await screen.findByText('Familienkonto pflegen')).toBeInTheDocument();
   });
 
   it('shows feedback when plan generation fails', async () => {
@@ -617,7 +631,7 @@ describe('Mealplanner app', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Logout' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Logout gerade nicht möglich');
-    expect(screen.getByText('Was essen wir diese Woche?')).toBeInTheDocument();
+    expect(screen.getByText('Was kommt diese Woche auf den Tisch?')).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Mit Google anmelden' })).not.toBeInTheDocument();
   });
 

@@ -27,14 +27,17 @@ func New(pool *pgxpool.Pool) Store {
 	return Store{pool: pool}
 }
 
-func (s Store) UpsertUser(ctx context.Context, provider, subjectHash string, emailHash string) (string, error) {
+func (s Store) UpsertUser(ctx context.Context, provider, subjectHash string, email string, emailHash string) (string, error) {
 	var id string
 	err := s.pool.QueryRow(ctx, `
-		INSERT INTO users(provider, subject_hash, email_hash, last_login_at)
-		VALUES ($1, $2, NULLIF($3, ''), now())
-		ON CONFLICT (provider, subject_hash) DO UPDATE SET last_login_at = now(), email_hash = COALESCE(NULLIF(EXCLUDED.email_hash, ''), users.email_hash)
+		INSERT INTO users(provider, subject_hash, email, email_hash, last_login_at)
+		VALUES ($1, $2, NULLIF($3, ''), NULLIF($4, ''), now())
+		ON CONFLICT (provider, subject_hash) DO UPDATE
+		SET last_login_at = now(),
+		    email = COALESCE(NULLIF(EXCLUDED.email, ''), users.email),
+		    email_hash = COALESCE(NULLIF(EXCLUDED.email_hash, ''), users.email_hash)
 		RETURNING id::text
-	`, provider, subjectHash, emailHash).Scan(&id)
+	`, provider, subjectHash, email, emailHash).Scan(&id)
 	if err != nil {
 		return "", err
 	}
@@ -230,11 +233,36 @@ func (s Store) GetFamily(ctx context.Context, userID string) (domain.FamilySumma
 	profile, err := s.GetProfileByFamily(ctx, familyID)
 	if err == nil {
 		for _, member := range profile.Members {
-			name := strings.TrimSpace(member.Name)
-			if name != "" {
-				summary.Members = append(summary.Members, name)
+			if strings.TrimSpace(member.ID) == "" || strings.TrimSpace(member.Name) == "" {
+				continue
 			}
+			summary.Members = append(summary.Members, domain.FamilyMemberSummary{
+				ID:    strings.TrimSpace(member.ID),
+				Name:  strings.TrimSpace(member.Name),
+				Alias: strings.TrimSpace(member.Alias),
+			})
 		}
+	}
+	rows, err := s.pool.Query(ctx, `
+		SELECT fm.user_id::text, COALESCE(u.email, ''), fm.role, COALESCE(fm.linked_member_id, '')
+		FROM family_members fm
+		JOIN users u ON u.id = fm.user_id
+		WHERE fm.family_id = $1
+		ORDER BY fm.created_at ASC
+	`, familyID)
+	if err != nil {
+		return domain.FamilySummary{}, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var account domain.FamilyAccount
+		if err := rows.Scan(&account.UserID, &account.Email, &account.Role, &account.LinkedMemberID); err != nil {
+			return domain.FamilySummary{}, err
+		}
+		summary.Accounts = append(summary.Accounts, account)
+	}
+	if err := rows.Err(); err != nil {
+		return domain.FamilySummary{}, err
 	}
 	return summary, err
 }
@@ -321,6 +349,42 @@ func (s Store) AcceptFamilyInvite(ctx context.Context, userID string, token stri
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return domain.FamilySummary{}, err
+	}
+	return s.GetFamily(ctx, userID)
+}
+
+func (s Store) UpdateFamilyMemberLink(ctx context.Context, userID string, accountUserID string, memberID string) (domain.FamilySummary, error) {
+	familyID, err := s.activeFamilyID(ctx, userID)
+	if err != nil {
+		return domain.FamilySummary{}, err
+	}
+	memberID = strings.TrimSpace(memberID)
+	if memberID != "" {
+		profile, err := s.GetProfileByFamily(ctx, familyID)
+		if err != nil {
+			return domain.FamilySummary{}, err
+		}
+		found := false
+		for _, member := range profile.Members {
+			if strings.TrimSpace(member.ID) == memberID {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return domain.FamilySummary{}, ErrNotFound
+		}
+	}
+	tag, err := s.pool.Exec(ctx, `
+		UPDATE family_members
+		SET linked_member_id = NULLIF($3, '')
+		WHERE family_id = $1 AND user_id = $2::uuid
+	`, familyID, accountUserID, memberID)
+	if err != nil {
+		return domain.FamilySummary{}, err
+	}
+	if tag.RowsAffected() == 0 {
+		return domain.FamilySummary{}, ErrNotFound
 	}
 	return s.GetFamily(ctx, userID)
 }

@@ -1,4 +1,4 @@
-import type { Member, Profile, ProfileFormState } from '../types';
+import type { Member, MemberFormState, Profile, ProfileFormState } from '../types';
 
 function splitLines(value: string) {
   return value
@@ -26,16 +26,27 @@ function objectToBlock(value: unknown) {
   return value == null ? '' : String(value);
 }
 
+export function emptyMember(index: number): MemberFormState {
+  return {
+    id: `person-${index + 1}`,
+    name: '',
+    alias: '',
+    role: '',
+    caloriesTarget: '',
+    likes: '',
+    dislikes: '',
+    restrictions: '',
+  };
+}
+
 export function profileToForm(profile?: Profile | null): ProfileFormState {
   const noteSections = parseNoteSections(profile?.notes ?? '');
   return {
     householdName: profile?.householdName ?? '',
-    members: joinLines(profile?.members.map(formatMemberLine)),
+    members: profile?.members?.length ? profile.members.map(memberToForm) : [emptyMember(0)],
     servingsPerMeal: noteSections['Standard-Portionen'] ?? '',
     preferredCuisines: joinLines(profile?.presets),
-    excludedIngredients:
-      noteSections['Ausgeschlossene Zutaten'] ??
-      joinLines(profile?.members.flatMap((member) => splitLines(member.restrictions ?? '').map((entry) => `${member.name}: ${entry}`))),
+    excludedIngredients: noteSections['Ausgeschlossene Zutaten'] ?? '',
     cookingStyle: noteSections['Kochstil'] ?? profile?.notes ?? '',
     mealPlanningRules: noteSections['Planungsregeln'] ?? '',
     breakfastPresets: objectToBlock(profile?.defaults?.breakfast),
@@ -46,9 +57,13 @@ export function profileToForm(profile?: Profile | null): ProfileFormState {
 }
 
 export function formToProfile(state: ProfileFormState): Profile {
+  const members = state.members
+    .map((member, index) => formToMember(member, index))
+    .filter((member) => member.name !== '');
+
   return {
     householdName: state.householdName.trim(),
-    members: splitLines(state.members).map((line, index) => parseMemberLine(line, index)),
+    members,
     defaults: {
       breakfast: state.breakfastPresets.trim(),
       lunch: state.lunchPresets.trim(),
@@ -65,24 +80,31 @@ export function formToProfile(state: ProfileFormState): Profile {
   };
 }
 
-function parseMemberLine(line: string, index: number): Member {
-  const [namePart, detailsPart = ''] = line.split(':', 2);
-  const name = (namePart ?? '').trim();
-  const details = detailsPart.trim();
-  const caloriesMatch = details.match(/(\d{3,4})\s*(kcal|kalorien)?/i);
+function memberToForm(member: Member): MemberFormState {
   return {
-    id: slugify(name) || `person-${index + 1}`,
-    name,
-    caloriesTarget: caloriesMatch ? Number(caloriesMatch[1]) : undefined,
-    likes: details,
+    id: member.id,
+    name: member.name ?? '',
+    alias: member.alias ?? '',
+    role: member.role ?? '',
+    caloriesTarget: member.caloriesTarget ? String(member.caloriesTarget) : '',
+    likes: member.likes ?? '',
+    dislikes: member.dislikes ?? '',
+    restrictions: member.restrictions ?? '',
   };
 }
 
-function formatMemberLine(member: Member) {
-  const details = [member.likes, member.dislikes ? `Mag nicht: ${member.dislikes}` : '', member.restrictions]
-    .filter(Boolean)
-    .join('; ');
-  return details ? `${member.name}: ${details}` : member.name;
+function formToMember(member: MemberFormState, index: number): Member {
+  const name = member.name.trim();
+  return {
+    id: slugify(member.id || member.alias || name) || `person-${index + 1}`,
+    name,
+    alias: member.alias.trim(),
+    role: member.role.trim(),
+    caloriesTarget: member.caloriesTarget.trim() ? Number(member.caloriesTarget) : undefined,
+    likes: member.likes.trim(),
+    dislikes: member.dislikes.trim(),
+    restrictions: member.restrictions.trim(),
+  };
 }
 
 function slugify(value: string) {

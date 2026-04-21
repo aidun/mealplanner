@@ -9,6 +9,7 @@ import type {
   PromptDebugEntry,
   Session,
   ShoppingList,
+  UpdateFamilyMemberLinkRequest,
 } from './types';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
@@ -119,6 +120,13 @@ export async function acceptFamilyInvite(token: string) {
   });
 }
 
+export async function updateFamilyMemberLink(payload: UpdateFamilyMemberLinkRequest) {
+  return request<FamilySummary>('/api/family/member-links', {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function getCurrentPlan() {
   return request<Plan>('/api/plans/current', undefined, { allow404: true });
 }
@@ -165,7 +173,9 @@ export async function getBringExportUrl(planId: string, scope: BringExportScope 
   if (scope.day) params.set('day', scope.day);
   if (scope.meal) params.set('meal', scope.meal);
   const suffix = params.size > 0 ? `?${params.toString()}` : '';
-  return request<{ url: string }>(`/api/plans/${encodeURIComponent(planId)}/bring-export-url${suffix}`);
+  return request<{ url: string; pageUrl?: string }>(
+    `/api/plans/${encodeURIComponent(planId)}/bring-export-url${suffix}`
+  );
 }
 
 export async function getShoppingList(planId: string) {

@@ -48,11 +48,25 @@ export interface FavoriteRecipe {
   createdAt?: string;
 }
 
+export interface FamilyMemberSummary {
+  id: string;
+  name: string;
+  alias?: string;
+}
+
+export interface FamilyAccount {
+  userId: string;
+  email?: string;
+  role?: string;
+  linkedMemberId?: string;
+}
+
 export interface FamilySummary {
   id: string;
   name: string;
   memberCount: number;
-  members?: string[];
+  members?: FamilyMemberSummary[];
+  accounts?: FamilyAccount[];
   personal: boolean;
   createdAt?: string;
   mergedWarning?: string;
@@ -89,6 +103,7 @@ export interface Plan {
 export interface Member {
   id: string;
   name: string;
+  alias?: string;
   role?: string;
   age?: number;
   caloriesTarget?: number;
@@ -155,9 +170,25 @@ export interface Session {
   csrfToken?: string;
 }
 
+export interface UpdateFamilyMemberLinkRequest {
+  accountUserId: string;
+  memberId: string;
+}
+
+export interface MemberFormState {
+  id: string;
+  name: string;
+  alias: string;
+  role: string;
+  caloriesTarget: string;
+  likes: string;
+  dislikes: string;
+  restrictions: string;
+}
+
 export interface ProfileFormState {
   householdName: string;
-  members: string;
+  members: MemberFormState[];
   servingsPerMeal: string;
   preferredCuisines: string;
   excludedIngredients: string;

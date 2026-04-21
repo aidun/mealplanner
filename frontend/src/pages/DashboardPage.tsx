@@ -4,17 +4,16 @@ import { Link } from 'react-router-dom';
 import { Header } from '../components/Header';
 import { MealBoard } from '../components/MealBoard';
 import { MealInspector } from '../components/MealInspector';
+import { PlanBackdrop } from '../components/PlanBackdrop';
 import { ShoppingListPanel } from '../components/ShoppingListPanel';
 import { LoginPage } from './LoginPage';
 import {
   createPlan,
   createFavorite,
   deleteFavorite,
-  getFamily,
   getCurrentPlan,
   getFavorites,
   getLatestPromptDebug,
-  getProfile,
   getShoppingList,
   logout,
   regenerateMeal,
@@ -31,11 +30,6 @@ export function DashboardPage() {
   const [selectedMealId, setSelectedMealId] = useState<string | undefined>();
   const [loggedOut, setLoggedOut] = useState(false);
 
-  const profileQuery = useQuery({
-    queryKey: ['profile'],
-    queryFn: getProfile,
-  });
-
   const currentPlanQuery = useQuery({
     queryKey: ['current-plan'],
     queryFn: getCurrentPlan,
@@ -45,11 +39,6 @@ export function DashboardPage() {
     queryKey: ['shopping-list', currentPlanQuery.data?.id],
     queryFn: () => getShoppingList(currentPlanQuery.data!.id),
     enabled: Boolean(currentPlanQuery.data?.id),
-  });
-
-  const familyQuery = useQuery({
-    queryKey: ['family'],
-    queryFn: getFamily,
   });
 
   const favoritesQuery = useQuery({
@@ -166,9 +155,6 @@ export function DashboardPage() {
     createFavoriteMutation.mutate(meal);
   };
 
-  const profile = profileQuery.data;
-  const profileMembers = profile?.members ?? [];
-  const profilePresets = profile?.presets ?? [];
   const planMessage = createPlanMutation.isPending
     ? 'Wir stellen eure Woche zusammen.'
     : createPlanMutation.isError
@@ -198,65 +184,27 @@ export function DashboardPage() {
       />
 
       <main className="app-main">
-        <section className="home-hero" aria-labelledby="home-title">
-          <div className="home-hero-copy">
-            <span className="eyebrow">Familien-Essensplan</span>
-            <h1 id="home-title">Was essen wir diese Woche?</h1>
+        <section className="plan-stage" aria-labelledby="home-title">
+          <PlanBackdrop />
+          <div className="plan-stage-copy">
+            <span className="eyebrow">Wochenplan</span>
+            <h1 id="home-title">Was kommt diese Woche auf den Tisch?</h1>
             <p>
-              {profile
-                ? `${profile.householdName}: Mahlzeiten, Mengen und Einkauf auf einen Blick.`
-                : 'Legt kurz eure Familie an. Danach steht euer erster Wochenplan bereit.'}
+              Tage durchgehen, Mahlzeit öffnen, Einkaufsbezug prüfen und nur dort eingreifen, wo ihr etwas ändern
+              wollt.
             </p>
-            <div className="profile-chip-row" aria-label="Familienzusammenfassung">
-              {profileMembers.length > 0 ? (
-                profileMembers.map((member) => (
-                  <span key={member.id} className="profile-chip">
-                    {member.name}
-                  </span>
-                ))
-              ) : (
-                <span className="profile-chip profile-chip-muted">Keine Personen hinterlegt</span>
-              )}
-              {profilePresets.slice(0, 4).map((preset) => (
-                <span key={preset} className="profile-chip profile-chip-accent">
-                  {preset}
-                </span>
-              ))}
-              {familyQuery.data ? (
-                <span className="profile-chip profile-chip-accent">{familyQuery.data.memberCount} im Familienkonto</span>
-              ) : null}
-            </div>
-            {familyQuery.data?.members?.length ? (
-              <div className="family-members-inline" aria-label="Familienmitglieder">
-                {familyQuery.data.members.map((member) => (
-                  <span key={member} className="profile-chip">
-                    {member}
-                  </span>
-                ))}
-              </div>
-            ) : null}
-            {familyQuery.data?.mergedWarning ? <p className="family-note">{familyQuery.data.mergedWarning}</p> : null}
           </div>
-
-          <div className="home-hero-actions">
+          <div className="plan-stage-actions">
             <button
               type="button"
-              className="button button-primary home-primary-action"
+              className="button button-primary"
               onClick={() => createPlanMutation.mutate()}
               disabled={createPlanMutation.isPending}
             >
               {createPlanMutation.isPending ? 'Woche entsteht' : 'Woche planen'}
             </button>
-            <div className="profile-stat">
-              <span>{profileMembers.length}</span>
-              <strong>Personen</strong>
-            </div>
-            <div className="profile-stat">
-              <span>{profilePresets.length}</span>
-              <strong>Presets</strong>
-            </div>
-            <Link to="/onboarding" className="button button-primary profile-cta">
-              Profil bearbeiten
+            <Link to="/onboarding" className="button button-secondary">
+              Profil
             </Link>
           </div>
         </section>
