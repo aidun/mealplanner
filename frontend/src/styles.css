@@ -1490,6 +1490,46 @@ a:focus-visible {
   border-bottom: 1px solid rgba(18, 33, 29, 0.06);
 }
 
+.inspector-section-recipe {
+  gap: 14px;
+}
+
+.inspector-recipe-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.inspector-subsection {
+  display: grid;
+  gap: 10px;
+}
+
+.inspector-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.inspector-section-head h3 {
+  margin: 0;
+}
+
+.inspector-section-head span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(240, 246, 242, 0.88);
+  color: var(--accent-strong);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
 .inspector-section:last-child {
   padding-bottom: 0;
   border-bottom: 0;
@@ -1506,6 +1546,13 @@ a:focus-visible {
 .inspector-inline-actions {
   display: flex;
   gap: 10px;
+  padding: 0 18px 18px;
+}
+
+.inspector-panel-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
   padding: 0 18px 18px;
 }
 
@@ -2276,7 +2323,8 @@ a:focus-visible {
   }
 
   .favorites-band-toolbar,
-  .inspector-inline-actions {
+  .inspector-inline-actions,
+  .inspector-panel-nav {
     flex-direction: column;
     align-items: stretch;
   }
@@ -2300,6 +2348,10 @@ a:focus-visible {
   }
 
   .inspector-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .inspector-recipe-grid {
     grid-template-columns: 1fr;
   }
 

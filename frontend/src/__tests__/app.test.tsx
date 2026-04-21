@@ -382,6 +382,7 @@ describe('Mealplanner app', () => {
       expect.stringContaining('/api/plans/plan-1/bring-export?day=2026-04-13&meal=meal-1')
     );
     expect(screen.getAllByText(/pro Portion/).length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole('button', { name: 'Portionen' }));
     expect(screen.getByText('Die Aufteilung ist nicht gleichmäßig. Nährwerte beziehen sich auf die angegebene Portion.')).toBeInTheDocument();
     expect(screen.getByText(/392 kcal/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Liste kopieren' })).toBeInTheDocument();
@@ -491,6 +492,7 @@ describe('Mealplanner app', () => {
   it('shows the updated meal after regeneration', async () => {
     renderApp('/');
 
+    fireEvent.click(await screen.findByRole('button', { name: 'Anpassen' }));
     fireEvent.change(await screen.findByLabelText('Wunsch zur Änderung'), {
       target: { value: 'mehr Gemüse' },
     });
@@ -670,6 +672,7 @@ describe('Mealplanner app', () => {
 
     const user = userEvent.setup();
     await screen.findByRole('button', { name: /Pasta mit Gemüse/ });
+    await user.click(screen.getByRole('button', { name: 'Anpassen' }));
     const noteField = screen.getByLabelText('Wunsch zur Änderung');
     await user.click(noteField);
     await user.type(noteField, 'Weniger Salz, mehr Gemüse.');
@@ -694,6 +697,7 @@ describe('Mealplanner app', () => {
     await screen.findByRole('button', { name: /Pasta mit Gemüse/ });
 
     fireEvent.click(screen.getByRole('button', { name: /Pasta mit Gemüse/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Anpassen' }));
     fireEvent.change(screen.getByLabelText('Wunsch zur Änderung'), {
       target: { value: 'Bitte schneller und mit mehr Gemüse.' },
     });
