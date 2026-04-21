@@ -1017,6 +1017,24 @@ func TestCreateFeedbackRequiresPremiumUser(t *testing.T) {
 	}
 }
 
+func TestCreateFeedbackAllowsAdminUser(t *testing.T) {
+	repo := newMemoryRepo()
+	repo.emails["user-1"] = "markush1986@gmail.com"
+	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil, nil)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/feedback", bytes.NewBufferString(`{"message":"Admin-Hinweis","page":"/admin"}`))
+	setAuth(repo, req, "user-1")
+	req.Header.Set("X-CSRF-Token", "csrf-user-1")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("expected feedback 201 for admin user, got %d: %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"page":"/admin"`) {
+		t.Fatalf("expected admin feedback page in response, got %s", rec.Body.String())
+	}
+}
+
 func TestPromptDebugEndpointOnlyWhenEnabled(t *testing.T) {
 	repo := newMemoryRepo()
 	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil, nil)

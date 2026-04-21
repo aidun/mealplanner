@@ -95,7 +95,7 @@ function AuthenticatedRoute({ element }: { element: ReactElement }) {
   return (
     <>
       {element}
-      {sessionQuery.data?.isPremium ? <FeedbackWidget /> : null}
+      {sessionQuery.data?.isPremium || sessionQuery.data?.isAdmin ? <FeedbackWidget /> : null}
     </>
   );
 }

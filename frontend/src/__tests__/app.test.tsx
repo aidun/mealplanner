@@ -607,6 +607,7 @@ describe('Mealplanner app', () => {
 
     renderApp('/');
 
+    expect(await screen.findByRole('complementary', { name: 'Premium Feedback' })).toBeInTheDocument();
     fireEvent.click(await screen.findByRole('link', { name: 'Admin' }));
     expect(await screen.findByRole('heading', { name: 'Admin' })).toBeInTheDocument();
     expect(await screen.findByText('premium@example.test')).toBeInTheDocument();

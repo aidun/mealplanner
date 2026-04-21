@@ -196,7 +196,8 @@ func (h *Handler) withAdmin(next http.HandlerFunc) http.HandlerFunc {
 func (h *Handler) withPremium(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		isPremium, _ := r.Context().Value(premiumKey).(bool)
-		if !isPremium {
+		isAdmin, _ := r.Context().Value(adminKey).(bool)
+		if !isPremium && !isAdmin {
 			writeError(w, http.StatusForbidden, "premium required")
 			return
 		}
