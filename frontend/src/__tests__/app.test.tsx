@@ -179,6 +179,10 @@ function createFetchMock(options: { authenticated?: boolean; familyOverride?: ty
       return new Response(JSON.stringify(providers), { status: 200 });
     }
 
+    if (url.endsWith('/api/auth/google/start') && init?.method === 'POST') {
+      return new Response(JSON.stringify({ redirectUrl: 'https://accounts.google.com/o/oauth2/v2/auth?state=test-state' }), { status: 200 });
+    }
+
     if (url.endsWith('/api/auth/logout') && init?.method === 'POST') {
       return new Response(null, { status: 204 });
     }
@@ -322,11 +326,7 @@ describe('Mealplanner app', () => {
     renderApp('/');
 
     expect(await screen.findByRole('heading', { name: 'Mealplanner' })).toBeInTheDocument();
-    await screen.findByRole('button', { name: 'Mit Google anmelden' });
-    await waitFor(() => expect(document.querySelector('form[action="/api/auth/google/start"]')).not.toBeNull());
-    const googleForm = document.querySelector('form[action="/api/auth/google/start"]');
-    expect(googleForm).toHaveAttribute('action', '/api/auth/google/start');
-    expect(googleForm).toHaveAttribute('method', 'post');
+    expect(await screen.findByRole('button', { name: 'Mit Google anmelden' })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Mit Apple anmelden' })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Datenschutz' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Impressum' })).toBeInTheDocument();
@@ -380,11 +380,7 @@ describe('Mealplanner app', () => {
 
     renderApp('/');
 
-    await screen.findByRole('button', { name: 'Mit Google anmelden' });
-    await waitFor(() => expect(document.querySelector('form[action="/api/auth/google/start"]')).not.toBeNull());
-    const googleForm = document.querySelector('form[action="/api/auth/google/start"]');
-    expect(googleForm).toHaveAttribute('action', '/api/auth/google/start');
-    expect(googleForm).toHaveAttribute('method', 'post');
+    expect(await screen.findByRole('button', { name: 'Mit Google anmelden' })).toBeInTheDocument();
     expect(await screen.findByRole('link', { name: 'Mit Apple anmelden' })).toHaveAttribute(
       'href',
       '/api/auth/apple/start'
@@ -768,9 +764,7 @@ describe('Mealplanner app', () => {
         })
       );
     });
-    const googleForm = (await screen.findByRole('button', { name: 'Mit Google anmelden' })).closest('form');
-    expect(googleForm).toHaveAttribute('action', '/api/auth/google/start');
-    expect(googleForm).toHaveAttribute('method', 'post');
+    expect(await screen.findByRole('button', { name: 'Mit Google anmelden' })).toBeInTheDocument();
   });
 
   it('keeps the dashboard visible when logout fails', async () => {

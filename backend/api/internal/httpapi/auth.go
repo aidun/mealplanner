@@ -72,7 +72,12 @@ func (h *Handler) startGoogle(w http.ResponseWriter, r *http.Request) {
 		Secure:   true,
 		SameSite: http.SameSiteLaxMode,
 	})
-	http.Redirect(w, r, h.auth.GoogleStartURL(state, nonce, challenge), http.StatusFound)
+	redirectURL := h.auth.GoogleStartURL(state, nonce, challenge)
+	if strings.Contains(r.Header.Get("Accept"), "application/json") || strings.EqualFold(strings.TrimSpace(r.Header.Get("X-Requested-With")), "XMLHttpRequest") {
+		writeJSON(w, http.StatusOK, map[string]string{"redirectUrl": redirectURL})
+		return
+	}
+	http.Redirect(w, r, redirectURL, http.StatusFound)
 }
 
 func (h *Handler) googleCallback(w http.ResponseWriter, r *http.Request) {

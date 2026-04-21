@@ -2,8 +2,12 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { getAuthProviders } from '../api';
 import { AppLogo } from '../components/AppLogo';
+import { readableApiError } from '../lib/api-error';
+import { useState } from 'react';
 
 export function LoginPage() {
+  const [loginError, setLoginError] = useState('');
+  const [startingGoogleLogin, setStartingGoogleLogin] = useState(false);
   const providersQuery = useQuery({
     queryKey: ['auth-providers'],
     queryFn: getAuthProviders,
@@ -14,6 +18,29 @@ export function LoginPage() {
   const googleEnabled = google?.enabled ?? false;
   const googleStartUrl = safeAuthStartUrl(google?.startUrl, '/api/auth/google/start');
   const appleStartUrl = safeAuthStartUrl(apple?.startUrl, '/api/auth/apple/start');
+
+  const startGoogleLogin = async () => {
+    setLoginError('');
+    setStartingGoogleLogin(true);
+    try {
+      const response = await fetch(googleStartUrl, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          Accept: 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.redirectUrl) {
+        throw new Error(payload?.error || 'Google Login konnte nicht gestartet werden.');
+      }
+      window.location.assign(payload.redirectUrl);
+    } catch (error) {
+      setLoginError(readableApiError(error, 'Google Login konnte nicht gestartet werden.'));
+      setStartingGoogleLogin(false);
+    }
+  };
 
   return (
     <div className="auth-shell">
@@ -31,11 +58,9 @@ export function LoginPage() {
 
         <div className="login-actions" aria-label="Login-Anbieter">
           {googleEnabled ? (
-            <form action={googleStartUrl} method="post">
-              <button type="submit" className="button button-primary login-button">
-                Mit Google anmelden
-              </button>
-            </form>
+            <button type="button" className="button button-primary login-button" onClick={() => void startGoogleLogin()} disabled={startingGoogleLogin}>
+              {startingGoogleLogin ? 'Google Login startet' : 'Mit Google anmelden'}
+            </button>
           ) : (
             <button type="button" className="button button-primary login-button" disabled>
               Mit Google anmelden
@@ -52,6 +77,7 @@ export function LoginPage() {
         {providersQuery.isError ? (
           <p className="error-copy">Login-Anbieter konnten nicht geladen werden. Bitte später erneut versuchen.</p>
         ) : null}
+        {loginError ? <p className="error-copy">{loginError}</p> : null}
 
         <nav className="legal-links" aria-label="Rechtliches">
           <Link to="/datenschutz">Datenschutz</Link>
