@@ -113,6 +113,17 @@ export function OnboardingPage() {
       label: member.alias.trim() || member.name.trim(),
     }));
 
+  const linkedMembers = useMemo(() => {
+    const byId = new Map(form.members.map((member) => [member.id.trim(), member]));
+    return (familyQuery.data?.accounts ?? []).map((account) => {
+      const linked = account.linkedMemberId ? byId.get(account.linkedMemberId) : undefined;
+      return {
+        ...account,
+        linkedLabel: linked ? linked.alias.trim() || linked.name.trim() : '',
+      };
+    });
+  }, [familyQuery.data?.accounts, form.members]);
+
   const statusMessage = useMemo(() => {
     if (saveMutation.isPending) return 'Profil wird gespeichert.';
     if (saveMutation.isError) return errorMessage(saveMutation.error);
@@ -138,6 +149,20 @@ export function OnboardingPage() {
             <span className="eyebrow">Profil</span>
             <h1>Familienkonto pflegen</h1>
             <p>Mitglieder, Aliase, verknüpfte Logins und die Regeln für kommende Wochenpläne.</p>
+            <div className="profile-overview-grid" aria-label="Profilübersicht">
+              <div className="profile-overview-card">
+                <strong>{form.members.length}</strong>
+                <span>Profile im Haushalt</span>
+              </div>
+              <div className="profile-overview-card">
+                <strong>{familyQuery.data?.accounts?.length ?? 0}</strong>
+                <span>Verknüpfte Logins</span>
+              </div>
+              <div className="profile-overview-card">
+                <strong>{familyQuery.data?.personal ? 'Privat' : 'Familie'}</strong>
+                <span>{familyQuery.data?.name || form.householdName || 'Konto'}</span>
+              </div>
+            </div>
           </div>
 
           <div
@@ -182,6 +207,15 @@ export function OnboardingPage() {
                     placeholder="Familie Weber"
                   />
                 </label>
+
+                <div className="member-roster" aria-label="Mitgliederübersicht">
+                  {form.members.map((member, index) => (
+                    <div key={`roster-${member.id}-${index}`} className="member-pill">
+                      <strong>{member.alias.trim() || member.name.trim() || `Mitglied ${index + 1}`}</strong>
+                      <span>{member.role.trim() || 'Profilmitglied'}</span>
+                    </div>
+                  ))}
+                </div>
 
                 <div className="member-editor-list">
                   {form.members.map((member, index) => (
@@ -307,12 +341,21 @@ export function OnboardingPage() {
                 </div>
 
                 <div className="family-account-list">
-                  {(familyQuery.data?.accounts ?? []).length > 0 ? (
-                    familyQuery.data?.accounts?.map((account) => (
+                  {linkedMembers.length > 0 ? (
+                    linkedMembers.map((account) => (
                       <article key={account.userId} className="family-account-row">
-                        <div>
-                          <strong>{account.email || 'Keine Mail verfügbar'}</strong>
-                          <p>{account.role === 'owner' ? 'Eigentümer' : 'Mitglied'}</p>
+                        <div className="family-account-copy">
+                          <div className="family-account-head">
+                            <strong>{account.email || 'Keine Mail verfügbar'}</strong>
+                            <span className="account-role-badge">
+                              {account.role === 'owner' ? 'Eigentümer' : 'Mitglied'}
+                            </span>
+                          </div>
+                          <p>
+                            {account.linkedLabel
+                              ? `Verknüpft mit ${account.linkedLabel}`
+                              : 'Noch keinem Profilmitglied zugeordnet'}
+                          </p>
                         </div>
                         <label className="field">
                           <span className="field-label">Zugeordnetes Profilmitglied</span>

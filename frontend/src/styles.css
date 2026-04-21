@@ -1069,6 +1069,32 @@ a:focus-visible {
   color: var(--ink-soft);
 }
 
+.profile-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.profile-overview-card {
+  display: grid;
+  gap: 2px;
+  padding: 14px 16px;
+  border: 1px solid rgba(18, 33, 29, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.62);
+  backdrop-filter: blur(14px);
+}
+
+.profile-overview-card strong {
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.profile-overview-card span {
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
 .profile-form {
   display: grid;
   gap: 16px;
@@ -1116,6 +1142,31 @@ a:focus-visible {
   gap: 14px;
 }
 
+.member-roster {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.member-pill {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(18, 33, 29, 0.06);
+  border-radius: 8px;
+  background: rgba(240, 246, 242, 0.88);
+}
+
+.member-pill strong {
+  font-size: 0.92rem;
+}
+
+.member-pill span {
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
 .member-editor-list,
 .family-account-list {
   display: grid;
@@ -1137,6 +1188,30 @@ a:focus-visible {
 .family-account-row {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: start;
+}
+
+.family-account-copy {
+  display: grid;
+  gap: 6px;
+}
+
+.family-account-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.account-role-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 8px;
+  border-radius: 8px;
+  background: rgba(217, 239, 228, 0.92);
+  color: var(--accent-strong);
+  font-size: 0.76rem;
+  font-weight: 700;
 }
 
 .member-editor-header p,
@@ -1299,6 +1374,10 @@ a:focus-visible {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .profile-overview-grid {
+    max-width: 760px;
+  }
+
   .profile-save-bar {
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
@@ -1393,6 +1472,7 @@ a:focus-visible {
     display: grid;
   }
 
+  .profile-overview-grid,
   .workspace,
   .member-grid,
   .field-group,
