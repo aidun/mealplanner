@@ -162,3 +162,8 @@
   - grünem lokalen Build/Test
   - grünem QA-Check
   - bestandenem Review Gate
+- Für alle UI-Änderungen gilt ab sofort verbindlich:
+  - Desktop prüfen
+  - Tablet prüfen
+  - Handy prüfen
+  - sichtbare Layout-, Overflow-, Überlappungs- und Bedienprobleme pro Breakpoint explizit bewerten, nicht nur implizit annehmen
