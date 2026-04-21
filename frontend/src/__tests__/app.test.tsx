@@ -401,11 +401,13 @@ describe('Mealplanner app', () => {
   });
 
   it('renders the weekly board and shopping list', async () => {
+    const fetchMock = vi.mocked(fetch);
     renderApp('/');
 
     expect(await screen.findByText('Diese Woche auf dem Tisch')).toBeInTheDocument();
     expect(screen.getAllByRole('link', { name: 'Profil' })).toHaveLength(1);
     expect(screen.getAllByRole('button', { name: 'Wochenplan erstellen' })).toHaveLength(1);
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).includes('/api/session'))).toHaveLength(1);
     const mealButton = await screen.findByRole('button', { name: /Pasta mit Gemüse/ });
     expect(mealButton).toBeInTheDocument();
     expect(within(mealButton).queryByText('Familienfreundlich und schnell.')).not.toBeInTheDocument();
@@ -437,10 +439,18 @@ describe('Mealplanner app', () => {
     expect(screen.getByRole('complementary', { name: 'Premium Feedback' })).toBeInTheDocument();
   });
 
+  it('keeps the premium feedback box collapsed by default', async () => {
+    renderApp('/');
+
+    expect(await screen.findByRole('complementary', { name: 'Premium Feedback' })).toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: 'Feedback' })).not.toBeInTheDocument();
+  });
+
   it('sends premium feedback with page context', async () => {
     const fetchMock = vi.mocked(fetch);
     renderApp('/');
 
+    fireEvent.click(await screen.findByRole('button', { name: /Direktes Feedback/i }));
     await userEvent.type(await screen.findByRole('textbox', { name: 'Feedback' }), 'Die Tagesauswahl braucht mehr Kontext.');
     fireEvent.click(screen.getByRole('button', { name: 'Feedback senden' }));
 
@@ -449,7 +459,7 @@ describe('Mealplanner app', () => {
         expect.stringContaining('/api/feedback'),
         expect.objectContaining({
           method: 'POST',
-          body: JSON.stringify({ message: 'Die Tagesauswahl braucht mehr Kontext.', page: '/' }),
+          body: JSON.stringify({ message: 'Die Tagesauswahl braucht mehr Kontext.', page: '/?meal=meal-1&day=2026-04-13' }),
         })
       )
     );
@@ -503,6 +513,13 @@ describe('Mealplanner app', () => {
     expect(screen.getAllByRole('button', { name: /entfernen/i }).length).toBeGreaterThan(0);
   });
 
+  it('reads the active profile tab from the url', async () => {
+    renderApp('/onboarding?tab=favorites');
+
+    expect(await screen.findByRole('heading', { name: 'Favoriten' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Favoriten' })).toHaveClass('profile-tab-button-active');
+  });
+
   it('keeps the weekly Bring link stable when shopping list contents change', async () => {
     let exportCalls = 0;
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
@@ -548,6 +565,14 @@ describe('Mealplanner app', () => {
 
     expect((await screen.findAllByRole('button', { name: /Beeren-Porridge/ })).length).toBeGreaterThan(0);
     expect(screen.queryByRole('button', { name: /Pasta mit Gemüse/ })).not.toBeInTheDocument();
+  });
+
+  it('reads dashboard focus from the url', async () => {
+    renderApp('/?pane=shopping&day=2026-04-14&meal=meal-2');
+
+    expect(await screen.findByText('Diese Woche auf dem Tisch')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Einkauf' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByText('Di')).toBeInTheDocument();
   });
 
   it('shows the updated meal after regeneration', async () => {

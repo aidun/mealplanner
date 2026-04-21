@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AppLogo } from '../components/AppLogo';
 import { CheckIcon, CopyIcon, HeartIcon, MailIcon, PlusIcon, SaveIcon, TrashIcon } from '../components/icons';
 import {
@@ -34,14 +34,25 @@ const EMPTY_FORM: ProfileFormState = {
 export function OnboardingPage() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const location = useLocation();
-  const joinedFamily = new URLSearchParams(location.search).get('family') === 'joined';
+  const [searchParams, setSearchParams] = useSearchParams();
+  const joinedFamily = searchParams.get('family') === 'joined';
   const [form, setForm] = useState<ProfileFormState>(EMPTY_FORM);
   const [hasEdited, setHasEdited] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteCopyState, setInviteCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
   const [lastLinkedAccountEmail, setLastLinkedAccountEmail] = useState('');
-  const [activeTab, setActiveTab] = useState<'family' | 'rules' | 'favorites' | 'invites'>('family');
+  const activeTab = parseProfileTab(searchParams.get('tab'));
+  const setActiveTab = (tab: 'family' | 'rules' | 'favorites' | 'invites') => {
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      if (tab === 'family') {
+        next.delete('tab');
+      } else {
+        next.set('tab', tab);
+      }
+      return next;
+    }, { replace: true });
+  };
 
   const profileQuery = useQuery({
     queryKey: ['profile'],
@@ -290,6 +301,8 @@ export function OnboardingPage() {
                   <span className="field-label">Haushaltsname</span>
                   <input
                     className="input"
+                    name="householdName"
+                    autoComplete="organization"
                     value={form.householdName}
                     onChange={(event) => update('householdName', event.target.value)}
                     placeholder="Familie Weber"
@@ -331,6 +344,8 @@ export function OnboardingPage() {
                           <span className="field-label">Name</span>
                           <input
                             className="input"
+                            name={`member-name-${index}`}
+                            autoComplete="name"
                             value={member.name}
                             onChange={(event) => updateMember(index, 'name', event.target.value)}
                             placeholder="Anna"
@@ -340,6 +355,8 @@ export function OnboardingPage() {
                           <span className="field-label">Alias</span>
                           <input
                             className="input"
+                            name={`member-alias-${index}`}
+                            autoComplete="nickname"
                             value={member.alias}
                             onChange={(event) => updateMember(index, 'alias', event.target.value)}
                             placeholder="Mama, Markus, Alex"
@@ -752,6 +769,9 @@ export function OnboardingPage() {
                   <input
                     className="input"
                     type="email"
+                    name="inviteEmail"
+                    autoComplete="email"
+                    inputMode="email"
                     value={inviteEmail}
                     onChange={(event) => setInviteEmail(event.target.value)}
                     placeholder="name@example.com"
@@ -814,4 +834,11 @@ export function OnboardingPage() {
       </main>
     </div>
   );
+}
+
+function parseProfileTab(value: string | null): 'family' | 'rules' | 'favorites' | 'invites' {
+  if (value === 'rules' || value === 'favorites' || value === 'invites') {
+    return value;
+  }
+  return 'family';
 }

@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import type { Day, Meal } from '../types';
 import { formatDate, formatNutritionPerPortion } from '../lib/format';
 import { BringLink } from './BringLink';
@@ -7,27 +6,34 @@ import { ChevronLeftIcon, ChevronRightIcon, HeartIcon } from './icons';
 interface MealBoardProps {
   planId?: string;
   days?: Day[];
+  activeDayDate?: string;
   selectedMealId?: string;
   favoriteMealIDs?: Set<string>;
-  onSelectMeal: (meal: Meal) => void;
+  onSelectMeal: (meal: Meal, dayDate?: string) => void;
+  onSelectDay: (dayDate: string, defaultMealId?: string) => void;
 }
 
-export function MealBoard({ planId, days = [], selectedMealId, favoriteMealIDs, onSelectMeal }: MealBoardProps) {
-  const [activeDayIndex, setActiveDayIndex] = useState(0);
-  const safeDayIndex = days.length === 0 ? 0 : Math.min(activeDayIndex, days.length - 1);
+export function MealBoard({
+  planId,
+  days = [],
+  activeDayDate,
+  selectedMealId,
+  favoriteMealIDs,
+  onSelectMeal,
+  onSelectDay,
+}: MealBoardProps) {
+  const resolvedDayIndex = activeDayDate ? days.findIndex((day) => day.date === activeDayDate) : 0;
+  const safeDayIndex =
+    days.length === 0 ? 0 : resolvedDayIndex >= 0 ? resolvedDayIndex : 0;
   const activeDay = days[safeDayIndex];
 
-  useEffect(() => {
-    if (activeDayIndex > 0 && activeDayIndex >= days.length) {
-      setActiveDayIndex(Math.max(days.length - 1, 0));
-    }
-  }, [activeDayIndex, days.length]);
-
   const selectDay = (index: number) => {
-    setActiveDayIndex(index);
-    const firstMeal = days[index]?.meals[0];
+    const day = days[index];
+    const firstMeal = day?.meals[0];
+    if (!day) return;
+    onSelectDay(day.date, firstMeal?.id);
     if (firstMeal) {
-      onSelectMeal(firstMeal);
+      onSelectMeal(firstMeal, day.date);
     }
   };
 
@@ -106,7 +112,7 @@ export function MealBoard({ planId, days = [], selectedMealId, favoriteMealIDs, 
                       type="button"
                       className={`meal-row${active ? ' meal-row-active' : ''}`}
                       aria-pressed={active}
-                      onClick={() => onSelectMeal(meal)}
+                      onClick={() => onSelectMeal(meal, activeDay.date)}
                     >
                       <div className="meal-row-topline">
                         <div className="meal-row-heading">

@@ -1,25 +1,23 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Header } from '../components/Header';
 import { PlusIcon, TrashIcon } from '../components/icons';
-import { createPremiumUser, deletePremiumUser, getAdminOverview, getSession, logout } from '../api';
+import { createPremiumUser, deletePremiumUser, getAdminOverview, logout } from '../api';
 import { readableApiError } from '../lib/api-error';
 import { LoginPage } from './LoginPage';
 import { Navigate } from 'react-router-dom';
 import { useState } from 'react';
+import { useSession } from '../session';
 
 export function AdminPage() {
   const queryClient = useQueryClient();
+  const session = useSession();
   const [premiumEmail, setPremiumEmail] = useState('');
   const [loggedOut, setLoggedOut] = useState(false);
 
-  const sessionQuery = useQuery({
-    queryKey: ['session'],
-    queryFn: getSession,
-  });
   const adminOverviewQuery = useQuery({
     queryKey: ['admin-overview'],
     queryFn: getAdminOverview,
-    enabled: Boolean(sessionQuery.data?.isAdmin),
+    enabled: Boolean(session?.isAdmin),
   });
 
   const createPremiumMutation = useMutation({
@@ -47,10 +45,7 @@ export function AdminPage() {
   if (loggedOut) {
     return <LoginPage />;
   }
-  if (sessionQuery.isLoading) {
-    return null;
-  }
-  if (!sessionQuery.data?.isAdmin) {
+  if (!session?.isAdmin) {
     return <Navigate to="/" replace />;
   }
 
@@ -80,6 +75,9 @@ export function AdminPage() {
                   <input
                     className="input"
                     type="email"
+                    name="premiumEmail"
+                    autoComplete="email"
+                    inputMode="email"
                     value={premiumEmail}
                     onChange={(event) => setPremiumEmail(event.target.value)}
                     placeholder="nutzer@example.com"

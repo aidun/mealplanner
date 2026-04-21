@@ -1,5 +1,6 @@
 import { startTransition, useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useSearchParams, type SetURLSearchParams } from 'react-router-dom';
 import { Header } from '../components/Header';
 import { RefreshIcon, SparkIcon } from '../components/icons';
 import { MealBoard } from '../components/MealBoard';
@@ -16,11 +17,11 @@ import {
   getCurrentPlan,
   getFavorites,
   getLatestPromptDebug,
-  getSession,
   getShoppingList,
   logout,
   regenerateMeal,
 } from '../api';
+import { useSession } from '../session';
 import type { Meal, PromptDebugSnapshot } from '../types';
 
 function promptDebugEnabled() {
@@ -32,11 +33,14 @@ function promptDebugEnabled() {
 
 export function DashboardPage() {
   const queryClient = useQueryClient();
+  const session = useSession();
+  const [searchParams, setSearchParams] = useSearchParams();
   const promptDebug = promptDebugEnabled();
-  const [selectedMealId, setSelectedMealId] = useState<string | undefined>();
-  const [activeWorkspacePane, setActiveWorkspacePane] = useState<'plan' | 'detail' | 'shopping'>('plan');
   const [loggedOut, setLoggedOut] = useState(false);
   const [mobileTopPanelHidden, setMobileTopPanelHidden] = useState(false);
+  const activeWorkspacePane = parsePane(searchParams.get('pane'));
+  const selectedMealId = searchParams.get('meal') ?? undefined;
+  const selectedDayParam = searchParams.get('day') ?? undefined;
 
   const currentPlanQuery = useQuery({
     queryKey: ['current-plan'],
@@ -59,17 +63,11 @@ export function DashboardPage() {
     queryFn: getLatestPromptDebug,
     enabled: promptDebug,
   });
-  const sessionQuery = useQuery({
-    queryKey: ['session'],
-    queryFn: getSession,
-  });
 
   const createPlanMutation = useMutation({
     mutationFn: () => createPlan({}),
     onSuccess: async () => {
-      startTransition(() => {
-        setActiveWorkspacePane('plan');
-      });
+      updateSearchParams(setSearchParams, { pane: 'plan' });
       await queryClient.invalidateQueries({ queryKey: ['current-plan'] });
       await queryClient.invalidateQueries({ queryKey: ['shopping-list'] });
     },
@@ -82,9 +80,7 @@ export function DashboardPage() {
       if (updatedPlan) {
         queryClient.setQueryData(['current-plan'], updatedPlan);
       }
-      startTransition(() => {
-        setActiveWorkspacePane('detail');
-      });
+      updateSearchParams(setSearchParams, { pane: 'detail' });
       await queryClient.invalidateQueries({ queryKey: ['shopping-list'] });
     },
   });
@@ -125,6 +121,16 @@ export function DashboardPage() {
   const allMeals = useMemo(() => currentPlanQuery.data?.days.flatMap((day) => day.meals) ?? [], [
     currentPlanQuery.data,
   ]);
+  const allDays = currentPlanQuery.data?.days ?? [];
+  const activeDayDate = useMemo(() => {
+    if (selectedDayParam && allDays.some((day) => day.date === selectedDayParam)) {
+      return selectedDayParam;
+    }
+    const mealDay = selectedMealId
+      ? allDays.find((day) => day.meals.some((meal) => meal.id === selectedMealId))?.date
+      : undefined;
+    return mealDay ?? allDays[0]?.date;
+  }, [allDays, selectedDayParam, selectedMealId]);
 
   const selectedMeal = useMemo(
     () => allMeals.find((meal) => meal.id === selectedMealId) ?? allMeals[0],
@@ -142,8 +148,10 @@ export function DashboardPage() {
   ]);
   const inspectedMeal = selectedMeal;
   const selectedDay = useMemo(
-    () => currentPlanQuery.data?.days.find((day) => day.meals.some((meal) => meal.id === inspectedMeal?.id)),
-    [currentPlanQuery.data?.days, inspectedMeal?.id]
+    () =>
+      currentPlanQuery.data?.days.find((day) => day.date === activeDayDate) ??
+      currentPlanQuery.data?.days.find((day) => day.meals.some((meal) => meal.id === inspectedMeal?.id)),
+    [activeDayDate, currentPlanQuery.data?.days, inspectedMeal?.id]
   );
   const inspectedMealInPlan = useMemo(
     () => Boolean(inspectedMeal && allMeals.some((meal) => meal.id === inspectedMeal.id)),
@@ -152,15 +160,22 @@ export function DashboardPage() {
 
   useEffect(() => {
     if (!selectedMealId && allMeals[0]) {
-      setSelectedMealId(allMeals[0].id);
+      const dayDate =
+        currentPlanQuery.data?.days.find((day) => day.meals.some((meal) => meal.id === allMeals[0]?.id))?.date ??
+        currentPlanQuery.data?.days[0]?.date;
+      updateSearchParams(setSearchParams, { meal: allMeals[0].id, day: dayDate });
     }
-  }, [allMeals, selectedMealId]);
+  }, [allMeals, currentPlanQuery.data?.days, selectedMealId, setSearchParams]);
 
   useEffect(() => {
     if (selectedMealId && !allMeals.some((meal) => meal.id === selectedMealId)) {
-      setSelectedMealId(allMeals[0]?.id);
+      const fallbackMeal = allMeals[0];
+      const dayDate =
+        currentPlanQuery.data?.days.find((day) => day.meals.some((meal) => meal.id === fallbackMeal?.id))?.date ??
+        currentPlanQuery.data?.days[0]?.date;
+      updateSearchParams(setSearchParams, { meal: fallbackMeal?.id, day: dayDate });
     }
-  }, [allMeals, selectedMealId]);
+  }, [allMeals, currentPlanQuery.data?.days, selectedMealId, setSearchParams]);
 
   useEffect(() => {
     let lastY = window.scrollY;
@@ -226,11 +241,12 @@ export function DashboardPage() {
     createFavoriteMutation.mutate(meal);
   };
 
-  const selectMeal = (meal: Meal) => {
-    startTransition(() => {
-      setSelectedMealId(meal.id);
-      setActiveWorkspacePane('detail');
-    });
+  const selectMealForDay = (meal: Meal, dayDate?: string) => {
+    updateSearchParams(setSearchParams, { meal: meal.id, day: dayDate, pane: 'detail' });
+  };
+
+  const selectDay = (dayDate: string, defaultMealId?: string) => {
+    updateSearchParams(setSearchParams, { day: dayDate, meal: defaultMealId, pane: activeWorkspacePane });
   };
 
   const planMessage = createPlanMutation.isPending
@@ -259,7 +275,7 @@ export function DashboardPage() {
         creatingPlan={createPlanMutation.isPending}
         onLogout={() => logoutMutation.mutate()}
         loggingOut={logoutMutation.isPending}
-        isAdmin={Boolean(sessionQuery.data?.isAdmin)}
+        isAdmin={Boolean(session?.isAdmin)}
       />
 
       <main className="app-main">
@@ -315,7 +331,7 @@ export function DashboardPage() {
             className={`workspace-pane-button${activeWorkspacePane === 'plan' ? ' workspace-pane-button-active' : ''}`}
             onClick={() =>
               startTransition(() => {
-                setActiveWorkspacePane('plan');
+                updateSearchParams(setSearchParams, { pane: 'plan' });
               })
             }
             aria-pressed={activeWorkspacePane === 'plan'}
@@ -327,7 +343,7 @@ export function DashboardPage() {
             className={`workspace-pane-button${activeWorkspacePane === 'detail' ? ' workspace-pane-button-active' : ''}`}
             onClick={() =>
               startTransition(() => {
-                setActiveWorkspacePane('detail');
+                updateSearchParams(setSearchParams, { pane: 'detail' });
               })
             }
             aria-pressed={activeWorkspacePane === 'detail'}
@@ -339,7 +355,7 @@ export function DashboardPage() {
             className={`workspace-pane-button${activeWorkspacePane === 'shopping' ? ' workspace-pane-button-active' : ''}`}
             onClick={() =>
               startTransition(() => {
-                setActiveWorkspacePane('shopping');
+                updateSearchParams(setSearchParams, { pane: 'shopping' });
               })
             }
             aria-pressed={activeWorkspacePane === 'shopping'}
@@ -354,9 +370,11 @@ export function DashboardPage() {
               <MealBoard
                 planId={currentPlanQuery.data?.id}
                 days={currentPlanQuery.data?.days}
+                activeDayDate={activeDayDate}
                 selectedMealId={selectedMealId}
                 favoriteMealIDs={favoriteMealIDs}
-                onSelectMeal={selectMeal}
+                onSelectMeal={selectMealForDay}
+                onSelectDay={selectDay}
               />
             </div>
             <div className={activeWorkspacePane === 'plan' ? 'workspace-pane-hidden-mobile' : ''}>
@@ -560,6 +578,30 @@ function formatPromptMetaKey(value: string) {
     default:
       return value;
   }
+}
+
+function parsePane(value: string | null): 'plan' | 'detail' | 'shopping' {
+  if (value === 'detail' || value === 'shopping') {
+    return value;
+  }
+  return 'plan';
+}
+
+function updateSearchParams(
+  setSearchParams: SetURLSearchParams,
+  updates: Record<string, string | undefined>
+) {
+  setSearchParams((current) => {
+    const next = new URLSearchParams(current);
+    for (const [key, value] of Object.entries(updates)) {
+      if (value && value.trim() !== '') {
+        next.set(key, value);
+      } else {
+        next.delete(key);
+      }
+    }
+    return next;
+  }, { replace: true });
 }
 
 function countShoppingItems(shoppingList: unknown) {

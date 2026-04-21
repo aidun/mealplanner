@@ -84,7 +84,6 @@ export function MealInspector({
           <h2>{meal.title}</h2>
           <p>
             {slotLabel(meal.slot)}
-            {dayDate ? ` · ${formatDateLabel(dayDate)}` : ''}
             {contextNote ? ` · ${contextNote}` : ''}
           </p>
           {meal.description ? <p className="inspector-description">{meal.description}</p> : null}
@@ -283,17 +282,6 @@ export function MealInspector({
       ) : null}
     </section>
   );
-}
-
-function formatDateLabel(value?: string) {
-  if (!value) return '';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat('de-DE', {
-    weekday: 'long',
-    day: '2-digit',
-    month: '2-digit',
-  }).format(date);
 }
 
 function hasUnevenServings(meal: Meal) {

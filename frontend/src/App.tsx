@@ -9,6 +9,7 @@ import { AdminPage } from './pages/AdminPage';
 import { LegalPage } from './pages/LegalPage';
 import { LoginPage } from './pages/LoginPage';
 import { OnboardingPage } from './pages/OnboardingPage';
+import { SessionProvider } from './session';
 
 export function App() {
   return (
@@ -68,6 +69,7 @@ function AcceptInvitePage() {
 }
 
 function AuthenticatedRoute({ element }: { element: ReactElement }) {
+  const location = useLocation();
   const sessionQuery = useQuery({
     queryKey: ['session'],
     queryFn: getSession,
@@ -92,10 +94,15 @@ function AuthenticatedRoute({ element }: { element: ReactElement }) {
     return <LoginPage />;
   }
 
+  const feedbackEnabledRoutes = new Set(['/', '/onboarding', '/admin']);
+  const showFeedback =
+    feedbackEnabledRoutes.has(location.pathname) &&
+    Boolean(sessionQuery.data?.isPremium || sessionQuery.data?.isAdmin);
+
   return (
-    <>
+    <SessionProvider session={sessionQuery.data}>
       {element}
-      {sessionQuery.data?.isPremium || sessionQuery.data?.isAdmin ? <FeedbackWidget /> : null}
-    </>
+      {showFeedback ? <FeedbackWidget /> : null}
+    </SessionProvider>
   );
 }

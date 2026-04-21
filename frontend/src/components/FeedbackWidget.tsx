@@ -10,7 +10,7 @@ const maxLength = 2000;
 export function FeedbackWidget() {
   const location = useLocation();
   const [message, setMessage] = useState('');
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   const trimmedMessage = message.trim();
   const count = trimmedMessage.length;
 
@@ -56,6 +56,8 @@ export function FeedbackWidget() {
               <span className="sr-only">Feedback</span>
               <textarea
                 className="input textarea feedback-widget-textarea"
+                name="feedback"
+                autoComplete="off"
                 rows={5}
                 maxLength={maxLength}
                 value={message}

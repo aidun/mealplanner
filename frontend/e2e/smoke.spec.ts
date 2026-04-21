@@ -84,6 +84,8 @@ test('planner smoke path', async ({ page, context }) => {
   await expect(page.getByText('Profil gespeichert. Der nächste Wochenplan nutzt diese Angaben.')).toBeVisible();
   await page.getByRole('button', { name: 'Zum Wochenplan' }).click();
 
+  await expect(page.getByRole('textbox', { name: 'Feedback' })).toHaveCount(0);
+
   await page.getByRole('button', { name: /Pasta mit Gemüse/ }).click();
   await page.getByLabel('Wunsch zur Änderung').fill('Bitte schneller und mit mehr Gemüse.');
   await page.getByRole('button', { name: 'Gericht austauschen' }).click();
@@ -104,6 +106,70 @@ test('planner smoke path', async ({ page, context }) => {
   await page.getByLabel('Primäre Aktionen').getByRole('link', { name: 'Profil' }).click();
   await page.getByRole('button', { name: 'Favoriten' }).click();
   await expect(page.getByText('2 gespeicherte Rezepte')).toBeVisible();
+});
+
+test('planner stays stable across desktop tablet and mobile breakpoints', async ({ page }) => {
+  const state = createState();
+
+  await page.route('**/api/**', async (route) => {
+    const request = route.request();
+    const url = new URL(request.url());
+    const path = url.pathname;
+    const method = request.method();
+
+    if (path === '/api/session') return route.fulfill(json({ authenticated: true, csrfToken: 'csrf-token-1' }));
+    if (path === '/api/profile' && method === 'GET') return route.fulfill(json(state.profile));
+    if (path === '/api/family' && method === 'GET') return route.fulfill(json(state.family));
+    if (path === '/api/favorites' && method === 'GET') return route.fulfill(json(state.favorites));
+    if (path === '/api/plans/current' && method === 'GET') return route.fulfill(json(state.plan));
+    if (path === '/api/plans/plan-1/shopping-list' && method === 'GET') return route.fulfill(json(state.shoppingList));
+    if (path.includes('/api/plans/plan-1/bring-export-url') && method === 'GET') {
+      return route.fulfill(json({ url: 'https://enjoy.getbring.com/ZAzR?token=test-token', pageUrl: '/api/plans/plan-1/bring-export?token=test-token' }));
+    }
+    if (path === '/api/auth/logout' && method === 'POST') return route.fulfill({ status: 204, body: '' });
+    return route.fulfill({ status: 404, body: '' });
+  });
+
+  const viewports = [
+    { name: 'desktop', size: { width: 1440, height: 1100 } },
+    { name: 'tablet', size: { width: 1024, height: 1180 } },
+    { name: 'mobile', size: { width: 390, height: 844 } },
+  ];
+
+  for (const viewport of viewports) {
+    await page.setViewportSize(viewport.size);
+    await page.goto('/');
+    await expect(page.getByText('Diese Woche auf dem Tisch')).toBeVisible();
+    await expect(page.getByRole('textbox', { name: 'Feedback' })).toHaveCount(0);
+
+    const overflow = await page.evaluate(() => ({
+      scrollWidth: document.documentElement.scrollWidth,
+      clientWidth: document.documentElement.clientWidth,
+    }));
+    expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth + 1);
+
+    const mainBox = await page.locator('.workspace-main').boundingBox();
+    let sideBox = await page.locator('.workspace-side').boundingBox();
+    expect(mainBox).not.toBeNull();
+
+    if (viewport.name === 'desktop' && mainBox && sideBox) {
+      expect(mainBox.x + mainBox.width).toBeLessThanOrEqual(sideBox.x + 1);
+    }
+
+    if (viewport.name === 'mobile' && !sideBox) {
+      await page.getByRole('button', { name: 'Einkauf' }).click();
+      sideBox = await page.locator('.workspace-side').boundingBox();
+    }
+
+    if (viewport.name !== 'desktop' && mainBox && sideBox) {
+      expect(sideBox.y).toBeGreaterThanOrEqual(mainBox.y);
+    }
+
+    if (viewport.name === 'mobile') {
+      await expect(page.getByLabel('Bereiche wechseln')).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Einkauf' })).toBeVisible();
+    }
+  }
 });
 
 test('login and invite acceptance stay on guarded production paths', async ({ page }) => {
