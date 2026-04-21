@@ -23,7 +23,7 @@ export function FeedbackWidget() {
 
   const statusCopy = useMemo(() => {
     if (feedbackMutation.isSuccess) {
-      return 'Feedback gespeichert. Ich kann das spaeter mit dir durchgehen.';
+      return 'Feedback gespeichert. Ich kann das später mit dir durchgehen.';
     }
     if (feedbackMutation.isError) {
       return readableApiError(feedbackMutation.error, 'Feedback konnte nicht gespeichert werden.');
@@ -43,14 +43,14 @@ export function FeedbackWidget() {
         >
           <span className="feedback-widget-toggle-copy">
             <MailIcon className="action-icon" />
-            Direktes Feedback
+            Feedback
           </span>
           <span className="feedback-widget-toggle-state">{open ? 'Schließen' : 'Öffnen'}</span>
         </button>
         {open ? (
           <div id="feedback-widget-panel" className="feedback-widget-panel">
             <p className="feedback-widget-copy">
-              Schreib auf, was hakt oder was besser werden sollte. Ich kann das spaeter auslesen und mit dir bewerten.
+              Schreib auf, was hakt oder besser werden sollte. Ich lese das aus und gehe die Punkte danach mit dir durch.
             </p>
             <label className="field">
               <span className="sr-only">Feedback</span>
@@ -62,7 +62,7 @@ export function FeedbackWidget() {
                 maxLength={maxLength}
                 value={message}
                 onChange={(event) => setMessage(event.target.value)}
-                placeholder="Schreib hier direkt aus dem laufenden Planungsflow."
+                placeholder="Was passt noch nicht?"
               />
             </label>
             <div className="feedback-widget-footer">

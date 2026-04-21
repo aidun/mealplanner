@@ -29,7 +29,7 @@ export function Header({
           <Link to="/" className="brand-mark" aria-label="Mealplanner Startseite">
             <AppLogo />
           </Link>
-          <p className="brand-subtitle">Woche planen, Gerichte anpassen, Einkauf mitnehmen.</p>
+          <p className="brand-subtitle">Gemeinsam planen, entspannt kochen, den Einkauf im Blick behalten.</p>
         </div>
 
         <div className="header-meta">

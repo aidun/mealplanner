@@ -1,6 +1,6 @@
 # Mealplanner Memory
 
-Last updated: 2026-04-21
+Last updated: 2026-04-22
 
 ## Kontext
 
@@ -30,6 +30,8 @@ Last updated: 2026-04-21
 - Seit 2026-04-21 gibt es eine zentrale Architekturseite unter `docs/ARCHITECTURE.md`, die Frontend, API, Postgres, Traefik/Entrypoint, Cloudflare Tunnel, OpenAI, Google OIDC, Resend, Bring, Monitoring, GitOps und Umgebungen zusammenfasst.
 - Seit 2026-04-21 ist die Cluster-Security fuer `mealplanner` bis `security.aidun.dev/segmentation=enforced` hochgezogen: Default-Deny fuer Ingress und Egress plus explizite Allow-Policies fuer `entrypoint`, `api`, `frontend`, `postgres`, `cloudflared`, `weekly-plan`, `database-bootstrap`, Monitoring, DNS und benoetigte Internet-Egress-Flows.
 - Das frühere Sammel-Secret `api-secrets` ist fachlich aufgeteilt in `mealplanner-api-internal`, `mealplanner-auth-core`, `mealplanner-openai`, `mealplanner-email-provider`, `mealplanner-oidc-google` und `mealplanner-oidc-apple`; nicht-sensitive Laufzeitwerte liegen in `mealplanner-api-config`.
+- Seit 2026-04-22 hat Feedback einen echten Admin-Workflow: `feedback_entries` tragen `status`, `resolved_at` und `resolved_by_user_id`; `/api/admin/overview` liefert offene Punkte standardmäßig und optional Archivpunkte über `includeResolved=true`, plus `POST /api/admin/feedback/{id}/resolve` zum sauberen Ausblenden gelöster Punkte.
+- Die Admin-Oberfläche zeigt offene und gelöste Feedbacks getrennt, Mail-Templates bewusst nur als Plain-Text/HTML-Editor mit Vorschau und kein WYSIWYG; parallel wurden Login-, Header-, Profil- und Mobile-Copy auf `Familienküche`/ruhigere Bedienung nachgezogen.
 
 ## Wichtige Arbeitsregeln
 

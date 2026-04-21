@@ -46,13 +46,13 @@ export function LoginPage() {
     <div className="auth-shell">
       <main className="login-panel" aria-labelledby="login-title">
         <div className="login-copy">
-          <p className="eyebrow">Privater Zugang</p>
+          <p className="eyebrow">Die Familienküche</p>
           <h1 id="login-title" aria-label="Mealplanner">
             <AppLogo />
           </h1>
           <p>
-            Melde dich mit einem erlaubten Social Login an. Der Zugang schützt euren privaten Planungsbereich, ohne
-            unnötige Login-Profildaten in die App zu ziehen.
+            Wochen gemeinsam planen, Gerichte feinziehen und den Einkauf direkt mitnehmen. Der Login schützt euren
+            privaten Familienbereich, ohne unnötige Profildaten aufzublähen.
           </p>
         </div>
 

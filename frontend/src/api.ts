@@ -202,8 +202,13 @@ export async function getLatestPromptDebug() {
   return request<PromptDebugSnapshot>('/api/debug/prompts/latest', undefined, { allow404: true });
 }
 
-export async function getAdminOverview() {
-  return request<AdminOverview>('/api/admin/overview');
+export async function getAdminOverview(options: { includeResolved?: boolean } = {}) {
+  const params = new URLSearchParams();
+  if (options.includeResolved) {
+    params.set('includeResolved', 'true');
+  }
+  const suffix = params.size > 0 ? `?${params.toString()}` : '';
+  return request<AdminOverview>(`/api/admin/overview${suffix}`);
 }
 
 export async function createPremiumUser(email: string, options: { sendInvite?: boolean } = {}) {
@@ -232,5 +237,11 @@ export async function createFeedback(message: string, page: string) {
   return request<FeedbackEntry>('/api/feedback', {
     method: 'POST',
     body: JSON.stringify({ message, page }),
+  });
+}
+
+export async function resolveFeedback(feedbackId: string) {
+  return request<FeedbackEntry>(`/api/admin/feedback/${encodeURIComponent(feedbackId)}/resolve`, {
+    method: 'POST',
   });
 }

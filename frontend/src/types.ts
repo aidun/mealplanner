@@ -220,11 +220,16 @@ export interface PremiumInviteResult {
   emailSent: boolean;
 }
 
+export type FeedbackStatus = 'open' | 'resolved';
+
 export interface FeedbackEntry {
   id: string;
   message: string;
   page?: string;
+  status: FeedbackStatus;
   createdAt?: string;
+  resolvedAt?: string;
+  resolvedByUserId?: string;
 }
 
 export interface StatsBucket {
@@ -248,6 +253,7 @@ export interface AdminStats {
 export interface AdminOverview {
   premiumUsers?: PremiumUser[];
   feedback?: FeedbackEntry[];
+  resolvedFeedback?: FeedbackEntry[];
   mailTemplates?: MailTemplate[];
   stats: AdminStats;
 }

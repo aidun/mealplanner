@@ -88,19 +88,20 @@ h3 {
   place-items: center;
   padding: 28px;
   background:
-    linear-gradient(135deg, rgba(15, 118, 110, 0.12), transparent 34%),
+    radial-gradient(circle at 8% 16%, rgba(242, 199, 110, 0.2), transparent 18rem),
+    radial-gradient(circle at 92% 10%, rgba(13, 138, 99, 0.16), transparent 22rem),
     linear-gradient(180deg, #fbfefd 0%, #eef7f3 100%);
 }
 
 .login-panel {
-  width: min(520px, 100%);
+  width: min(560px, 100%);
   display: grid;
   gap: 24px;
-  padding: 34px;
+  padding: 38px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: var(--shadow);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(247, 250, 247, 0.9));
+  box-shadow: var(--shadow-strong);
 }
 
 .login-copy {
@@ -117,6 +118,7 @@ h3 {
 .login-copy p {
   margin: 0;
   color: var(--muted);
+  max-width: 40ch;
 }
 
 .login-actions {
@@ -911,6 +913,48 @@ a:focus-visible {
   display: none;
 }
 
+.template-preview,
+.feedback-archive {
+  border: 1px solid rgba(18, 33, 29, 0.08);
+  border-radius: 8px;
+  background: rgba(248, 250, 248, 0.84);
+}
+
+.template-preview summary,
+.feedback-archive summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 12px 14px;
+  font-weight: 700;
+}
+
+.template-preview summary::-webkit-details-marker,
+.feedback-archive summary::-webkit-details-marker {
+  display: none;
+}
+
+.template-preview-grid {
+  display: grid;
+  gap: 12px;
+  padding: 0 14px 14px;
+}
+
+.template-preview-card {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid rgba(18, 33, 29, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.template-preview-card p,
+.template-preview-card pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .inline-banner {
   display: flex;
   justify-content: space-between;
@@ -1116,6 +1160,10 @@ a:focus-visible {
   background: rgba(245, 249, 245, 0.82);
 }
 
+.family-roster-card strong {
+  line-height: 1.25;
+}
+
 .family-roster-card p {
   margin: 4px 0 0;
   color: var(--muted);
@@ -1267,7 +1315,7 @@ a:focus-visible {
   right: 16px;
   bottom: 88px;
   z-index: 35;
-  width: min(360px, calc(100vw - 32px));
+  width: min(332px, calc(100vw - 32px));
 }
 
 .feedback-widget-card {
@@ -1284,7 +1332,7 @@ a:focus-visible {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 14px 16px;
+  padding: 12px 14px;
   border: 0;
   border-radius: 8px;
   background: transparent;
@@ -1296,7 +1344,7 @@ a:focus-visible {
 .feedback-widget-toggle-copy {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   font-weight: 700;
 }
 
@@ -1307,8 +1355,8 @@ a:focus-visible {
 
 .feedback-widget-panel {
   display: grid;
-  gap: 12px;
-  padding: 0 16px 16px;
+  gap: 10px;
+  padding: 0 14px 14px;
 }
 
 .feedback-widget-copy {
@@ -1318,7 +1366,7 @@ a:focus-visible {
 }
 
 .feedback-widget-textarea {
-  min-height: 124px;
+  min-height: 108px;
   resize: vertical;
 }
 
@@ -1395,6 +1443,7 @@ a:focus-visible {
   margin: -2px 0 0;
   color: var(--muted);
   font-size: 0.88rem;
+  line-height: 1.45;
 }
 
 .two-column-note {
@@ -1478,9 +1527,9 @@ a:focus-visible {
 
 .day-tabs {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   overflow-x: auto;
-  padding: 0 18px 14px;
+  padding: 0 18px 12px;
   border-bottom: 1px solid rgba(19, 33, 29, 0.06);
   scrollbar-width: none;
 }
@@ -1493,9 +1542,9 @@ a:focus-visible {
   flex: 0 0 auto;
   display: grid;
   gap: 4px;
-  min-width: 108px;
-  min-height: 60px;
-  padding: 10px 12px;
+  min-width: 98px;
+  min-height: 56px;
+  padding: 9px 11px;
   border: 1px solid rgba(18, 33, 29, 0.08);
   border-radius: var(--radius-sm);
   background: rgba(255, 255, 255, 0.58);
@@ -1534,7 +1583,7 @@ a:focus-visible {
 }
 
 .board-carousel {
-  padding: 8px 18px 18px;
+  padding: 4px 18px 18px;
 }
 
 .day-column {
@@ -2642,8 +2691,8 @@ a:focus-visible {
   .app-header {
     position: sticky;
     top: 0;
-    padding: calc(10px + env(safe-area-inset-top)) 12px 12px;
-    gap: 10px;
+    padding: calc(8px + env(safe-area-inset-top)) 12px 10px;
+    gap: 8px;
   }
 
   .header-overview {
@@ -2652,7 +2701,7 @@ a:focus-visible {
   }
 
   .brand-subtitle {
-    font-size: 0.84rem;
+    font-size: 0.78rem;
   }
 
   .app-logo-type small {
@@ -2665,7 +2714,7 @@ a:focus-visible {
 
   .header-actions {
     grid-template-columns: 1fr;
-    gap: 10px;
+    gap: 8px;
   }
 
   .header-primary-action,
@@ -2676,7 +2725,7 @@ a:focus-visible {
   .header-secondary-actions {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
+    gap: 6px;
   }
 
   .header-secondary-actions > *:only-child {
@@ -2804,16 +2853,17 @@ a:focus-visible {
   .workspace-pane-switch {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
-    margin-bottom: 14px;
+    gap: 6px;
+    margin-bottom: 12px;
   }
 
   .workspace-pane-button {
-    min-height: 44px;
+    min-height: 40px;
     border: 1px solid rgba(18, 33, 29, 0.08);
     border-radius: var(--radius-sm);
     background: rgba(255, 255, 255, 0.78);
     color: var(--muted);
+    font-size: 0.86rem;
     font-weight: 650;
   }
 
@@ -2873,18 +2923,18 @@ a:focus-visible {
   }
 
   .day-tabs {
-    padding-inline: 14px;
-    gap: 8px;
+    padding-inline: 12px;
+    gap: 6px;
   }
 
   .day-tab {
-    min-width: 88px;
-    min-height: 56px;
-    padding: 9px 10px;
+    min-width: 76px;
+    min-height: 50px;
+    padding: 8px 9px;
   }
 
   .day-tab span {
-    font-size: 0.86rem;
+    font-size: 0.8rem;
   }
 
   .day-tab strong,
@@ -2899,10 +2949,24 @@ a:focus-visible {
   }
 
   .feedback-widget {
-    right: 12px;
-    left: 12px;
-    bottom: 82px;
+    right: 10px;
+    left: 10px;
+    bottom: 74px;
     width: auto;
+  }
+
+  .feedback-widget-toggle {
+    padding: 11px 12px;
+  }
+
+  .feedback-widget-toggle-copy {
+    font-size: 0.92rem;
+  }
+
+  .feedback-widget-toggle-state,
+  .feedback-widget-copy,
+  .feedback-widget-counter {
+    font-size: 0.78rem;
   }
 
   .feedback-widget-footer {
@@ -3040,6 +3104,6 @@ a:focus-visible {
 
   .login-panel {
     align-self: center;
-    padding: 24px;
+    padding: 22px;
   }
 }

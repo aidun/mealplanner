@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -504,22 +505,46 @@ func (m *memoryRepo) SaveFeedback(r *http.Request, message string, page string) 
 		ID:        "feedback-" + strconv.Itoa(len(m.feedback)+1),
 		Message:   strings.TrimSpace(message),
 		Page:      strings.TrimSpace(page),
+		Status:    "open",
 		CreatedAt: time.Now(),
 	}
 	m.feedback = append([]domain.FeedbackEntry{entry}, m.feedback...)
 	return entry, nil
 }
 
-func (m *memoryRepo) ListFeedback(_ *http.Request, limit int) ([]domain.FeedbackEntry, error) {
-	if len(m.feedback) == 0 {
+func (m *memoryRepo) ListFeedback(_ *http.Request, status string, limit int) ([]domain.FeedbackEntry, error) {
+	filtered := make([]domain.FeedbackEntry, 0, len(m.feedback))
+	for _, entry := range m.feedback {
+		if strings.EqualFold(entry.Status, status) {
+			filtered = append(filtered, entry)
+		}
+	}
+	if len(filtered) == 0 {
 		return nil, store.ErrNotFound
 	}
-	if limit <= 0 || limit > len(m.feedback) {
-		limit = len(m.feedback)
+	if limit <= 0 || limit > len(filtered) {
+		limit = len(filtered)
 	}
 	out := make([]domain.FeedbackEntry, limit)
-	copy(out, m.feedback[:limit])
+	copy(out, filtered[:limit])
 	return out, nil
+}
+
+func (m *memoryRepo) ResolveFeedback(r *http.Request, feedbackID string) (domain.FeedbackEntry, error) {
+	for index, entry := range m.feedback {
+		if entry.ID != feedbackID {
+			continue
+		}
+		if entry.Status == "resolved" {
+			return domain.FeedbackEntry{}, store.ErrNotFound
+		}
+		entry.Status = "resolved"
+		entry.ResolvedAt = time.Now()
+		entry.ResolvedByUserID = mustUserID(r.Context())
+		m.feedback[index] = entry
+		return entry, nil
+	}
+	return domain.FeedbackEntry{}, store.ErrNotFound
 }
 
 func (m *memoryRepo) AdminStats(_ *http.Request) (domain.AdminStats, error) {
@@ -646,12 +671,15 @@ func TestAdminOverviewListsPremiumUsersAndStats(t *testing.T) {
 	repo := newMemoryRepo()
 	repo.emails["user-1"] = "markush1986@gmail.com"
 	repo.premiumUsers["premium-anna"] = domain.PremiumUser{ID: "premium-anna", Email: "anna@example.test", CreatedAt: time.Now()}
-	repo.feedback = []domain.FeedbackEntry{{ID: "feedback-1", Message: "Die Profilnavigation ist zu versteckt.", Page: "/onboarding", CreatedAt: time.Now()}}
+	repo.feedback = []domain.FeedbackEntry{
+		{ID: "feedback-1", Message: "Die Profilnavigation ist zu versteckt.", Page: "/onboarding", Status: "open", CreatedAt: time.Now()},
+		{ID: "feedback-2", Message: "Bereits erledigt.", Page: "/admin", Status: "resolved", CreatedAt: time.Now(), ResolvedAt: time.Now(), ResolvedByUserID: "user-1"},
+	}
 	repo.generation["weekly_cron"] = 3
 	repo.generation["regenerate_dinner"] = 5
 	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil, nil)
 
-	req := httptest.NewRequest(http.MethodGet, "/api/admin/overview", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/admin/overview?includeResolved=true", nil)
 	setAuth(repo, req, "user-1")
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
@@ -660,8 +688,37 @@ func TestAdminOverviewListsPremiumUsersAndStats(t *testing.T) {
 		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
 	}
 	body := rec.Body.String()
-	if !strings.Contains(body, "anna@example.test") || !strings.Contains(body, `"averageActiveAccountsPerFamily":1.5`) || !strings.Contains(body, `"weekly_cron"`) || !strings.Contains(body, "Die Profilnavigation ist zu versteckt.") {
+	if !strings.Contains(body, "anna@example.test") || !strings.Contains(body, `"averageActiveAccountsPerFamily":1.5`) || !strings.Contains(body, `"weekly_cron"`) || !strings.Contains(body, "Die Profilnavigation ist zu versteckt.") || !strings.Contains(body, "Bereits erledigt.") {
 		t.Fatalf("unexpected admin overview: %s", body)
+	}
+}
+
+func TestAdminCanResolveFeedback(t *testing.T) {
+	repo := newMemoryRepo()
+	repo.emails["user-1"] = "markush1986@gmail.com"
+	repo.feedback = []domain.FeedbackEntry{{ID: "feedback-1", Message: "Bitte Mobile verdichten.", Page: "/", Status: "open", CreatedAt: time.Now()}}
+	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil, nil)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/admin/feedback/feedback-1/resolve", nil)
+	req.SetPathValue("feedbackID", "feedback-1")
+	setAuth(repo, req, "user-1")
+	req.Header.Set("X-CSRF-Token", "csrf-user-1")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"status":"resolved"`) {
+		t.Fatalf("expected resolved status, got %s", rec.Body.String())
+	}
+	openFeedback, err := repo.ListFeedback(req, "open", 50)
+	if !errors.Is(err, store.ErrNotFound) && len(openFeedback) > 0 {
+		t.Fatalf("expected no open feedback left, got %#v", openFeedback)
+	}
+	resolvedFeedback, err := repo.ListFeedback(req, "resolved", 50)
+	if err != nil || len(resolvedFeedback) != 1 {
+		t.Fatalf("expected resolved feedback entry, got %#v err=%v", resolvedFeedback, err)
 	}
 }
 

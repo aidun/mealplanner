@@ -235,26 +235,42 @@ func (s Store) SaveFeedback(ctx context.Context, userID, message, page string) (
 	}
 	var entry domain.FeedbackEntry
 	err = s.pool.QueryRow(ctx, `
-		INSERT INTO feedback_entries(user_id, family_id, message, page)
-		VALUES ($1, $2::uuid, $3, NULLIF($4, ''))
-		RETURNING id::text, message, COALESCE(page, ''), created_at
-	`, userID, familyID, strings.TrimSpace(message), strings.TrimSpace(page)).Scan(&entry.ID, &entry.Message, &entry.Page, &entry.CreatedAt)
+		INSERT INTO feedback_entries(user_id, family_id, message, page, status)
+		VALUES ($1, $2::uuid, $3, NULLIF($4, ''), 'open')
+		RETURNING id::text, message, COALESCE(page, ''), status, created_at, COALESCE(resolved_at, to_timestamp(0)), COALESCE(resolved_by_user_id::text, '')
+	`, userID, familyID, strings.TrimSpace(message), strings.TrimSpace(page)).Scan(
+		&entry.ID,
+		&entry.Message,
+		&entry.Page,
+		&entry.Status,
+		&entry.CreatedAt,
+		&entry.ResolvedAt,
+		&entry.ResolvedByUserID,
+	)
 	if err != nil {
 		return domain.FeedbackEntry{}, err
+	}
+	if entry.ResolvedAt.Equal(time.Unix(0, 0).UTC()) {
+		entry.ResolvedAt = time.Time{}
 	}
 	return entry, nil
 }
 
-func (s Store) ListFeedback(ctx context.Context, limit int) ([]domain.FeedbackEntry, error) {
+func (s Store) ListFeedback(ctx context.Context, status string, limit int) ([]domain.FeedbackEntry, error) {
 	if limit <= 0 {
 		limit = 50
 	}
+	status = strings.ToLower(strings.TrimSpace(status))
+	if status == "" {
+		status = "open"
+	}
 	rows, err := s.pool.Query(ctx, `
-		SELECT id::text, message, COALESCE(page, ''), created_at
+		SELECT id::text, message, COALESCE(page, ''), status, created_at, COALESCE(resolved_at, to_timestamp(0)), COALESCE(resolved_by_user_id::text, '')
 		FROM feedback_entries
+		WHERE status = $1
 		ORDER BY created_at DESC
-		LIMIT $1
-	`, limit)
+		LIMIT $2
+	`, status, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -263,8 +279,19 @@ func (s Store) ListFeedback(ctx context.Context, limit int) ([]domain.FeedbackEn
 	entries := make([]domain.FeedbackEntry, 0, limit)
 	for rows.Next() {
 		var entry domain.FeedbackEntry
-		if err := rows.Scan(&entry.ID, &entry.Message, &entry.Page, &entry.CreatedAt); err != nil {
+		if err := rows.Scan(
+			&entry.ID,
+			&entry.Message,
+			&entry.Page,
+			&entry.Status,
+			&entry.CreatedAt,
+			&entry.ResolvedAt,
+			&entry.ResolvedByUserID,
+		); err != nil {
 			return nil, err
+		}
+		if entry.ResolvedAt.Equal(time.Unix(0, 0).UTC()) {
+			entry.ResolvedAt = time.Time{}
 		}
 		entries = append(entries, entry)
 	}
@@ -275,6 +302,37 @@ func (s Store) ListFeedback(ctx context.Context, limit int) ([]domain.FeedbackEn
 		return nil, ErrNotFound
 	}
 	return entries, nil
+}
+
+func (s Store) ResolveFeedback(ctx context.Context, resolverUserID, feedbackID string) (domain.FeedbackEntry, error) {
+	var entry domain.FeedbackEntry
+	err := s.pool.QueryRow(ctx, `
+		UPDATE feedback_entries
+		SET status = 'resolved',
+		    resolved_at = now(),
+		    resolved_by_user_id = $2::uuid
+		WHERE id = $1::uuid
+		  AND status <> 'resolved'
+		RETURNING id::text, message, COALESCE(page, ''), status, created_at, COALESCE(resolved_at, to_timestamp(0)), COALESCE(resolved_by_user_id::text, '')
+	`, feedbackID, resolverUserID).Scan(
+		&entry.ID,
+		&entry.Message,
+		&entry.Page,
+		&entry.Status,
+		&entry.CreatedAt,
+		&entry.ResolvedAt,
+		&entry.ResolvedByUserID,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.FeedbackEntry{}, ErrNotFound
+		}
+		return domain.FeedbackEntry{}, err
+	}
+	if entry.ResolvedAt.Equal(time.Unix(0, 0).UTC()) {
+		entry.ResolvedAt = time.Time{}
+	}
+	return entry, nil
 }
 
 func (s Store) ListUserIDs(ctx context.Context) ([]string, error) {

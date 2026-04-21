@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Header } from '../components/Header';
-import { PlusIcon, SaveIcon, TrashIcon } from '../components/icons';
-import { createPremiumUser, deletePremiumUser, getAdminOverview, getMailTemplates, logout, updateMailTemplate } from '../api';
+import { CheckIcon, PlusIcon, SaveIcon, TrashIcon } from '../components/icons';
+import { createPremiumUser, deletePremiumUser, getAdminOverview, getMailTemplates, logout, resolveFeedback, updateMailTemplate } from '../api';
 import { readableApiError } from '../lib/api-error';
 import { LoginPage } from './LoginPage';
 import { Navigate } from 'react-router-dom';
@@ -20,7 +20,7 @@ export function AdminPage() {
 
   const adminOverviewQuery = useQuery({
     queryKey: ['admin-overview'],
-    queryFn: getAdminOverview,
+    queryFn: () => getAdminOverview({ includeResolved: true }),
     enabled: Boolean(session?.isAdmin),
   });
   const mailTemplatesQuery = useQuery({
@@ -65,6 +65,12 @@ export function AdminPage() {
       await queryClient.invalidateQueries({ queryKey: ['admin-mail-templates'] });
     },
   });
+  const resolveFeedbackMutation = useMutation({
+    mutationFn: resolveFeedback,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['admin-overview'] });
+    },
+  });
   const logoutMutation = useMutation({
     mutationFn: logout,
     onSuccess: async () => {
@@ -107,7 +113,7 @@ export function AdminPage() {
           <div className="profile-page-intro">
             <span className="eyebrow">Admin</span>
             <h1>Admin</h1>
-            <p>Premium-Freigaben und anonymisierte Kennzahlen für Mealplanner.</p>
+            <p>Premium-Freigaben, Feedback-Triage und die laufenden Texte für Die Familienküche.</p>
           </div>
 
           <div className="profile-section">
@@ -304,6 +310,23 @@ export function AdminPage() {
                             onChange={(event) => updateTemplateDraft(template.kind, 'htmlBody', event.target.value)}
                           />
                         </label>
+                        <details className="template-preview">
+                          <summary>Vorschau</summary>
+                          <div className="template-preview-grid">
+                            <article className="template-preview-card">
+                              <strong>Betreff</strong>
+                              <p>{draft.subject}</p>
+                            </article>
+                            <article className="template-preview-card">
+                              <strong>Text</strong>
+                              <pre>{draft.textBody}</pre>
+                            </article>
+                            <article className="template-preview-card">
+                              <strong>HTML</strong>
+                              <div dangerouslySetInnerHTML={{ __html: draft.htmlBody }} />
+                            </article>
+                          </div>
+                        </details>
                         <button
                           type="button"
                           className="button button-secondary"
@@ -327,12 +350,12 @@ export function AdminPage() {
             <div className="profile-section-copy">
               <span className="section-index">04</span>
               <h2>Feedback</h2>
-              <p>Aktuelle Rueckmeldungen aus der Premium-Feedbackbox.</p>
+              <p>Offene Rückmeldungen zuerst bearbeiten, gelöste Punkte nur noch im Archiv halten.</p>
             </div>
             <div className="profile-section-fields">
               <div className="family-account-list">
                 {(adminOverview?.feedback ?? []).length === 0 ? (
-                  <p className="section-note">Noch kein Feedback eingegangen.</p>
+                  <p className="section-note">Keine offenen Feedback-Punkte.</p>
                 ) : (
                   (adminOverview?.feedback ?? []).map((entry) => (
                     <article key={entry.id} className="family-account-row family-account-row-stacked">
@@ -345,10 +368,42 @@ export function AdminPage() {
                         </div>
                         <p>{entry.message}</p>
                       </div>
+                      <button
+                        type="button"
+                        className="button button-secondary"
+                        onClick={() => resolveFeedbackMutation.mutate(entry.id)}
+                        disabled={resolveFeedbackMutation.isPending}
+                      >
+                        <CheckIcon className="action-icon" />
+                        Als gelöst markieren
+                      </button>
                     </article>
                   ))
                 )}
               </div>
+              {resolveFeedbackMutation.isError ? <p className="error-copy">{readableApiError(resolveFeedbackMutation.error)}</p> : null}
+              {resolveFeedbackMutation.isSuccess ? <p className="success-copy">Feedback als gelöst markiert.</p> : null}
+              {(adminOverview?.resolvedFeedback ?? []).length > 0 ? (
+                <details className="feedback-archive">
+                  <summary>Archiv</summary>
+                  <div className="family-account-list">
+                    {(adminOverview?.resolvedFeedback ?? []).map((entry) => (
+                      <article key={`resolved-${entry.id}`} className="family-account-row family-account-row-stacked">
+                        <div className="family-account-copy">
+                          <div className="family-account-head">
+                            <strong>{entry.page || 'Unbekannte Seite'}</strong>
+                            <span className="account-role-badge">Gelöst</span>
+                            <span className="account-role-badge">
+                              {entry.resolvedAt ? new Date(entry.resolvedAt).toLocaleString('de-DE') : 'Archiv'}
+                            </span>
+                          </div>
+                          <p>{entry.message}</p>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                </details>
+              ) : null}
             </div>
           </div>
         </section>

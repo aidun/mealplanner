@@ -75,7 +75,7 @@ test('planner smoke path', async ({ page, context }) => {
 
   await page.goto('/');
 
-  await expect(page.getByText('Planen, auswählen, kochen.')).toBeVisible();
+  await expect(page.getByText('Die Familienküche für diese Woche.')).toBeVisible();
 
   await page.getByLabel('Primäre Aktionen').getByRole('link', { name: 'Profil' }).click();
   await expect(page.getByText('Familienkonto pflegen')).toBeVisible();

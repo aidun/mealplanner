@@ -74,10 +74,13 @@ type PremiumInvite struct {
 }
 
 type FeedbackEntry struct {
-	ID        string    `json:"id"`
-	Message   string    `json:"message"`
-	Page      string    `json:"page,omitempty"`
-	CreatedAt time.Time `json:"createdAt,omitempty"`
+	ID               string    `json:"id"`
+	Message          string    `json:"message"`
+	Page             string    `json:"page,omitempty"`
+	Status           string    `json:"status"`
+	CreatedAt        time.Time `json:"createdAt,omitempty"`
+	ResolvedAt       time.Time `json:"resolvedAt,omitempty"`
+	ResolvedByUserID string    `json:"resolvedByUserId,omitempty"`
 }
 
 type CreateFeedbackRequest struct {
@@ -135,11 +138,12 @@ type AdminStats struct {
 }
 
 type AdminOverview struct {
-	PremiumUsers   []PremiumUser   `json:"premiumUsers,omitempty"`
-	PremiumInvites []PremiumInvite `json:"premiumInvites,omitempty"`
-	Feedback       []FeedbackEntry `json:"feedback,omitempty"`
-	MailTemplates  []MailTemplate  `json:"mailTemplates,omitempty"`
-	Stats          AdminStats      `json:"stats"`
+	PremiumUsers     []PremiumUser   `json:"premiumUsers,omitempty"`
+	PremiumInvites   []PremiumInvite `json:"premiumInvites,omitempty"`
+	Feedback         []FeedbackEntry `json:"feedback,omitempty"`
+	ResolvedFeedback []FeedbackEntry `json:"resolvedFeedback,omitempty"`
+	MailTemplates    []MailTemplate  `json:"mailTemplates,omitempty"`
+	Stats            AdminStats      `json:"stats"`
 }
 
 type AcceptFamilyInviteRequest struct {

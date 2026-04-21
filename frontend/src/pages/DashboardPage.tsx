@@ -286,8 +286,8 @@ export function DashboardPage() {
           <PlanBackdrop />
           <div className="plan-stage-copy plan-stage-copy-compact">
             <span className="eyebrow">Wochenplan</span>
-            <h1 id="home-title">Planen, auswählen, kochen.</h1>
-            <p>Alles für diese Woche an einem ruhigen Ort: Auswahl, Detailansicht und Einkaufsliste.</p>
+            <h1 id="home-title">Die Familienküche für diese Woche.</h1>
+            <p>Woche, Gericht und Einkauf greifen hier direkt ineinander, statt sich gegenseitig im Weg zu stehen.</p>
           </div>
           <div className="plan-stage-context" aria-label="Aktueller Fokus">
             <div className="plan-focus-item">

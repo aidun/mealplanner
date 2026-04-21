@@ -62,7 +62,8 @@ type Repository interface {
 	ListMailTemplates(r *http.Request) ([]domain.MailTemplate, error)
 	SaveMailTemplate(r *http.Request, kind string, update domain.UpdateMailTemplateRequest) (domain.MailTemplate, error)
 	SaveFeedback(r *http.Request, message string, page string) (domain.FeedbackEntry, error)
-	ListFeedback(r *http.Request, limit int) ([]domain.FeedbackEntry, error)
+	ListFeedback(r *http.Request, status string, limit int) ([]domain.FeedbackEntry, error)
+	ResolveFeedback(r *http.Request, feedbackID string) (domain.FeedbackEntry, error)
 	AdminStats(r *http.Request) (domain.AdminStats, error)
 	RecordGenerationEvent(r *http.Request, category string) error
 }
@@ -219,8 +220,12 @@ func (r StoreRepository) SaveFeedback(req *http.Request, message string, page st
 	return r.Store.SaveFeedback(req.Context(), mustUserID(req.Context()), message, page)
 }
 
-func (r StoreRepository) ListFeedback(req *http.Request, limit int) ([]domain.FeedbackEntry, error) {
-	return r.Store.ListFeedback(req.Context(), limit)
+func (r StoreRepository) ListFeedback(req *http.Request, status string, limit int) ([]domain.FeedbackEntry, error) {
+	return r.Store.ListFeedback(req.Context(), status, limit)
+}
+
+func (r StoreRepository) ResolveFeedback(req *http.Request, feedbackID string) (domain.FeedbackEntry, error) {
+	return r.Store.ResolveFeedback(req.Context(), mustUserID(req.Context()), feedbackID)
 }
 
 func (r StoreRepository) AdminStats(req *http.Request) (domain.AdminStats, error) {
@@ -291,6 +296,7 @@ func New(repo Repository, planner planner.Planner, authService auth.Service, api
 	mux.HandleFunc("PUT /api/family/member-links", h.withSession(h.withCSRF(h.updateFamilyMemberLink)))
 	mux.HandleFunc("PUT /api/family/account-settings", h.withSession(h.withCSRF(h.updateFamilyAccountSettings)))
 	mux.HandleFunc("GET /api/admin/overview", h.withSession(h.withAdmin(h.getAdminOverview)))
+	mux.HandleFunc("POST /api/admin/feedback/{feedbackID}/resolve", h.withSession(h.withAdmin(h.withCSRF(h.resolveFeedback))))
 	mux.HandleFunc("POST /api/admin/premium-users", h.withSession(h.withAdmin(h.withCSRF(h.createPremiumUser))))
 	mux.HandleFunc("DELETE /api/admin/premium-users/{premiumUserID}", h.withSession(h.withAdmin(h.withCSRF(h.deletePremiumUser))))
 	mux.HandleFunc("GET /api/admin/mail-templates", h.withSession(h.withAdmin(h.getMailTemplates)))
@@ -544,10 +550,18 @@ func (h *Handler) getAdminOverview(w http.ResponseWriter, r *http.Request) {
 		h.serverError(w, r, err)
 		return
 	}
-	feedback, err := h.repo.ListFeedback(r, 50)
+	feedback, err := h.repo.ListFeedback(r, "open", 50)
 	if err != nil && !errors.Is(err, store.ErrNotFound) {
 		h.serverError(w, r, err)
 		return
+	}
+	var resolvedFeedback []domain.FeedbackEntry
+	if strings.EqualFold(strings.TrimSpace(r.URL.Query().Get("includeResolved")), "true") {
+		resolvedFeedback, err = h.repo.ListFeedback(r, "resolved", 50)
+		if err != nil && !errors.Is(err, store.ErrNotFound) {
+			h.serverError(w, r, err)
+			return
+		}
 	}
 	stats, err := h.repo.AdminStats(r)
 	if err != nil {
@@ -555,11 +569,25 @@ func (h *Handler) getAdminOverview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, domain.AdminOverview{
-		PremiumUsers:  premiumUsers,
-		Feedback:      feedback,
-		MailTemplates: mailTemplates,
-		Stats:         stats,
+		PremiumUsers:     premiumUsers,
+		Feedback:         feedback,
+		ResolvedFeedback: resolvedFeedback,
+		MailTemplates:    mailTemplates,
+		Stats:            stats,
 	})
+}
+
+func (h *Handler) resolveFeedback(w http.ResponseWriter, r *http.Request) {
+	entry, err := h.repo.ResolveFeedback(r, r.PathValue("feedbackID"))
+	if errors.Is(err, store.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "Feedback nicht gefunden.")
+		return
+	}
+	if err != nil {
+		h.serverError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, entry)
 }
 
 func (h *Handler) createPremiumUser(w http.ResponseWriter, r *http.Request) {
@@ -638,7 +666,7 @@ func (h *Handler) putMailTemplate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if strings.TrimSpace(req.Subject) == "" || strings.TrimSpace(req.TextBody) == "" || strings.TrimSpace(req.HTMLBody) == "" {
-		writeError(w, http.StatusBadRequest, "Bitte alle Template-Felder ausfuellen.")
+		writeError(w, http.StatusBadRequest, "Bitte alle Template-Felder ausfüllen.")
 		return
 	}
 	saved, err := h.repo.SaveMailTemplate(r, r.PathValue("kind"), req)

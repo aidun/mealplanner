@@ -351,34 +351,35 @@ export function OnboardingPage() {
 
                       <div className="profile-section-fields member-grid">
                         <label className="field">
-                          <span className="field-label">Name</span>
+                          <span className="field-label">Name im Profil</span>
                           <input
                             className="input"
                             name={`member-name-${index}`}
                             autoComplete="name"
                             value={member.name}
                             onChange={(event) => updateMember(index, 'name', event.target.value)}
-                            placeholder="Anna"
+                            placeholder="Anna Weber"
                           />
                         </label>
                         <label className="field">
-                          <span className="field-label">Alias</span>
+                          <span className="field-label">Anrede im Plan</span>
                           <input
                             className="input"
                             name={`member-alias-${index}`}
                             autoComplete="nickname"
                             value={member.alias}
                             onChange={(event) => updateMember(index, 'alias', event.target.value)}
-                            placeholder="Mama, Markus, Alex"
+                            placeholder="Mama, Papa, Ben"
                           />
                         </label>
                         <label className="field">
-                          <span className="field-label">Rolle</span>
+                          <span className="field-label">Beschreibung</span>
                           <input
                             className="input"
+                            name={`member-role-${index}`}
                             value={member.role}
                             onChange={(event) => updateMember(index, 'role', event.target.value)}
-                            placeholder="Erwachsen, Kind"
+                            placeholder="Erwachsen, Kind, Gast"
                           />
                         </label>
                         <label className="field">
@@ -424,6 +425,10 @@ export function OnboardingPage() {
                         <p className="profile-inline-note member-grid-wide">
                           Allergien und Unverträglichkeiten werden in Rezepten nicht verbindlich geprüft. Bitte jede
                           Zutat vor dem Kochen noch einmal kontrollieren.
+                        </p>
+                        <p className="profile-inline-note member-grid-wide">
+                          Name bleibt die eindeutige Person im Profil. Die Anrede wird in Prompts und im Plan bevorzugt
+                          verwendet, wenn sie gesetzt ist.
                         </p>
                       </div>
                     </article>

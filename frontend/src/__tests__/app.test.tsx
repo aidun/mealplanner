@@ -145,7 +145,8 @@ const adminOverview = {
       htmlBody: '<p>Die Woche ist fertig</p>',
     },
   ],
-  feedback: [{ id: 'feedback-1', message: 'Die Auswahl im Profil ist zu versteckt.', page: '/onboarding', createdAt: '2026-04-21T09:30:00Z' }],
+  feedback: [{ id: 'feedback-1', message: 'Die Auswahl im Profil ist zu versteckt.', page: '/onboarding', status: 'open', createdAt: '2026-04-21T09:30:00Z' }],
+  resolvedFeedback: [{ id: 'feedback-2', message: 'Header auf Mobile verdichten.', page: '/', status: 'resolved', createdAt: '2026-04-20T09:30:00Z', resolvedAt: '2026-04-21T10:30:00Z' }],
   stats: {
     averageActiveAccountsPerFamily: 1.5,
     averageProfileMembersPerFamily: 2.5,
@@ -239,7 +240,7 @@ function createFetchMock(options: {
 
     if (url.endsWith('/api/feedback') && init?.method === 'POST') {
       const payload = JSON.parse(String(init.body ?? '{}'));
-      return new Response(JSON.stringify({ id: 'feedback-new', message: payload.message, page: payload.page }), { status: 201 });
+      return new Response(JSON.stringify({ id: 'feedback-new', message: payload.message, page: payload.page, status: 'open' }), { status: 201 });
     }
 
     if (url.endsWith('/api/profile') && (!init || !init.method || init.method === 'GET')) {
@@ -323,8 +324,12 @@ function createFetchMock(options: {
       );
     }
 
-    if (url.endsWith('/api/admin/overview')) {
+    if (url.includes('/api/admin/overview')) {
       return new Response(JSON.stringify(adminOverview), { status: 200 });
+    }
+
+    if (url.includes('/api/admin/feedback/') && init?.method === 'POST') {
+      return new Response(JSON.stringify({ id: 'feedback-1', message: 'Die Auswahl im Profil ist zu versteckt.', page: '/onboarding', status: 'resolved' }), { status: 200 });
     }
 
     if (url.endsWith('/api/admin/mail-templates')) {
@@ -507,7 +512,7 @@ describe('Mealplanner app', () => {
     const fetchMock = vi.mocked(fetch);
     renderApp('/');
 
-    fireEvent.click(await screen.findByRole('button', { name: /Direktes Feedback/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /Feedback/i }));
     await userEvent.type(await screen.findByRole('textbox', { name: 'Feedback' }), 'Die Tagesauswahl braucht mehr Kontext.');
     fireEvent.click(screen.getByRole('button', { name: 'Feedback senden' }));
 
@@ -663,7 +668,7 @@ describe('Mealplanner app', () => {
 
     expect(await screen.findByText('Familienkonto pflegen')).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Haushaltsname'), { target: { value: 'Familie Weber' } });
-    fireEvent.change(screen.getAllByLabelText('Alias')[0]!, { target: { value: 'Mama' } });
+    fireEvent.change(screen.getAllByLabelText('Anrede im Plan')[0]!, { target: { value: 'Mama' } });
     fireEvent.change(screen.getByLabelText('Standard-Portionen'), { target: { value: '4' } });
     const mondayCard = screen.getByLabelText('Montag');
     fireEvent.click(within(mondayCard).getByLabelText('Snack'));
@@ -698,6 +703,26 @@ describe('Mealplanner app', () => {
     expect(await screen.findByText('Premium-Einladung')).toBeInTheDocument();
     expect(await screen.findByText('weekly_cron')).toBeInTheDocument();
     expect(await screen.findByText('Die Auswahl im Profil ist zu versteckt.')).toBeInTheDocument();
+    expect(await screen.findByText('Archiv')).toBeInTheDocument();
+  });
+
+  it('marks admin feedback as resolved and removes it from the open list', async () => {
+    vi.stubGlobal('fetch', createFetchMock({ isAdmin: true }));
+    renderApp('/admin');
+
+    expect(await screen.findByText('Die Auswahl im Profil ist zu versteckt.')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Als gelöst markieren' }));
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/admin/feedback/feedback-1/resolve'),
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({ 'X-CSRF-Token': 'csrf-token-1' }),
+        })
+      );
+    });
+    expect(await screen.findByText('Feedback als gelöst markiert.')).toBeInTheDocument();
   });
 
   it('creates a family invite link from onboarding', async () => {
@@ -1013,7 +1038,7 @@ describe('Mealplanner app', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Abmelden' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Logout gerade nicht möglich');
-    expect(screen.getByText('Planen, auswählen, kochen.')).toBeInTheDocument();
+    expect(screen.getByText('Die Familienküche für diese Woche.')).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Mit Google anmelden' })).not.toBeInTheDocument();
   });
 
@@ -1039,7 +1064,7 @@ describe('Mealplanner app', () => {
     window.localStorage.setItem('mealplanner.promptDebug', 'true');
     renderApp('/');
 
-    expect(await screen.findByText('Planen, auswählen, kochen.')).toBeInTheDocument();
+    expect(await screen.findByText('Die Familienküche für diese Woche.')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Prompt prüfen' })).not.toBeInTheDocument();
   });
 
