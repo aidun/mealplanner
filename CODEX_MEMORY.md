@@ -22,6 +22,9 @@ Last updated: 2026-04-21
 - `deploy/base/api-deployment.yaml` ist jetzt konservativ (`APP_ENV=development`, `PROVIDER_MODE=mock`, `startupProbe`, Standard-Rate-Limit); Test/Production setzen `APP_ENV` und `PROVIDER_MODE` explizit im Overlay.
 - `deploy/production` enthaelt PodDisruptionBudgets fuer `api` und `frontend`, und `docs/PRODUCTION_READINESS.md` sammelt die letzte Produktions-Checkliste inklusive der optionalen Legal-Build-Variablen `VITE_LEGAL_*`.
 - Frontend-Prompt-Debug kann im Produktions-Build nicht mehr per `localStorage` erzwungen werden; Test-Builds aktivieren es ueber `VITE_PROMPT_DEBUG=true`.
+- Seit 2026-04-21 ist die Mail-Integration auf Resend ausgebaut: `user_settings` steuern pro Login `weeklyPlanEmailEnabled` und `recipeEmailEnabled`, Familien-Einladungen bleiben davon unberuehrt, Premium gilt familienweit sobald ein Familienlogin in `premium_users` liegt.
+- Admin kann Mail-Templates fuer `family_invite`, `premium_invite` und `weekly_plan_ready` direkt in der App pflegen; die Vorlagen werden in `mail_templates` gespeichert und zur Laufzeit mit festen Platzhaltern wie `{{family_name}}`, `{{invite_link}}`, `{{week_start}}`, `{{plan_url}}`, `{{app_url}}` und `{{support_email}}` gerendert.
+- Test-Deployments aktivieren Mail jetzt standardmaessig ueber `EMAIL_ENABLED=true` und `EMAIL_PROVIDER=resend`; fuer echte Zustellung werden weiterhin ein gueltiger `RESEND_API_KEY` und eine bei Resend verifizierte Sender-Domain fuer `markushartmann.dev` benoetigt.
 
 ## Wichtige Arbeitsregeln
 

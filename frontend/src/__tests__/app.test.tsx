@@ -100,14 +100,51 @@ const family = {
     { id: 'ben', name: 'Ben', alias: 'Ben' },
   ],
   accounts: [
-    { userId: 'user-1', email: 'anna@example.test', role: 'owner', linkedMemberId: 'anna' },
-    { userId: 'user-2', email: 'ben@example.test', role: 'member', linkedMemberId: 'ben' },
+    {
+      userId: 'user-1',
+      email: 'anna@example.test',
+      role: 'owner',
+      linkedMemberId: 'anna',
+      settings: { weeklyPlanEmailEnabled: true, recipeEmailEnabled: true },
+    },
+    {
+      userId: 'user-2',
+      email: 'ben@example.test',
+      role: 'member',
+      linkedMemberId: 'ben',
+      settings: { weeklyPlanEmailEnabled: false, recipeEmailEnabled: true },
+    },
   ],
   personal: false,
 };
 const session = { authenticated: true, csrfToken: 'csrf-token-1', email: 'anna@example.test', isAdmin: false };
 const adminOverview = {
   premiumUsers: [{ id: 'premium-1', email: 'premium@example.test' }],
+  mailTemplates: [
+    {
+      kind: 'premium-invite',
+      label: 'Premium-Einladung',
+      subject: 'Premium für dein Familienkonto',
+      textBody: 'Hallo {{email}}',
+      htmlBody: '<p>Hallo {{email}}</p>',
+      description: 'Wird nach Premium-Freigabe verschickt.',
+      variableHint: ['{{email}}', '{{invite_link}}'],
+    },
+    {
+      kind: 'family-invite',
+      label: 'Familien-Einladung',
+      subject: 'Einladung ins Familienkonto',
+      textBody: 'Komm in die Familie',
+      htmlBody: '<p>Komm in die Familie</p>',
+    },
+    {
+      kind: 'weekly-cron',
+      label: 'Wochenplan-Mail',
+      subject: 'Dein Wochenplan ist da',
+      textBody: 'Die Woche ist fertig',
+      htmlBody: '<p>Die Woche ist fertig</p>',
+    },
+  ],
   feedback: [{ id: 'feedback-1', message: 'Die Auswahl im Profil ist zu versteckt.', page: '/onboarding', createdAt: '2026-04-21T09:30:00Z' }],
   stats: {
     averageActiveAccountsPerFamily: 1.5,
@@ -165,7 +202,12 @@ beforeEach(() => {
   vi.stubGlobal('fetch', createFetchMock());
 });
 
-function createFetchMock(options: { authenticated?: boolean; familyOverride?: typeof family; isAdmin?: boolean } = {}) {
+function createFetchMock(options: {
+  authenticated?: boolean;
+  familyOverride?: typeof family;
+  isAdmin?: boolean;
+  inviteEmailSent?: boolean;
+} = {}) {
   const authenticated = options.authenticated ?? true;
   const activeFamily = options.familyOverride ?? family;
 
@@ -233,7 +275,7 @@ function createFetchMock(options: { authenticated?: boolean; familyOverride?: ty
         JSON.stringify({
           id: 'invite-1',
           inviteLink: 'https://mealplanner.test/family/invites/accept?token=invite-token',
-          emailSent: true,
+          emailSent: options.inviteEmailSent ?? true,
           expiresAt: '2026-04-28T00:00:00Z',
           warningText: 'Der persönliche Account geht im Familienkonto auf.',
         }),
@@ -246,6 +288,10 @@ function createFetchMock(options: { authenticated?: boolean; familyOverride?: ty
     }
 
     if (url.endsWith('/api/family/member-links') && init?.method === 'PUT') {
+      return new Response(JSON.stringify(activeFamily), { status: 200 });
+    }
+
+    if (url.endsWith('/api/family/account-settings') && init?.method === 'PUT') {
       return new Response(JSON.stringify(activeFamily), { status: 200 });
     }
 
@@ -281,12 +327,23 @@ function createFetchMock(options: { authenticated?: boolean; familyOverride?: ty
       return new Response(JSON.stringify(adminOverview), { status: 200 });
     }
 
+    if (url.endsWith('/api/admin/mail-templates')) {
+      return new Response(JSON.stringify(adminOverview.mailTemplates), { status: 200 });
+    }
+
     if (url.endsWith('/api/admin/premium-users') && init?.method === 'POST') {
-      return new Response(JSON.stringify({ id: 'premium-new', email: 'new@example.test' }), { status: 201 });
+      const payload = JSON.parse(String(init.body ?? '{}'));
+      return new Response(JSON.stringify({ id: 'premium-new', email: payload.email, inviteSent: Boolean(payload.sendInvite) }), { status: 201 });
     }
 
     if (url.includes('/api/admin/premium-users/') && init?.method === 'DELETE') {
       return new Response(null, { status: 204 });
+    }
+
+    if (url.includes('/api/admin/mail-templates/') && init?.method === 'PUT') {
+      const payload = JSON.parse(String(init.body ?? '{}'));
+      const kind = url.split('/').pop();
+      return new Response(JSON.stringify({ kind, ...payload }), { status: 200 });
     }
 
     if (url.includes('/api/plans/plan-1/bring-export-url')) {
@@ -638,6 +695,7 @@ describe('Mealplanner app', () => {
     fireEvent.click(await screen.findByRole('link', { name: 'Admin' }));
     expect(await screen.findByRole('heading', { name: 'Admin' })).toBeInTheDocument();
     expect(await screen.findByText('premium@example.test')).toBeInTheDocument();
+    expect(await screen.findByText('Premium-Einladung')).toBeInTheDocument();
     expect(await screen.findByText('weekly_cron')).toBeInTheDocument();
     expect(await screen.findByText('Die Auswahl im Profil ist zu versteckt.')).toBeInTheDocument();
   });
@@ -670,6 +728,21 @@ describe('Mealplanner app', () => {
     expect(screen.getByText(/von 2 Logins zugeordnet/i)).toBeInTheDocument();
   });
 
+  it('shows a manual-share fallback when invite email delivery fails', async () => {
+    vi.stubGlobal('fetch', createFetchMock({ inviteEmailSent: false }));
+
+    renderApp('/onboarding');
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Einladungen' }));
+    fireEvent.change(screen.getByLabelText('E-Mail-Adresse für Einladung'), {
+      target: { value: 'person@example.test' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Einladung per E-Mail senden' }));
+
+    expect(await screen.findByText(/Der Link ist bereit\. Die E-Mail konnte gerade nicht verschickt werden\./i)).toBeInTheDocument();
+    expect(screen.getByText('https://mealplanner.test/family/invites/accept?token=invite-token')).toBeInTheDocument();
+  });
+
   it('shows merged family members with visible login mails', async () => {
     renderApp('/onboarding');
 
@@ -684,7 +757,15 @@ describe('Mealplanner app', () => {
       createFetchMock({
         familyOverride: {
           ...family,
-          accounts: [{ userId: 'user-3', email: 'alex@example.test', role: 'member', linkedMemberId: '' }],
+          accounts: [
+            {
+              userId: 'user-3',
+              email: 'alex@example.test',
+              role: 'member',
+              linkedMemberId: '',
+              settings: { weeklyPlanEmailEnabled: false, recipeEmailEnabled: false },
+            },
+          ],
         },
       })
     );
@@ -702,6 +783,75 @@ describe('Mealplanner app', () => {
     fireEvent.change(selects[1]!, { target: { value: 'anna' } });
 
     expect(await screen.findByText('ben@example.test wurde aktualisiert.')).toBeInTheDocument();
+  });
+
+  it('stores per-account mail settings from the family profile area', async () => {
+    renderApp('/onboarding');
+
+    const weeklyPlanToggles = await screen.findAllByRole('checkbox', { name: 'Wochenplan-Mail' });
+    fireEvent.click(weeklyPlanToggles[1]!);
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/family/account-settings'),
+        expect.objectContaining({
+          method: 'PUT',
+          headers: expect.objectContaining({ 'X-CSRF-Token': 'csrf-token-1' }),
+          body: JSON.stringify({
+            accountUserId: 'user-2',
+            settings: { weeklyPlanEmailEnabled: true, recipeEmailEnabled: true },
+          }),
+        })
+      );
+    });
+    expect(await screen.findByText('Mail-Einstellungen gespeichert.')).toBeInTheDocument();
+  });
+
+  it('creates a premium user and sends an invite mail from admin', async () => {
+    vi.stubGlobal('fetch', createFetchMock({ isAdmin: true }));
+    renderApp('/admin');
+
+    fireEvent.change(await screen.findByLabelText('Premium-Mail freigeben'), {
+      target: { value: 'new@example.test' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Freigeben' }));
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/admin/premium-users'),
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({ 'X-CSRF-Token': 'csrf-token-1' }),
+          body: JSON.stringify({ email: 'new@example.test', sendInvite: true }),
+        })
+      );
+    });
+    expect(await screen.findByText('Premium freigeschaltet und Einladung versendet.')).toBeInTheDocument();
+  });
+
+  it('saves editable mail templates from admin', async () => {
+    vi.stubGlobal('fetch', createFetchMock({ isAdmin: true }));
+    renderApp('/admin');
+
+    const subjectField = await screen.findByDisplayValue('Premium für dein Familienkonto');
+    fireEvent.change(subjectField, { target: { value: 'Neue Premium-Einladung' } });
+    fireEvent.click(screen.getAllByRole('button', { name: 'Template speichern' })[0]!);
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/admin/mail-templates/premium-invite'),
+        expect.objectContaining({
+          method: 'PUT',
+          headers: expect.objectContaining({ 'X-CSRF-Token': 'csrf-token-1' }),
+          body: JSON.stringify({
+            subject: 'Neue Premium-Einladung',
+            textBody: 'Hallo {{email}}',
+            htmlBody: '<p>Hallo {{email}}</p>',
+          }),
+        })
+      );
+    });
+    expect(await screen.findByText('Mail-Template gespeichert.')).toBeInTheDocument();
   });
 
   it('copies the invite link from onboarding', async () => {

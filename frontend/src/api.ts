@@ -11,8 +11,12 @@ import type {
   Profile,
   Session,
   FeedbackEntry,
+  MailTemplate,
+  PremiumInviteResult,
   ShoppingList,
+  UpdateFamilyAccountSettingsRequest,
   UpdateFamilyMemberLinkRequest,
+  UpdateMailTemplateRequest,
 } from './types';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
@@ -130,6 +134,13 @@ export async function updateFamilyMemberLink(payload: UpdateFamilyMemberLinkRequ
   });
 }
 
+export async function updateFamilyAccountSettings(payload: UpdateFamilyAccountSettingsRequest) {
+  return request<FamilySummary>('/api/family/account-settings', {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function getCurrentPlan() {
   return request<Plan>('/api/plans/current', undefined, { allow404: true });
 }
@@ -195,15 +206,26 @@ export async function getAdminOverview() {
   return request<AdminOverview>('/api/admin/overview');
 }
 
-export async function createPremiumUser(email: string) {
-  return request<PremiumUser>('/api/admin/premium-users', {
+export async function createPremiumUser(email: string, options: { sendInvite?: boolean } = {}) {
+  return request<PremiumInviteResult>('/api/admin/premium-users', {
     method: 'POST',
-    body: JSON.stringify({ email }),
+    body: JSON.stringify({ email, sendInvite: Boolean(options.sendInvite) }),
   });
 }
 
 export async function deletePremiumUser(premiumUserId: string) {
   return request<null>(`/api/admin/premium-users/${encodeURIComponent(premiumUserId)}`, { method: 'DELETE' });
+}
+
+export async function getMailTemplates() {
+  return request<MailTemplate[]>('/api/admin/mail-templates');
+}
+
+export async function updateMailTemplate(kind: string, payload: UpdateMailTemplateRequest) {
+  return request<MailTemplate>(`/api/admin/mail-templates/${encodeURIComponent(kind)}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
 }
 
 export async function createFeedback(message: string, page: string) {

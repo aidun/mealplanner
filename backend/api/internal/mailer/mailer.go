@@ -8,6 +8,7 @@ import (
 
 type Mailer interface {
 	SendInviteEmail(ctx context.Context, payload InviteEmail) error
+	SendPremiumInviteEmail(ctx context.Context, payload PremiumInviteEmail) error
 	SendWeeklyPlanReadyEmail(ctx context.Context, payload WeeklyPlanReadyEmail) error
 }
 
@@ -17,6 +18,18 @@ type InviteEmail struct {
 	InviteLink   string
 	WarningText  string
 	SupportEmail string
+	Subject      string
+	TextBody     string
+	HTMLBody     string
+}
+
+type PremiumInviteEmail struct {
+	To           string
+	SupportEmail string
+	FeedbackURL  string
+	Subject      string
+	TextBody     string
+	HTMLBody     string
 }
 
 type WeeklyPlanReadyEmail struct {
@@ -25,6 +38,9 @@ type WeeklyPlanReadyEmail struct {
 	WeekStart    string
 	PlanURL      string
 	SupportEmail string
+	Subject      string
+	TextBody     string
+	HTMLBody     string
 }
 
 type Config struct {

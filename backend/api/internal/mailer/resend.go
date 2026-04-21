@@ -41,9 +41,20 @@ func (r Resend) SendInviteEmail(ctx context.Context, payload InviteEmail) error 
 		From:    r.from,
 		To:      []string{strings.TrimSpace(payload.To)},
 		ReplyTo: []string{r.replyTo},
-		Subject: inviteSubject(payload),
-		Text:    inviteText(payload),
-		HTML:    inviteHTML(payload),
+		Subject: renderedSubject(payload.Subject, inviteSubject(payload)),
+		Text:    renderedBody(payload.TextBody, inviteText(payload)),
+		HTML:    renderedBody(payload.HTMLBody, inviteHTML(payload)),
+	})
+}
+
+func (r Resend) SendPremiumInviteEmail(ctx context.Context, payload PremiumInviteEmail) error {
+	return r.send(ctx, resendMessage{
+		From:    r.from,
+		To:      []string{strings.TrimSpace(payload.To)},
+		ReplyTo: []string{r.replyTo},
+		Subject: renderedSubject(payload.Subject, premiumInviteSubject(payload)),
+		Text:    renderedBody(payload.TextBody, premiumInviteText(payload)),
+		HTML:    renderedBody(payload.HTMLBody, premiumInviteHTML(payload)),
 	})
 }
 
@@ -52,9 +63,9 @@ func (r Resend) SendWeeklyPlanReadyEmail(ctx context.Context, payload WeeklyPlan
 		From:    r.from,
 		To:      []string{strings.TrimSpace(payload.To)},
 		ReplyTo: []string{r.replyTo},
-		Subject: weeklySubject(payload),
-		Text:    weeklyText(payload),
-		HTML:    weeklyHTML(payload),
+		Subject: renderedSubject(payload.Subject, weeklySubject(payload)),
+		Text:    renderedBody(payload.TextBody, weeklyText(payload)),
+		HTML:    renderedBody(payload.HTMLBody, weeklyHTML(payload)),
 	})
 }
 
@@ -90,4 +101,18 @@ func (r Resend) send(ctx context.Context, payload resendMessage) error {
 	}
 	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 2048))
 	return fmt.Errorf("resend send failed: status=%d body=%s", resp.StatusCode, strings.TrimSpace(string(respBody)))
+}
+
+func renderedSubject(override string, fallback string) string {
+	if strings.TrimSpace(override) != "" {
+		return strings.TrimSpace(override)
+	}
+	return strings.TrimSpace(fallback)
+}
+
+func renderedBody(override string, fallback string) string {
+	if strings.TrimSpace(override) != "" {
+		return strings.TrimSpace(override)
+	}
+	return strings.TrimSpace(fallback)
 }

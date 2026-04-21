@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/aidun/mealplanner/backend/api/internal/domain"
+	"github.com/aidun/mealplanner/backend/api/internal/mailer"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -85,30 +86,45 @@ func (s Store) GetUserEmail(ctx context.Context, userID string) (string, error) 
 }
 
 func (s Store) IsPremiumUser(ctx context.Context, userID string) (bool, error) {
-	var email string
-	var emailHash string
-	err := s.pool.QueryRow(ctx, `SELECT COALESCE(email, ''), COALESCE(email_hash, '') FROM users WHERE id = $1`, userID).Scan(&email, &emailHash)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return false, ErrNotFound
-	}
+	familyID, err := s.activeFamilyID(ctx, userID)
 	if err != nil {
 		return false, err
 	}
-	if normalizeEmail(email) == adminEmail {
-		return false, nil
-	}
-	if strings.TrimSpace(emailHash) == "" {
-		return false, nil
-	}
-	var id string
-	err = s.pool.QueryRow(ctx, `SELECT id::text FROM premium_users WHERE email_hash = $1`, emailHash).Scan(&id)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return false, nil
-	}
+	rows, err := s.pool.Query(ctx, `
+		SELECT COALESCE(u.email, ''), COALESCE(u.email_hash, '')
+		FROM family_members fm
+		JOIN users u ON u.id = fm.user_id
+		WHERE fm.family_id = $1
+	`, familyID)
 	if err != nil {
 		return false, err
 	}
-	return true, nil
+	defer rows.Close()
+	emailHashes := make([]string, 0, 4)
+	for rows.Next() {
+		var email string
+		var emailHash string
+		if err := rows.Scan(&email, &emailHash); err != nil {
+			return false, err
+		}
+		if normalizeEmail(email) == adminEmail {
+			return true, nil
+		}
+		if strings.TrimSpace(emailHash) != "" {
+			emailHashes = append(emailHashes, strings.TrimSpace(emailHash))
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return false, err
+	}
+	if len(emailHashes) == 0 {
+		return false, nil
+	}
+	var premiumCount int
+	if err := s.pool.QueryRow(ctx, `SELECT COUNT(*)::int FROM premium_users WHERE email_hash = ANY($1)`, emailHashes).Scan(&premiumCount); err != nil {
+		return false, err
+	}
+	return premiumCount > 0, nil
 }
 
 func (s Store) LoginAllowed(ctx context.Context, email string, emailHash string) (bool, error) {
@@ -119,15 +135,92 @@ func (s Store) LoginAllowed(ctx context.Context, email string, emailHash string)
 	if strings.TrimSpace(emailHash) == "" {
 		return false, nil
 	}
-	var id string
-	err := s.pool.QueryRow(ctx, `SELECT id::text FROM premium_users WHERE email_hash = $1`, emailHash).Scan(&id)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return false, nil
-	}
-	if err != nil {
+	var directPremium bool
+	if err := s.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM premium_users WHERE email_hash = $1)`, emailHash).Scan(&directPremium); err != nil {
 		return false, err
 	}
-	return true, nil
+	if directPremium {
+		return true, nil
+	}
+	var familyPremium bool
+	err := s.pool.QueryRow(ctx, `
+		SELECT EXISTS(
+			SELECT 1
+			FROM users u
+			JOIN family_members current_member ON current_member.user_id = u.id
+			JOIN family_members family_member ON family_member.family_id = current_member.family_id
+			JOIN users family_user ON family_user.id = family_member.user_id
+			JOIN premium_users pu ON pu.email_hash = family_user.email_hash
+			WHERE u.email_hash = $1
+		)
+	`, emailHash).Scan(&familyPremium)
+	return familyPremium, err
+}
+
+func (s Store) GetAccountSettings(ctx context.Context, userID string) (domain.AccountSettings, error) {
+	var settings domain.AccountSettings
+	err := s.pool.QueryRow(ctx, `
+		SELECT weekly_plan_email_enabled, recipe_email_enabled, updated_at
+		FROM user_settings
+		WHERE user_id = $1::uuid
+	`, userID).Scan(&settings.WeeklyPlanEmailEnabled, &settings.RecipeEmailEnabled, &settings.UpdatedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return domain.AccountSettings{WeeklyPlanEmailEnabled: true, RecipeEmailEnabled: true}, nil
+	}
+	return settings, err
+}
+
+func (s Store) SaveAccountSettings(ctx context.Context, userID string, settings domain.AccountSettings) (domain.AccountSettings, error) {
+	err := s.pool.QueryRow(ctx, `
+		INSERT INTO user_settings(user_id, weekly_plan_email_enabled, recipe_email_enabled, updated_at)
+		VALUES ($1::uuid, $2, $3, now())
+		ON CONFLICT (user_id) DO UPDATE
+		SET weekly_plan_email_enabled = EXCLUDED.weekly_plan_email_enabled,
+		    recipe_email_enabled = EXCLUDED.recipe_email_enabled,
+		    updated_at = now()
+		RETURNING updated_at
+	`, userID, settings.WeeklyPlanEmailEnabled, settings.RecipeEmailEnabled).Scan(&settings.UpdatedAt)
+	return settings, err
+}
+
+func (s Store) ListPremiumInvites(ctx context.Context, limit int) ([]domain.PremiumInvite, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+	rows, err := s.pool.Query(ctx, `
+		SELECT id::text, email, created_at
+		FROM premium_invites
+		ORDER BY created_at DESC
+		LIMIT $1
+	`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := make([]domain.PremiumInvite, 0, limit)
+	for rows.Next() {
+		var item domain.PremiumInvite
+		if err := rows.Scan(&item.ID, &item.Email, &item.CreatedAt); err != nil {
+			return nil, err
+		}
+		item.EmailSent = true
+		items = append(items, item)
+	}
+	return items, rows.Err()
+}
+
+func (s Store) CreatePremiumInvite(ctx context.Context, invitedByUserID string, email string, emailHash string) (domain.PremiumInvite, error) {
+	var invite domain.PremiumInvite
+	err := s.pool.QueryRow(ctx, `
+		INSERT INTO premium_invites(email, email_hash, invited_by_user_id)
+		VALUES ($1, $2, $3::uuid)
+		RETURNING id::text, email, created_at
+	`, normalizeEmail(email), strings.TrimSpace(emailHash), invitedByUserID).Scan(&invite.ID, &invite.Email, &invite.CreatedAt)
+	if err != nil {
+		return domain.PremiumInvite{}, err
+	}
+	invite.EmailSent = true
+	return invite, nil
 }
 
 func (s Store) DeleteSession(ctx context.Context, sessionID string) error {
@@ -350,9 +443,16 @@ func (s Store) GetFamily(ctx context.Context, userID string) (domain.FamilySumma
 		}
 	}
 	rows, err := s.pool.Query(ctx, `
-		SELECT fm.user_id::text, COALESCE(u.email, ''), fm.role, COALESCE(fm.linked_member_id, '')
+		SELECT fm.user_id::text,
+		       COALESCE(u.email, ''),
+		       fm.role,
+		       COALESCE(fm.linked_member_id, ''),
+		       COALESCE(us.weekly_plan_email_enabled, true),
+		       COALESCE(us.recipe_email_enabled, true),
+		       us.updated_at
 		FROM family_members fm
 		JOIN users u ON u.id = fm.user_id
+		LEFT JOIN user_settings us ON us.user_id = fm.user_id
 		WHERE fm.family_id = $1
 		ORDER BY fm.created_at ASC
 	`, familyID)
@@ -362,7 +462,15 @@ func (s Store) GetFamily(ctx context.Context, userID string) (domain.FamilySumma
 	defer rows.Close()
 	for rows.Next() {
 		var account domain.FamilyAccount
-		if err := rows.Scan(&account.UserID, &account.Email, &account.Role, &account.LinkedMemberID); err != nil {
+		if err := rows.Scan(
+			&account.UserID,
+			&account.Email,
+			&account.Role,
+			&account.LinkedMemberID,
+			&account.Settings.WeeklyPlanEmailEnabled,
+			&account.Settings.RecipeEmailEnabled,
+			&account.Settings.UpdatedAt,
+		); err != nil {
 			return domain.FamilySummary{}, err
 		}
 		summary.Accounts = append(summary.Accounts, account)
@@ -491,6 +599,30 @@ func (s Store) UpdateFamilyMemberLink(ctx context.Context, userID string, accoun
 	}
 	if tag.RowsAffected() == 0 {
 		return domain.FamilySummary{}, ErrNotFound
+	}
+	return s.GetFamily(ctx, userID)
+}
+
+func (s Store) UpdateFamilyAccountSettings(ctx context.Context, userID string, accountUserID string, settings domain.AccountSettings) (domain.FamilySummary, error) {
+	familyID, err := s.activeFamilyID(ctx, userID)
+	if err != nil {
+		return domain.FamilySummary{}, err
+	}
+	var exists bool
+	if err := s.pool.QueryRow(ctx, `
+		SELECT EXISTS(
+			SELECT 1
+			FROM family_members
+			WHERE family_id = $1 AND user_id = $2::uuid
+		)
+	`, familyID, accountUserID).Scan(&exists); err != nil {
+		return domain.FamilySummary{}, err
+	}
+	if !exists {
+		return domain.FamilySummary{}, ErrNotFound
+	}
+	if _, err := s.SaveAccountSettings(ctx, accountUserID, settings); err != nil {
+		return domain.FamilySummary{}, err
 	}
 	return s.GetFamily(ctx, userID)
 }
@@ -637,6 +769,79 @@ func (s Store) SavePremiumUser(ctx context.Context, grantedByUserID string, emai
 		RETURNING id::text, email, created_at
 	`, email, strings.TrimSpace(emailHash), grantedByUserID).Scan(&user.ID, &user.Email, &user.CreatedAt)
 	return user, err
+}
+
+func (s Store) ListMailTemplates(ctx context.Context) ([]domain.MailTemplate, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT kind, subject_template, text_template, html_template, updated_at
+		FROM mail_templates
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	overrides := map[string]domain.MailTemplate{}
+	for rows.Next() {
+		var item domain.MailTemplate
+		if err := rows.Scan(&item.Kind, &item.Subject, &item.TextBody, &item.HTMLBody, &item.UpdatedAt); err != nil {
+			return nil, err
+		}
+		overrides[item.Kind] = item
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	templates := make([]domain.MailTemplate, 0, len(mailer.DefaultTemplateKinds()))
+	for _, kind := range mailer.DefaultTemplateKinds() {
+		defaults, ok := mailer.DefaultTemplate(kind)
+		if !ok {
+			continue
+		}
+		item := domain.MailTemplate{
+			Kind:         kind,
+			Label:        defaults.Label,
+			Subject:      defaults.Subject,
+			TextBody:     defaults.TextBody,
+			HTMLBody:     defaults.HTMLBody,
+			Description:  defaults.Description,
+			VariableHint: append([]string(nil), defaults.Variables...),
+		}
+		if override, ok := overrides[kind]; ok {
+			item.Subject = override.Subject
+			item.TextBody = override.TextBody
+			item.HTMLBody = override.HTMLBody
+			item.UpdatedAt = override.UpdatedAt
+		}
+		templates = append(templates, item)
+	}
+	return templates, nil
+}
+
+func (s Store) SaveMailTemplate(ctx context.Context, kind string, update domain.UpdateMailTemplateRequest) (domain.MailTemplate, error) {
+	defaults, ok := mailer.DefaultTemplate(kind)
+	if !ok {
+		return domain.MailTemplate{}, ErrNotFound
+	}
+	item := domain.MailTemplate{
+		Kind:         kind,
+		Label:        defaults.Label,
+		Subject:      strings.TrimSpace(update.Subject),
+		TextBody:     strings.TrimSpace(update.TextBody),
+		HTMLBody:     strings.TrimSpace(update.HTMLBody),
+		Description:  defaults.Description,
+		VariableHint: append([]string(nil), defaults.Variables...),
+	}
+	err := s.pool.QueryRow(ctx, `
+		INSERT INTO mail_templates(kind, subject_template, text_template, html_template, updated_at)
+		VALUES ($1, $2, $3, $4, now())
+		ON CONFLICT (kind) DO UPDATE
+		SET subject_template = EXCLUDED.subject_template,
+		    text_template = EXCLUDED.text_template,
+		    html_template = EXCLUDED.html_template,
+		    updated_at = now()
+		RETURNING updated_at
+	`, item.Kind, item.Subject, item.TextBody, item.HTMLBody).Scan(&item.UpdatedAt)
+	return item, err
 }
 
 func (s Store) DeletePremiumUser(ctx context.Context, id string) error {

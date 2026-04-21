@@ -60,6 +60,7 @@ export interface FamilyAccount {
   email?: string;
   role?: string;
   linkedMemberId?: string;
+  settings?: AccountSettings;
 }
 
 export interface FamilySummary {
@@ -201,10 +202,22 @@ export interface Session {
   isPremium?: boolean;
 }
 
+export interface AccountSettings {
+  weeklyPlanEmailEnabled: boolean;
+  recipeEmailEnabled: boolean;
+  updatedAt?: string;
+}
+
 export interface PremiumUser {
   id: string;
   email: string;
+  inviteSent?: boolean;
   createdAt?: string;
+}
+
+export interface PremiumInviteResult {
+  premiumUser: PremiumUser;
+  emailSent: boolean;
 }
 
 export interface FeedbackEntry {
@@ -235,12 +248,35 @@ export interface AdminStats {
 export interface AdminOverview {
   premiumUsers?: PremiumUser[];
   feedback?: FeedbackEntry[];
+  mailTemplates?: MailTemplate[];
   stats: AdminStats;
+}
+
+export interface MailTemplate {
+  kind: string;
+  label?: string;
+  subject: string;
+  textBody: string;
+  htmlBody: string;
+  updatedAt?: string;
+  description?: string;
+  variableHint?: string[];
 }
 
 export interface UpdateFamilyMemberLinkRequest {
   accountUserId: string;
   memberId: string;
+}
+
+export interface UpdateFamilyAccountSettingsRequest {
+  accountUserId: string;
+  settings: AccountSettings;
+}
+
+export interface UpdateMailTemplateRequest {
+  subject: string;
+  textBody: string;
+  htmlBody: string;
 }
 
 export interface MemberFormState {

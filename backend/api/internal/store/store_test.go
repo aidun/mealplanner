@@ -16,8 +16,8 @@ func TestLoadMigrations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(migrations) != 7 {
-		t.Fatalf("expected seven migrations, got %d", len(migrations))
+	if len(migrations) != 9 {
+		t.Fatalf("expected nine migrations, got %d", len(migrations))
 	}
 }
 
@@ -106,5 +106,14 @@ func TestRandomToken(t *testing.T) {
 	}
 	if len(token) < 32 {
 		t.Fatalf("token too short: %q", token)
+	}
+}
+
+func TestNormalizeEmail(t *testing.T) {
+	if got := normalizeEmail("  Anna@Example.Test "); got != "anna@example.test" {
+		t.Fatalf("expected normalized email, got %q", got)
+	}
+	if got := normalizeEmail("   "); got != "" {
+		t.Fatalf("expected blank email to normalize to empty string, got %q", got)
 	}
 }

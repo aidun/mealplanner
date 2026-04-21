@@ -10,11 +10,13 @@ import {
   getFavorites,
   getProfile,
   saveProfile,
+  updateFamilyAccountSettings,
   updateFamilyMemberLink,
 } from '../api';
 import { readableApiError } from '../lib/api-error';
 import { defaultMealPlanDays, emptyMember, formToProfile, profileToForm, syncMealPlanDays } from '../lib/profile-form';
 import type { MemberFormState, ProfileFormState } from '../types';
+import { useSession } from '../session';
 
 const EMPTY_FORM: ProfileFormState = {
   householdName: '',
@@ -35,6 +37,7 @@ export function OnboardingPage() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const session = useSession();
   const joinedFamily = searchParams.get('family') === 'joined';
   const [form, setForm] = useState<ProfileFormState>(EMPTY_FORM);
   const [hasEdited, setHasEdited] = useState(false);
@@ -94,6 +97,12 @@ export function OnboardingPage() {
 
   const linkMutation = useMutation({
     mutationFn: updateFamilyMemberLink,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['family'] });
+    },
+  });
+  const accountSettingsMutation = useMutation({
+    mutationFn: updateFamilyAccountSettings,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['family'] });
     },
@@ -191,6 +200,7 @@ export function OnboardingPage() {
   const unassignedAccountsCount = linkedMembers.filter((account) => account.unassigned).length;
   const favorites = favoritesQuery.data ?? [];
   const inviteSentByEmail = Boolean((inviteMutation.data as { emailSent?: boolean } | undefined)?.emailSent);
+  const canManageFamilyMail = Boolean(session?.isPremium || session?.isAdmin);
 
   const statusMessage = useMemo(() => {
     if (saveMutation.isPending) return 'Profil wird gespeichert.';
@@ -521,6 +531,50 @@ export function OnboardingPage() {
                             ))}
                           </select>
                         </label>
+                        <div className="family-account-settings">
+                          <div className="family-account-settings-copy">
+                            <strong>E-Mail-Versand</strong>
+                            <p>
+                              {canManageFamilyMail
+                                ? 'Wochenplan- und Rezept-Mails für dieses Login steuern.'
+                                : 'Premium gilt familienweit. Mailschalter werden sichtbar, sobald dieses Familienkonto Premium aktiv hat.'}
+                            </p>
+                          </div>
+                          <label className="settings-toggle">
+                            <input
+                              type="checkbox"
+                              checked={Boolean(account.settings?.weeklyPlanEmailEnabled)}
+                              disabled={!canManageFamilyMail || accountSettingsMutation.isPending}
+                              onChange={(event) =>
+                                accountSettingsMutation.mutate({
+                                  accountUserId: account.userId,
+                                  settings: {
+                                    weeklyPlanEmailEnabled: event.target.checked,
+                                    recipeEmailEnabled: Boolean(account.settings?.recipeEmailEnabled),
+                                  },
+                                })
+                              }
+                            />
+                            <span>Wochenplan-Mail</span>
+                          </label>
+                          <label className="settings-toggle">
+                            <input
+                              type="checkbox"
+                              checked={Boolean(account.settings?.recipeEmailEnabled)}
+                              disabled={!canManageFamilyMail || accountSettingsMutation.isPending}
+                              onChange={(event) =>
+                                accountSettingsMutation.mutate({
+                                  accountUserId: account.userId,
+                                  settings: {
+                                    weeklyPlanEmailEnabled: Boolean(account.settings?.weeklyPlanEmailEnabled),
+                                    recipeEmailEnabled: event.target.checked,
+                                  },
+                                })
+                              }
+                            />
+                            <span>Rezept-Mail</span>
+                          </label>
+                        </div>
                       </article>
                     ))
                   ) : (
@@ -532,6 +586,12 @@ export function OnboardingPage() {
                   <p className="success-copy">
                     {lastLinkedAccountEmail ? `${lastLinkedAccountEmail} wurde aktualisiert.` : 'Zuordnung gespeichert.'}
                   </p>
+                ) : null}
+                {accountSettingsMutation.isError ? (
+                  <p className="error-copy">{readableApiError(accountSettingsMutation.error)}</p>
+                ) : null}
+                {accountSettingsMutation.isSuccess ? (
+                  <p className="success-copy">Mail-Einstellungen gespeichert.</p>
                 ) : null}
 
               </div>

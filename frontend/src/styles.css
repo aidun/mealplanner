@@ -1354,6 +1354,41 @@ a:focus-visible {
 
 .family-account-row-stacked {
   align-items: flex-start;
+  grid-template-columns: 1fr;
+}
+
+.family-account-settings {
+  display: grid;
+  gap: 10px;
+}
+
+.family-account-settings-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.family-account-settings-copy p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.settings-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+  padding: 10px 12px;
+  border: 1px solid rgba(18, 33, 29, 0.08);
+  border-radius: 8px;
+  background: rgba(247, 250, 247, 0.86);
+}
+
+.settings-toggle-inline {
+  width: fit-content;
+}
+
+.settings-toggle input {
+  margin: 0;
 }
 
 .profile-inline-note {

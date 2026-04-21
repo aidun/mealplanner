@@ -81,3 +81,37 @@ func TestWeeklyTemplateContainsPlanURL(t *testing.T) {
 		t.Fatalf("unexpected weekly template %q", text)
 	}
 }
+
+func TestResendPremiumInviteEmailBuildsPayload(t *testing.T) {
+	var captured string
+	client := roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		body, _ := io.ReadAll(req.Body)
+		captured = string(body)
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Body:       io.NopCloser(bytes.NewBufferString(`{"id":"email-2"}`)),
+		}, nil
+	})
+
+	instance := NewResend("info@markushartmann.dev", "info@markushartmann.dev", "resend-key", client)
+	err := instance.SendPremiumInviteEmail(context.Background(), PremiumInviteEmail{
+		To:           "person@example.test",
+		SupportEmail: "info@markushartmann.dev",
+		FeedbackURL:  "https://mealplanner.test/",
+		Subject:      "Premium freigeschaltet",
+		TextBody:     "Zur App https://mealplanner.test/",
+		HTMLBody:     "<p>Zur App</p>",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		`"subject":"Premium freigeschaltet"`,
+		`"to":["person@example.test"]`,
+		`https://mealplanner.test/`,
+	} {
+		if !strings.Contains(captured, want) {
+			t.Fatalf("expected payload to contain %q, got %s", want, captured)
+		}
+	}
+}

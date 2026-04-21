@@ -22,10 +22,11 @@ type FamilyMemberSummary struct {
 }
 
 type FamilyAccount struct {
-	UserID         string `json:"userId"`
-	Email          string `json:"email,omitempty"`
-	Role           string `json:"role,omitempty"`
-	LinkedMemberID string `json:"linkedMemberId,omitempty"`
+	UserID         string          `json:"userId"`
+	Email          string          `json:"email,omitempty"`
+	Role           string          `json:"role,omitempty"`
+	LinkedMemberID string          `json:"linkedMemberId,omitempty"`
+	Settings       AccountSettings `json:"settings"`
 }
 
 type FamilySummary struct {
@@ -60,6 +61,18 @@ type PremiumUser struct {
 	CreatedAt time.Time `json:"createdAt,omitempty"`
 }
 
+type PremiumInviteResult struct {
+	PremiumUser PremiumUser `json:"premiumUser"`
+	EmailSent   bool        `json:"emailSent"`
+}
+
+type PremiumInvite struct {
+	ID        string    `json:"id"`
+	Email     string    `json:"email"`
+	EmailSent bool      `json:"emailSent"`
+	CreatedAt time.Time `json:"createdAt,omitempty"`
+}
+
 type FeedbackEntry struct {
 	ID        string    `json:"id"`
 	Message   string    `json:"message"`
@@ -74,6 +87,33 @@ type CreateFeedbackRequest struct {
 
 type CreatePremiumUserRequest struct {
 	Email string `json:"email"`
+}
+
+type CreatePremiumInviteRequest struct {
+	Email string `json:"email"`
+}
+
+type AccountSettings struct {
+	WeeklyPlanEmailEnabled bool      `json:"weeklyPlanEmailEnabled"`
+	RecipeEmailEnabled     bool      `json:"recipeEmailEnabled"`
+	UpdatedAt              time.Time `json:"updatedAt,omitempty"`
+}
+
+type MailTemplate struct {
+	Kind         string    `json:"kind"`
+	Label        string    `json:"label,omitempty"`
+	Subject      string    `json:"subject"`
+	TextBody     string    `json:"textBody"`
+	HTMLBody     string    `json:"htmlBody"`
+	UpdatedAt    time.Time `json:"updatedAt,omitempty"`
+	Description  string    `json:"description,omitempty"`
+	VariableHint []string  `json:"variableHint,omitempty"`
+}
+
+type UpdateMailTemplateRequest struct {
+	Subject  string `json:"subject"`
+	TextBody string `json:"textBody"`
+	HTMLBody string `json:"htmlBody"`
 }
 
 type StatsBucket struct {
@@ -95,9 +135,11 @@ type AdminStats struct {
 }
 
 type AdminOverview struct {
-	PremiumUsers []PremiumUser   `json:"premiumUsers,omitempty"`
-	Feedback     []FeedbackEntry `json:"feedback,omitempty"`
-	Stats        AdminStats      `json:"stats"`
+	PremiumUsers   []PremiumUser   `json:"premiumUsers,omitempty"`
+	PremiumInvites []PremiumInvite `json:"premiumInvites,omitempty"`
+	Feedback       []FeedbackEntry `json:"feedback,omitempty"`
+	MailTemplates  []MailTemplate  `json:"mailTemplates,omitempty"`
+	Stats          AdminStats      `json:"stats"`
 }
 
 type AcceptFamilyInviteRequest struct {
@@ -107,6 +149,11 @@ type AcceptFamilyInviteRequest struct {
 type UpdateFamilyMemberLinkRequest struct {
 	AccountUserID string `json:"accountUserId"`
 	MemberID      string `json:"memberId"`
+}
+
+type UpdateFamilyAccountSettingsRequest struct {
+	AccountUserID string          `json:"accountUserId"`
+	Settings      AccountSettings `json:"settings"`
 }
 
 type Member struct {

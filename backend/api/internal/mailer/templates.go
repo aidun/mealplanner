@@ -5,11 +5,94 @@ import (
 	"strings"
 )
 
+type TemplateDefaults struct {
+	Label       string
+	Subject     string
+	TextBody    string
+	HTMLBody    string
+	Description string
+	Variables   []string
+}
+
+const (
+	TemplateKindFamilyInvite    = "family_invite"
+	TemplateKindPremiumInvite   = "premium_invite"
+	TemplateKindWeeklyPlanReady = "weekly_plan_ready"
+)
+
+func DefaultTemplate(kind string) (TemplateDefaults, bool) {
+	switch strings.TrimSpace(kind) {
+	case TemplateKindFamilyInvite:
+		return TemplateDefaults{
+			Label:       "Familien-Einladung",
+			Subject:     "Einladung zum Mealplanner von {{family_name}}",
+			TextBody:    "Du wurdest zu einem Mealplanner-Familienkonto eingeladen.\nFamilienkonto: {{family_name}}\n\nMit dem Annehmen der Einladung wird dein persoenlicher Account in dieses Familienkonto ueberfuehrt.\n{{warning_text}}\n\nEinladung annehmen:\n{{invite_link}}\n\nRueckfragen:\n{{support_email}}",
+			HTMLBody:    "<p>Du wurdest zu einem Mealplanner-Familienkonto eingeladen.</p><p><strong>Familienkonto:</strong> {{family_name}}</p><p>Mit dem Annehmen der Einladung wird dein persoenlicher Account in dieses Familienkonto ueberfuehrt.</p><p>{{warning_text}}</p><p><a href=\"{{invite_link}}\">Einladung annehmen</a></p><p>Rueckfragen: {{support_email}}</p>",
+			Description: "Mail für Einladungen in ein Familienkonto.",
+			Variables:   []string{"{{family_name}}", "{{invite_link}}", "{{warning_text}}", "{{support_email}}"},
+		}, true
+	case TemplateKindPremiumInvite:
+		return TemplateDefaults{
+			Label:       "Premium-Einladung",
+			Subject:     "Mealplanner Premium ist für dich freigeschaltet",
+			TextBody:    "Hallo,\n\nMealplanner Premium ist gerade für dich freigeschaltet.\nDer inoffizielle Deal: Premium kostet aktuell nichts, dafuer freuen wir uns ueber ehrliches Feedback.\nUnten rechts in der App findest du den Feedback-Button.\n\nZur App:\n{{app_url}}\n\nRueckfragen:\n{{support_email}}",
+			HTMLBody:    "<p>Hallo,</p><p>Mealplanner Premium ist gerade fuer dich freigeschaltet.</p><p>Der inoffizielle Deal: Premium kostet aktuell nichts, dafuer freuen wir uns ueber ehrliches Feedback.</p><p>Unten rechts in der App findest du den Feedback-Button.</p><p><a href=\"{{app_url}}\">Zur App</a></p><p>Rueckfragen: {{support_email}}</p>",
+			Description: "Mail beim Freischalten eines Premium-Nutzers.",
+			Variables:   []string{"{{app_url}}", "{{support_email}}"},
+		}, true
+	case TemplateKindWeeklyPlanReady:
+		return TemplateDefaults{
+			Label:       "Wochenplan fertig",
+			Subject:     "Neuer Wochenplan ab {{week_start}}",
+			TextBody:    "Hallo {{family_name}},\n\ndein neuer automatischer Mealplanner-Wochenplan ab {{week_start}} ist fertig.\n\nPlan ansehen:\n{{plan_url}}\n\nRueckfragen:\n{{support_email}}",
+			HTMLBody:    "<p>Hallo {{family_name}},</p><p>dein neuer automatischer Mealplanner-Wochenplan ab <strong>{{week_start}}</strong> ist fertig.</p><p><a href=\"{{plan_url}}\">Plan ansehen</a></p><p>Rueckfragen: {{support_email}}</p>",
+			Description: "Mail, wenn ein automatischer Wochenplan erstellt wurde.",
+			Variables:   []string{"{{family_name}}", "{{week_start}}", "{{plan_url}}", "{{support_email}}"},
+		}, true
+	default:
+		return TemplateDefaults{}, false
+	}
+}
+
+func DefaultTemplateKinds() []string {
+	return []string{TemplateKindFamilyInvite, TemplateKindPremiumInvite, TemplateKindWeeklyPlanReady}
+}
+
 func inviteSubject(payload InviteEmail) string {
 	if strings.TrimSpace(payload.FamilyName) == "" {
 		return "Einladung zum Mealplanner"
 	}
 	return fmt.Sprintf("Einladung zum Mealplanner von %s", strings.TrimSpace(payload.FamilyName))
+}
+
+func premiumInviteSubject(_ PremiumInviteEmail) string {
+	return "Mealplanner Premium ist fuer dich freigeschaltet"
+}
+
+func premiumInviteText(payload PremiumInviteEmail) string {
+	var lines []string
+	lines = append(lines, "Hallo,")
+	lines = append(lines, "")
+	lines = append(lines, "Mealplanner Premium ist gerade fuer dich freigeschaltet.")
+	lines = append(lines, "Der inoffizielle Deal: Premium kostet aktuell nichts, dafuer freuen wir uns ueber ehrliches Feedback.")
+	lines = append(lines, "Unten rechts in der App findest du den Feedback-Button.")
+	lines = append(lines, "")
+	lines = append(lines, "Zur App:")
+	lines = append(lines, strings.TrimSpace(payload.FeedbackURL))
+	if support := strings.TrimSpace(payload.SupportEmail); support != "" {
+		lines = append(lines, "")
+		lines = append(lines, "Rueckfragen:")
+		lines = append(lines, support)
+	}
+	return strings.Join(lines, "\n")
+}
+
+func premiumInviteHTML(payload PremiumInviteEmail) string {
+	return fmt.Sprintf(
+		"<p>Hallo,</p><p>Mealplanner Premium ist gerade fuer dich freigeschaltet.</p><p>Der inoffizielle Deal: Premium kostet aktuell nichts, dafuer freuen wir uns ueber ehrliches Feedback.</p><p>Unten rechts in der App findest du den Feedback-Button.</p><p><a href=\"%s\">Zur App</a></p><p>Rueckfragen: %s</p>",
+		htmlEscape(payload.FeedbackURL),
+		htmlText(payload.SupportEmail, "-"),
+	)
 }
 
 func inviteText(payload InviteEmail) string {
@@ -95,4 +178,12 @@ func htmlEscape(value string) string {
 		"'", "&#39;",
 	)
 	return replacer.Replace(value)
+}
+
+func RenderTemplate(template string, values map[string]string) string {
+	rendered := template
+	for key, value := range values {
+		rendered = strings.ReplaceAll(rendered, key, strings.TrimSpace(value))
+	}
+	return strings.TrimSpace(rendered)
 }

@@ -1,17 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Header } from '../components/Header';
-import { PlusIcon, TrashIcon } from '../components/icons';
-import { createPremiumUser, deletePremiumUser, getAdminOverview, logout } from '../api';
+import { PlusIcon, SaveIcon, TrashIcon } from '../components/icons';
+import { createPremiumUser, deletePremiumUser, getAdminOverview, getMailTemplates, logout, updateMailTemplate } from '../api';
 import { readableApiError } from '../lib/api-error';
 import { LoginPage } from './LoginPage';
 import { Navigate } from 'react-router-dom';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSession } from '../session';
+import type { MailTemplate } from '../types';
 
 export function AdminPage() {
   const queryClient = useQueryClient();
   const session = useSession();
   const [premiumEmail, setPremiumEmail] = useState('');
+  const [sendPremiumInvite, setSendPremiumInvite] = useState(true);
+  const [lastPremiumInviteSent, setLastPremiumInviteSent] = useState(false);
+  const [templateDrafts, setTemplateDrafts] = useState<Record<string, MailTemplate>>({});
   const [loggedOut, setLoggedOut] = useState(false);
 
   const adminOverviewQuery = useQuery({
@@ -19,11 +23,28 @@ export function AdminPage() {
     queryFn: getAdminOverview,
     enabled: Boolean(session?.isAdmin),
   });
+  const mailTemplatesQuery = useQuery({
+    queryKey: ['admin-mail-templates'],
+    queryFn: getMailTemplates,
+    enabled: Boolean(session?.isAdmin),
+  });
+
+  useEffect(() => {
+    const nextDrafts: Record<string, MailTemplate> = {};
+    for (const template of mailTemplatesQuery.data ?? []) {
+      nextDrafts[template.kind] = template;
+    }
+    if (Object.keys(nextDrafts).length > 0) {
+      setTemplateDrafts(nextDrafts);
+    }
+  }, [mailTemplatesQuery.data]);
 
   const createPremiumMutation = useMutation({
-    mutationFn: createPremiumUser,
+    mutationFn: ({ email, sendInvite }: { email: string; sendInvite: boolean }) => createPremiumUser(email, { sendInvite }),
     onSuccess: async () => {
+      setLastPremiumInviteSent(sendPremiumInvite);
       setPremiumEmail('');
+      setSendPremiumInvite(true);
       await queryClient.invalidateQueries({ queryKey: ['admin-overview'] });
     },
   });
@@ -31,6 +52,17 @@ export function AdminPage() {
     mutationFn: deletePremiumUser,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['admin-overview'] });
+    },
+  });
+  const saveTemplateMutation = useMutation({
+    mutationFn: ({ kind, template }: { kind: string; template: MailTemplate }) =>
+      updateMailTemplate(kind, {
+        subject: template.subject,
+        textBody: template.textBody,
+        htmlBody: template.htmlBody,
+      }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['admin-mail-templates'] });
     },
   });
   const logoutMutation = useMutation({
@@ -50,6 +82,22 @@ export function AdminPage() {
   }
 
   const adminOverview = adminOverviewQuery.data;
+  const mailTemplates = mailTemplatesQuery.data ?? [];
+
+  const updateTemplateDraft = (kind: string, key: keyof MailTemplate, value: string) => {
+    setTemplateDrafts((current) => ({
+      ...current,
+      [kind]: {
+        ...(current[kind] ?? mailTemplates.find((template) => template.kind === kind) ?? {
+          kind,
+          subject: '',
+          textBody: '',
+          htmlBody: '',
+        }),
+        [key]: value,
+      },
+    }));
+  };
 
   return (
     <div className="app-shell">
@@ -66,7 +114,7 @@ export function AdminPage() {
             <div className="profile-section-copy">
               <span className="section-index">01</span>
               <h2>Premium-Freigaben</h2>
-              <p>Diese E-Mail-Adressen dürfen sich anmelden und ersetzen die bisherige Freigabe über Konfiguration.</p>
+              <p>Diese E-Mail-Adressen schalten Premium familienweit frei und können direkt eine Einladung per Mail erhalten.</p>
             </div>
             <div className="profile-section-fields">
               <div className="premium-entry-row">
@@ -86,14 +134,27 @@ export function AdminPage() {
                 <button
                   type="button"
                   className="button button-primary"
-                  onClick={() => createPremiumMutation.mutate(premiumEmail)}
+                  onClick={() => createPremiumMutation.mutate({ email: premiumEmail, sendInvite: sendPremiumInvite })}
                   disabled={createPremiumMutation.isPending || premiumEmail.trim() === ''}
                 >
                   <PlusIcon className="action-icon" />
                   Freigeben
                 </button>
               </div>
+              <label className="settings-toggle settings-toggle-inline">
+                <input
+                  type="checkbox"
+                  checked={sendPremiumInvite}
+                  onChange={(event) => setSendPremiumInvite(event.target.checked)}
+                />
+                <span>Premium-Einladung per Mail direkt mitsenden</span>
+              </label>
               {createPremiumMutation.isError ? <p className="error-copy">{readableApiError(createPremiumMutation.error)}</p> : null}
+              {createPremiumMutation.isSuccess ? (
+                <p className="success-copy">
+                  {lastPremiumInviteSent ? 'Premium freigeschaltet und Einladung versendet.' : 'Premium freigeschaltet.'}
+                </p>
+              ) : null}
 
               <div className="family-account-list">
                 {(adminOverview?.premiumUsers ?? []).map((premiumUser) => (
@@ -102,6 +163,7 @@ export function AdminPage() {
                       <div className="family-account-head">
                         <strong>{premiumUser.email}</strong>
                         <span className="account-role-badge">Premium</span>
+                        {premiumUser.inviteSent ? <span className="account-role-badge">Einladung gesendet</span> : null}
                       </div>
                     </div>
                     <button
@@ -195,6 +257,75 @@ export function AdminPage() {
           <div className="profile-section">
             <div className="profile-section-copy">
               <span className="section-index">03</span>
+              <h2>Mail-Templates</h2>
+              <p>Betreff und Inhalte für Premium-Einladung, Familien-Einladung und Wochenplan-Mails anpassen.</p>
+            </div>
+            <div className="profile-section-fields">
+              <div className="family-account-list">
+                {mailTemplates.length === 0 ? <p className="muted">Noch keine Mail-Templates geladen.</p> : null}
+                {mailTemplates.map((template) => {
+                  const draft = templateDrafts[template.kind] ?? template;
+                  return (
+                    <article key={template.kind} className="family-account-row family-account-row-stacked">
+                      <div className="family-account-copy">
+                        <div className="family-account-head">
+                          <strong>{template.label || template.kind}</strong>
+                          <span className="account-role-badge">{template.kind}</span>
+                        </div>
+                        {template.description ? <p>{template.description}</p> : null}
+                        {template.variableHint?.length ? (
+                          <p>Verwendbare Platzhalter: {template.variableHint.join(', ')}</p>
+                        ) : null}
+                      </div>
+                      <div className="profile-section-fields">
+                        <label className="field">
+                          <span className="field-label">Betreff</span>
+                          <input
+                            className="input"
+                            value={draft.subject}
+                            onChange={(event) => updateTemplateDraft(template.kind, 'subject', event.target.value)}
+                          />
+                        </label>
+                        <label className="field">
+                          <span className="field-label">Text-Version</span>
+                          <textarea
+                            className="input textarea"
+                            rows={5}
+                            value={draft.textBody}
+                            onChange={(event) => updateTemplateDraft(template.kind, 'textBody', event.target.value)}
+                          />
+                        </label>
+                        <label className="field">
+                          <span className="field-label">HTML-Version</span>
+                          <textarea
+                            className="input textarea"
+                            rows={5}
+                            value={draft.htmlBody}
+                            onChange={(event) => updateTemplateDraft(template.kind, 'htmlBody', event.target.value)}
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          className="button button-secondary"
+                          onClick={() => saveTemplateMutation.mutate({ kind: template.kind, template: draft })}
+                          disabled={saveTemplateMutation.isPending}
+                        >
+                          <SaveIcon className="action-icon" />
+                          Template speichern
+                        </button>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+              {saveTemplateMutation.isError ? <p className="error-copy">{readableApiError(saveTemplateMutation.error)}</p> : null}
+              {saveTemplateMutation.isSuccess ? <p className="success-copy">Mail-Template gespeichert.</p> : null}
+            </div>
+          </div>
+
+          <div className="profile-section">
+            <div className="profile-section-copy">
+              <span className="section-index">04</span>
               <h2>Feedback</h2>
               <p>Aktuelle Rueckmeldungen aus der Premium-Feedbackbox.</p>
             </div>

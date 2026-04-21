@@ -31,7 +31,7 @@ spec:
             - name: OPENAI_API_KEY_PLACEHOLDER
               value: __set_openai_api_key__
             - name: EMAIL_ENABLED_PLACEHOLDER
-              value: "false"
+              value: "true"
             - name: EMAIL_PROVIDER_PLACEHOLDER
               value: resend
             - name: EMAIL_FROM_PLACEHOLDER

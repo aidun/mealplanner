@@ -24,19 +24,22 @@ import (
 )
 
 type memoryRepo struct {
-	profiles       map[string]domain.Profile
-	plans          map[string]domain.Plan
-	sessions       map[string]memorySession
-	emails         map[string]string
-	emailHashes    map[string]string
-	premiumUsers   map[string]domain.PremiumUser
-	activeFamilies map[string]string
-	familyMembers  map[string]map[string]memoryFamilyMember
-	invites        map[string]memoryInvite
-	favorites      map[string][]domain.FavoriteRecipe
-	prompts        map[string][]domain.PromptDebugEntry
-	generation     map[string]int
-	feedback       []domain.FeedbackEntry
+	profiles        map[string]domain.Profile
+	plans           map[string]domain.Plan
+	sessions        map[string]memorySession
+	emails          map[string]string
+	emailHashes     map[string]string
+	premiumUsers    map[string]domain.PremiumUser
+	premiumInvites  []domain.PremiumInvite
+	accountSettings map[string]domain.AccountSettings
+	mailTemplates   map[string]domain.MailTemplate
+	activeFamilies  map[string]string
+	familyMembers   map[string]map[string]memoryFamilyMember
+	invites         map[string]memoryInvite
+	favorites       map[string][]domain.FavoriteRecipe
+	prompts         map[string][]domain.PromptDebugEntry
+	generation      map[string]int
+	feedback        []domain.FeedbackEntry
 }
 
 type memorySession struct {
@@ -58,36 +61,56 @@ type memoryFamilyMember struct {
 }
 
 type spyMailer struct {
-	invites []mailer.InviteEmail
-	weekly  []mailer.WeeklyPlanReadyEmail
-	err     error
+	invites       []mailer.InviteEmail
+	premium       []mailer.PremiumInviteEmail
+	weekly        []mailer.WeeklyPlanReadyEmail
+	err           error
+	inviteErrFor  map[string]error
+	premiumErrFor map[string]error
+	weeklyErrFor  map[string]error
 }
 
 func (m *spyMailer) SendInviteEmail(_ context.Context, payload mailer.InviteEmail) error {
 	m.invites = append(m.invites, payload)
+	if err, ok := m.inviteErrFor[strings.ToLower(strings.TrimSpace(payload.To))]; ok {
+		return err
+	}
 	return m.err
 }
 
 func (m *spyMailer) SendWeeklyPlanReadyEmail(_ context.Context, payload mailer.WeeklyPlanReadyEmail) error {
 	m.weekly = append(m.weekly, payload)
+	if err, ok := m.weeklyErrFor[strings.ToLower(strings.TrimSpace(payload.To))]; ok {
+		return err
+	}
+	return m.err
+}
+
+func (m *spyMailer) SendPremiumInviteEmail(_ context.Context, payload mailer.PremiumInviteEmail) error {
+	m.premium = append(m.premium, payload)
+	if err, ok := m.premiumErrFor[strings.ToLower(strings.TrimSpace(payload.To))]; ok {
+		return err
+	}
 	return m.err
 }
 
 func newMemoryRepo() *memoryRepo {
 	return &memoryRepo{
-		profiles:       map[string]domain.Profile{},
-		plans:          map[string]domain.Plan{},
-		sessions:       map[string]memorySession{},
-		emails:         map[string]string{},
-		emailHashes:    map[string]string{},
-		premiumUsers:   map[string]domain.PremiumUser{},
-		activeFamilies: map[string]string{},
-		familyMembers:  map[string]map[string]memoryFamilyMember{},
-		invites:        map[string]memoryInvite{},
-		favorites:      map[string][]domain.FavoriteRecipe{},
-		prompts:        map[string][]domain.PromptDebugEntry{},
-		generation:     map[string]int{},
-		feedback:       []domain.FeedbackEntry{},
+		profiles:        map[string]domain.Profile{},
+		plans:           map[string]domain.Plan{},
+		sessions:        map[string]memorySession{},
+		emails:          map[string]string{},
+		emailHashes:     map[string]string{},
+		premiumUsers:    map[string]domain.PremiumUser{},
+		accountSettings: map[string]domain.AccountSettings{},
+		mailTemplates:   map[string]domain.MailTemplate{},
+		activeFamilies:  map[string]string{},
+		familyMembers:   map[string]map[string]memoryFamilyMember{},
+		invites:         map[string]memoryInvite{},
+		favorites:       map[string][]domain.FavoriteRecipe{},
+		prompts:         map[string][]domain.PromptDebugEntry{},
+		generation:      map[string]int{},
+		feedback:        []domain.FeedbackEntry{},
 	}
 }
 
@@ -115,13 +138,16 @@ func (m *memoryRepo) GetUserEmail(_ *http.Request, userID string) (string, error
 }
 
 func (m *memoryRepo) IsPremiumUser(_ *http.Request, userID string) (bool, error) {
-	email := strings.TrimSpace(m.emails[userID])
-	if strings.EqualFold(email, "markush1986@gmail.com") {
-		return false, nil
-	}
-	for _, premiumUser := range m.premiumUsers {
-		if strings.EqualFold(strings.TrimSpace(premiumUser.Email), email) {
+	familyID := m.familyID(userID)
+	for memberUserID := range m.familyMembers[familyID] {
+		email := strings.TrimSpace(m.emails[memberUserID])
+		if strings.EqualFold(email, "markush1986@gmail.com") {
 			return true, nil
+		}
+		for _, premiumUser := range m.premiumUsers {
+			if strings.EqualFold(strings.TrimSpace(premiumUser.Email), email) {
+				return true, nil
+			}
 		}
 	}
 	return false, nil
@@ -136,12 +162,34 @@ func (m *memoryRepo) LoginAllowed(_ *http.Request, email string, emailHash strin
 			return true, nil
 		}
 	}
-	for _, hash := range m.emailHashes {
-		if hash == emailHash && strings.TrimSpace(emailHash) != "" {
+	for userID, hash := range m.emailHashes {
+		if hash != emailHash || strings.TrimSpace(emailHash) == "" {
+			continue
+		}
+		allowed, _ := m.IsPremiumUser(nil, userID)
+		if allowed {
 			return true, nil
 		}
 	}
 	return false, nil
+}
+
+func (m *memoryRepo) GetAccountSettings(r *http.Request) (domain.AccountSettings, error) {
+	return m.GetAccountSettingsForUser(r, mustUserID(r.Context()))
+}
+
+func (m *memoryRepo) SaveAccountSettings(r *http.Request, settings domain.AccountSettings) (domain.AccountSettings, error) {
+	settings.UpdatedAt = time.Now()
+	m.accountSettings[mustUserID(r.Context())] = settings
+	return settings, nil
+}
+
+func (m *memoryRepo) GetAccountSettingsForUser(_ *http.Request, userID string) (domain.AccountSettings, error) {
+	settings, ok := m.accountSettings[userID]
+	if !ok {
+		return domain.AccountSettings{WeeklyPlanEmailEnabled: true, RecipeEmailEnabled: true}, nil
+	}
+	return settings, nil
 }
 
 func (m *memoryRepo) GetSession(_ *http.Request, sessionID string) (string, string, time.Time, error) {
@@ -243,6 +291,7 @@ func (m *memoryRepo) GetFamily(r *http.Request) (domain.FamilySummary, error) {
 			Email:          m.emails[userID],
 			Role:           membership.role,
 			LinkedMemberID: membership.linkedMemberID,
+			Settings:       m.accountSettingsOrDefault(userID),
 		})
 	}
 	return summary, nil
@@ -279,6 +328,16 @@ func (m *memoryRepo) UpdateFamilyMemberLink(r *http.Request, accountUserID strin
 	}
 	membership.linkedMemberID = memberID
 	m.familyMembers[familyID][accountUserID] = membership
+	return m.GetFamily(r)
+}
+
+func (m *memoryRepo) UpdateFamilyAccountSettings(r *http.Request, accountUserID string, settings domain.AccountSettings) (domain.FamilySummary, error) {
+	familyID := m.familyID(mustUserID(r.Context()))
+	if _, ok := m.familyMembers[familyID][accountUserID]; !ok {
+		return domain.FamilySummary{}, store.ErrNotFound
+	}
+	settings.UpdatedAt = time.Now()
+	m.accountSettings[accountUserID] = settings
 	return m.GetFamily(r)
 }
 
@@ -379,6 +438,67 @@ func (m *memoryRepo) DeletePremiumUser(_ *http.Request, id string) error {
 	return nil
 }
 
+func (m *memoryRepo) ListPremiumInvites(_ *http.Request, limit int) ([]domain.PremiumInvite, error) {
+	if limit <= 0 || limit > len(m.premiumInvites) {
+		limit = len(m.premiumInvites)
+	}
+	out := make([]domain.PremiumInvite, limit)
+	copy(out, m.premiumInvites[:limit])
+	return out, nil
+}
+
+func (m *memoryRepo) CreatePremiumInvite(_ *http.Request, email string, _ string) (domain.PremiumInvite, error) {
+	invite := domain.PremiumInvite{
+		ID:        "premium-invite-" + strconv.Itoa(len(m.premiumInvites)+1),
+		Email:     strings.ToLower(strings.TrimSpace(email)),
+		EmailSent: true,
+		CreatedAt: time.Now(),
+	}
+	m.premiumInvites = append([]domain.PremiumInvite{invite}, m.premiumInvites...)
+	return invite, nil
+}
+
+func (m *memoryRepo) ListMailTemplates(_ *http.Request) ([]domain.MailTemplate, error) {
+	items := make([]domain.MailTemplate, 0, len(mailer.DefaultTemplateKinds()))
+	for _, kind := range mailer.DefaultTemplateKinds() {
+		defaults, _ := mailer.DefaultTemplate(kind)
+		item := domain.MailTemplate{
+			Kind:         kind,
+			Subject:      defaults.Subject,
+			TextBody:     defaults.TextBody,
+			HTMLBody:     defaults.HTMLBody,
+			Description:  defaults.Description,
+			VariableHint: append([]string(nil), defaults.Variables...),
+		}
+		if saved, ok := m.mailTemplates[kind]; ok {
+			item.Subject = saved.Subject
+			item.TextBody = saved.TextBody
+			item.HTMLBody = saved.HTMLBody
+			item.UpdatedAt = saved.UpdatedAt
+		}
+		items = append(items, item)
+	}
+	return items, nil
+}
+
+func (m *memoryRepo) SaveMailTemplate(_ *http.Request, kind string, update domain.UpdateMailTemplateRequest) (domain.MailTemplate, error) {
+	defaults, ok := mailer.DefaultTemplate(kind)
+	if !ok {
+		return domain.MailTemplate{}, store.ErrNotFound
+	}
+	item := domain.MailTemplate{
+		Kind:         kind,
+		Subject:      strings.TrimSpace(update.Subject),
+		TextBody:     strings.TrimSpace(update.TextBody),
+		HTMLBody:     strings.TrimSpace(update.HTMLBody),
+		Description:  defaults.Description,
+		VariableHint: append([]string(nil), defaults.Variables...),
+		UpdatedAt:    time.Now(),
+	}
+	m.mailTemplates[kind] = item
+	return item, nil
+}
+
 func (m *memoryRepo) SaveFeedback(r *http.Request, message string, page string) (domain.FeedbackEntry, error) {
 	entry := domain.FeedbackEntry{
 		ID:        "feedback-" + strconv.Itoa(len(m.feedback)+1),
@@ -433,6 +553,14 @@ func (m *memoryRepo) RecordGenerationEvent(_ *http.Request, category string) err
 func (m *memoryRepo) familyID(userID string) string {
 	m.ensureFamily(userID)
 	return m.activeFamilies[userID]
+}
+
+func (m *memoryRepo) accountSettingsOrDefault(userID string) domain.AccountSettings {
+	settings, ok := m.accountSettings[userID]
+	if !ok {
+		return domain.AccountSettings{WeeklyPlanEmailEnabled: true, RecipeEmailEnabled: true}
+	}
+	return settings
 }
 
 func (m *memoryRepo) ensureFamily(userID string) {
@@ -534,6 +662,73 @@ func TestAdminOverviewListsPremiumUsersAndStats(t *testing.T) {
 	body := rec.Body.String()
 	if !strings.Contains(body, "anna@example.test") || !strings.Contains(body, `"averageActiveAccountsPerFamily":1.5`) || !strings.Contains(body, `"weekly_cron"`) || !strings.Contains(body, "Die Profilnavigation ist zu versteckt.") {
 		t.Fatalf("unexpected admin overview: %s", body)
+	}
+}
+
+func TestAccountSettingsRoundtrip(t *testing.T) {
+	repo := newMemoryRepo()
+	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil, nil)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/account-settings", nil)
+	setAuth(repo, req, "user-1")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"recipeEmailEnabled":true`) {
+		t.Fatalf("expected default settings, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	req = httptest.NewRequest(http.MethodPut, "/api/account-settings", bytes.NewBufferString(`{"recipeEmailEnabled":false}`))
+	setAuth(repo, req, "user-1")
+	req.Header.Set("X-CSRF-Token", "csrf-user-1")
+	rec = httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"recipeEmailEnabled":false`) {
+		t.Fatalf("expected updated settings, got %d: %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestAdminCanUpdateMailTemplate(t *testing.T) {
+	repo := newMemoryRepo()
+	repo.emails["user-1"] = "markush1986@gmail.com"
+	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil, nil)
+
+	req := httptest.NewRequest(http.MethodPut, "/api/admin/mail-templates/premium_invite", bytes.NewBufferString(`{"subject":"Premium {{app_url}}","textBody":"Text {{support_email}}","htmlBody":"<p>{{app_url}}</p>"}`))
+	setAuth(repo, req, "user-1")
+	req.Header.Set("X-CSRF-Token", "csrf-user-1")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"kind":"premium_invite"`) {
+		t.Fatalf("expected saved template, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	req = httptest.NewRequest(http.MethodGet, "/api/admin/mail-templates", nil)
+	setAuth(repo, req, "user-1")
+	rec = httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `Premium {{app_url}}`) {
+		t.Fatalf("expected updated template list, got %d: %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestAdminPremiumInviteCreatesGrantAndSendsMail(t *testing.T) {
+	repo := newMemoryRepo()
+	repo.emails["user-1"] = "markush1986@gmail.com"
+	mailerSpy := &spyMailer{}
+	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil, mailerSpy)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/admin/premium-users", bytes.NewBufferString(`{"email":"anna@example.test","sendInvite":true}`))
+	setAuth(repo, req, "user-1")
+	req.Header.Set("X-CSRF-Token", "csrf-user-1")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d: %s", rec.Code, rec.Body.String())
+	}
+	if len(mailerSpy.premium) != 1 || mailerSpy.premium[0].To != "anna@example.test" {
+		t.Fatalf("expected premium invite mail, got %+v", mailerSpy.premium)
+	}
+	if len(repo.premiumUsers) != 1 || !strings.Contains(rec.Body.String(), `"emailSent":true`) {
+		t.Fatalf("expected premium grant with mail response, users=%+v body=%s", repo.premiumUsers, rec.Body.String())
 	}
 }
 
@@ -939,6 +1134,31 @@ func TestFamilyInviteMergesProfileOnlyWithMatchingEmailHash(t *testing.T) {
 	}
 }
 
+func TestCreateFamilyInviteStillSucceedsWhenEmailDeliveryFails(t *testing.T) {
+	repo := newMemoryRepo()
+	repo.profiles["family-user-1"] = domain.Profile{HouseholdName: "Familie A", Members: []domain.Member{{ID: "a", Name: "A"}}, Defaults: domain.MealDefaults{}, Presets: []string{"schnell"}}
+	mailerSpy := &spyMailer{err: context.DeadlineExceeded}
+	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil, mailerSpy)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/family/invites", bytes.NewBufferString(`{"email":"person@example.test"}`))
+	setAuth(repo, req, "user-1")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("expected invite 201, got %d: %s", rec.Code, rec.Body.String())
+	}
+	if strings.Contains(rec.Body.String(), `"emailSent":true`) {
+		t.Fatalf("expected invite response without emailSent=true on mail failure, got %s", rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `invite-token`) {
+		t.Fatalf("expected invite link to still be returned, got %s", rec.Body.String())
+	}
+	if len(mailerSpy.invites) != 1 || mailerSpy.invites[0].To != "person@example.test" {
+		t.Fatalf("expected invite email attempt to be recorded, got %+v", mailerSpy.invites)
+	}
+}
+
 func TestWeeklyPlanSendsToAllFamilyAccountsWithEmail(t *testing.T) {
 	repo := newMemoryRepo()
 	repo.profiles["family-user-1"] = domain.DefaultProfile()
@@ -971,6 +1191,101 @@ func TestWeeklyPlanSendsToAllFamilyAccountsWithEmail(t *testing.T) {
 	}
 }
 
+func TestWeeklyPlanSkipsOptedOutAccounts(t *testing.T) {
+	repo := newMemoryRepo()
+	repo.profiles["family-user-1"] = domain.DefaultProfile()
+	repo.activeFamilies["user-1"] = "family-user-1"
+	repo.activeFamilies["user-2"] = "family-user-1"
+	repo.familyMembers["family-user-1"] = map[string]memoryFamilyMember{
+		"user-1": {role: "owner"},
+		"user-2": {role: "member"},
+	}
+	repo.emails["user-1"] = "anna@example.test"
+	repo.emails["user-2"] = "ben@example.test"
+	repo.accountSettings["user-2"] = domain.AccountSettings{WeeklyPlanEmailEnabled: false, RecipeEmailEnabled: false}
+	mailerSpy := &spyMailer{}
+	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "internal-secret", nil, nil, mailerSpy)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/internal/plans/weekly", nil)
+	req.Header.Set("X-API-Secret", "internal-secret")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d: %s", rec.Code, rec.Body.String())
+	}
+	if len(mailerSpy.weekly) != 1 || mailerSpy.weekly[0].To != "anna@example.test" {
+		t.Fatalf("expected opted-out account to be skipped, got %+v", mailerSpy.weekly)
+	}
+}
+
+func TestWeeklyPlanDeduplicatesEmailsPerFamily(t *testing.T) {
+	repo := newMemoryRepo()
+	repo.profiles["family-user-1"] = domain.DefaultProfile()
+	repo.activeFamilies["user-1"] = "family-user-1"
+	repo.activeFamilies["user-2"] = "family-user-1"
+	repo.familyMembers["family-user-1"] = map[string]memoryFamilyMember{
+		"user-1": {role: "owner"},
+		"user-2": {role: "member"},
+	}
+	repo.emails["user-1"] = "anna@example.test"
+	repo.emails["user-2"] = "Anna@Example.Test"
+	mailerSpy := &spyMailer{}
+	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "internal-secret", nil, nil, mailerSpy)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/internal/plans/weekly", nil)
+	req.Header.Set("X-API-Secret", "internal-secret")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d: %s", rec.Code, rec.Body.String())
+	}
+	if len(mailerSpy.weekly) != 1 {
+		t.Fatalf("expected duplicate family email to be sent once, got %+v", mailerSpy.weekly)
+	}
+	if !strings.Contains(rec.Body.String(), `"emailsSent":1`) {
+		t.Fatalf("expected one email sent in response, got %s", rec.Body.String())
+	}
+}
+
+func TestWeeklyPlanReportsEmailFailuresPerRecipient(t *testing.T) {
+	repo := newMemoryRepo()
+	repo.profiles["family-user-1"] = domain.DefaultProfile()
+	repo.activeFamilies["user-1"] = "family-user-1"
+	repo.activeFamilies["user-2"] = "family-user-1"
+	repo.familyMembers["family-user-1"] = map[string]memoryFamilyMember{
+		"user-1": {role: "owner"},
+		"user-2": {role: "member"},
+	}
+	repo.emails["user-1"] = "anna@example.test"
+	repo.emails["user-2"] = "ben@example.test"
+	mailerSpy := &spyMailer{
+		weeklyErrFor: map[string]error{
+			"ben@example.test": context.DeadlineExceeded,
+		},
+	}
+	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "internal-secret", nil, nil, mailerSpy)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/internal/plans/weekly", nil)
+	req.Header.Set("X-API-Secret", "internal-secret")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusMultiStatus {
+		t.Fatalf("expected 207 on partial email failure, got %d: %s", rec.Code, rec.Body.String())
+	}
+	if len(mailerSpy.weekly) != 2 {
+		t.Fatalf("expected both weekly email attempts to be recorded, got %+v", mailerSpy.weekly)
+	}
+	if !strings.Contains(rec.Body.String(), `"emailsSent":1`) || !strings.Contains(rec.Body.String(), `"emailFailures":[`) {
+		t.Fatalf("expected partial email metrics in response, got %s", rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"email":"ben@example.test"`) {
+		t.Fatalf("expected failing recipient in response, got %s", rec.Body.String())
+	}
+}
+
 func TestSessionIncludesPremiumFlag(t *testing.T) {
 	repo := newMemoryRepo()
 	repo.emails["user-1"] = "anna@example.test"
@@ -986,6 +1301,28 @@ func TestSessionIncludesPremiumFlag(t *testing.T) {
 	}
 	if !strings.Contains(rec.Body.String(), `"isPremium":true`) {
 		t.Fatalf("expected session to include premium flag, got %s", rec.Body.String())
+	}
+}
+
+func TestSessionIncludesPremiumForFamilyMember(t *testing.T) {
+	repo := newMemoryRepo()
+	repo.activeFamilies["user-1"] = "family-user-1"
+	repo.activeFamilies["user-2"] = "family-user-1"
+	repo.familyMembers["family-user-1"] = map[string]memoryFamilyMember{
+		"user-1": {role: "owner"},
+		"user-2": {role: "member"},
+	}
+	repo.emails["user-1"] = "anna@example.test"
+	repo.emails["user-2"] = "ben@example.test"
+	repo.premiumUsers["premium-anna"] = domain.PremiumUser{ID: "premium-anna", Email: "anna@example.test", CreatedAt: time.Now()}
+	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil, nil)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/session", nil)
+	setAuth(repo, req, "user-2")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"isPremium":true`) {
+		t.Fatalf("expected family-wide premium session, got %d: %s", rec.Code, rec.Body.String())
 	}
 }
 

@@ -29,6 +29,9 @@ type Repository interface {
 	GetUserEmail(r *http.Request, userID string) (string, error)
 	IsPremiumUser(r *http.Request, userID string) (bool, error)
 	LoginAllowed(r *http.Request, email string, emailHash string) (bool, error)
+	GetAccountSettings(r *http.Request) (domain.AccountSettings, error)
+	SaveAccountSettings(r *http.Request, settings domain.AccountSettings) (domain.AccountSettings, error)
+	GetAccountSettingsForUser(r *http.Request, userID string) (domain.AccountSettings, error)
 	CreateSession(r *http.Request, userID string, ttl time.Duration) (string, string, time.Time, error)
 	GetSession(r *http.Request, sessionID string) (string, string, time.Time, error)
 	DeleteSession(r *http.Request, sessionID string) error
@@ -37,6 +40,7 @@ type Repository interface {
 	CreateFamilyInvite(r *http.Request, emailHash string, ttl time.Duration) (domain.FamilyInvite, string, error)
 	AcceptFamilyInvite(r *http.Request, token string, mergedProfile domain.Profile) (domain.FamilySummary, error)
 	UpdateFamilyMemberLink(r *http.Request, accountUserID string, memberID string) (domain.FamilySummary, error)
+	UpdateFamilyAccountSettings(r *http.Request, accountUserID string, settings domain.AccountSettings) (domain.FamilySummary, error)
 	UserEmailHash(r *http.Request) (string, error)
 	GetProfileByFamily(r *http.Request, familyID string) (domain.Profile, error)
 	InviteTargetFamily(r *http.Request, token string) (string, error)
@@ -55,6 +59,8 @@ type Repository interface {
 	ListPremiumUsers(r *http.Request) ([]domain.PremiumUser, error)
 	SavePremiumUser(r *http.Request, email string, emailHash string) (domain.PremiumUser, error)
 	DeletePremiumUser(r *http.Request, id string) error
+	ListMailTemplates(r *http.Request) ([]domain.MailTemplate, error)
+	SaveMailTemplate(r *http.Request, kind string, update domain.UpdateMailTemplateRequest) (domain.MailTemplate, error)
 	SaveFeedback(r *http.Request, message string, page string) (domain.FeedbackEntry, error)
 	ListFeedback(r *http.Request, limit int) ([]domain.FeedbackEntry, error)
 	AdminStats(r *http.Request) (domain.AdminStats, error)
@@ -79,6 +85,18 @@ func (r StoreRepository) IsPremiumUser(req *http.Request, userID string) (bool, 
 
 func (r StoreRepository) LoginAllowed(req *http.Request, email string, emailHash string) (bool, error) {
 	return r.Store.LoginAllowed(req.Context(), email, emailHash)
+}
+
+func (r StoreRepository) GetAccountSettings(req *http.Request) (domain.AccountSettings, error) {
+	return r.Store.GetAccountSettings(req.Context(), mustUserID(req.Context()))
+}
+
+func (r StoreRepository) SaveAccountSettings(req *http.Request, settings domain.AccountSettings) (domain.AccountSettings, error) {
+	return r.Store.SaveAccountSettings(req.Context(), mustUserID(req.Context()), settings)
+}
+
+func (r StoreRepository) GetAccountSettingsForUser(req *http.Request, userID string) (domain.AccountSettings, error) {
+	return r.Store.GetAccountSettings(req.Context(), userID)
 }
 
 func (r StoreRepository) CreateSession(req *http.Request, userID string, ttl time.Duration) (string, string, time.Time, error) {
@@ -111,6 +129,10 @@ func (r StoreRepository) AcceptFamilyInvite(req *http.Request, token string, mer
 
 func (r StoreRepository) UpdateFamilyMemberLink(req *http.Request, accountUserID string, memberID string) (domain.FamilySummary, error) {
 	return r.Store.UpdateFamilyMemberLink(req.Context(), mustUserID(req.Context()), accountUserID, memberID)
+}
+
+func (r StoreRepository) UpdateFamilyAccountSettings(req *http.Request, accountUserID string, settings domain.AccountSettings) (domain.FamilySummary, error) {
+	return r.Store.UpdateFamilyAccountSettings(req.Context(), mustUserID(req.Context()), accountUserID, settings)
 }
 
 func (r StoreRepository) UserEmailHash(req *http.Request) (string, error) {
@@ -185,6 +207,14 @@ func (r StoreRepository) DeletePremiumUser(req *http.Request, id string) error {
 	return r.Store.DeletePremiumUser(req.Context(), id)
 }
 
+func (r StoreRepository) ListMailTemplates(req *http.Request) ([]domain.MailTemplate, error) {
+	return r.Store.ListMailTemplates(req.Context())
+}
+
+func (r StoreRepository) SaveMailTemplate(req *http.Request, kind string, update domain.UpdateMailTemplateRequest) (domain.MailTemplate, error) {
+	return r.Store.SaveMailTemplate(req.Context(), kind, update)
+}
+
 func (r StoreRepository) SaveFeedback(req *http.Request, message string, page string) (domain.FeedbackEntry, error) {
 	return r.Store.SaveFeedback(req.Context(), mustUserID(req.Context()), message, page)
 }
@@ -253,13 +283,18 @@ func New(repo Repository, planner planner.Planner, authService auth.Service, api
 	mux.HandleFunc("POST /api/internal/plans/weekly", h.withAPI(h.createPlansForAllUsers))
 	mux.HandleFunc("GET /api/profile", h.withSession(h.getProfile))
 	mux.HandleFunc("PUT /api/profile", h.withSession(h.withCSRF(h.putProfile)))
+	mux.HandleFunc("GET /api/account-settings", h.withSession(h.getAccountSettings))
+	mux.HandleFunc("PUT /api/account-settings", h.withSession(h.withCSRF(h.putAccountSettings)))
 	mux.HandleFunc("GET /api/family", h.withSession(h.getFamily))
 	mux.HandleFunc("POST /api/family/invites", h.withSession(h.withCSRF(h.createFamilyInvite)))
 	mux.HandleFunc("POST /api/family/invites/accept", h.withSession(h.withCSRF(h.acceptFamilyInvite)))
 	mux.HandleFunc("PUT /api/family/member-links", h.withSession(h.withCSRF(h.updateFamilyMemberLink)))
+	mux.HandleFunc("PUT /api/family/account-settings", h.withSession(h.withCSRF(h.updateFamilyAccountSettings)))
 	mux.HandleFunc("GET /api/admin/overview", h.withSession(h.withAdmin(h.getAdminOverview)))
 	mux.HandleFunc("POST /api/admin/premium-users", h.withSession(h.withAdmin(h.withCSRF(h.createPremiumUser))))
 	mux.HandleFunc("DELETE /api/admin/premium-users/{premiumUserID}", h.withSession(h.withAdmin(h.withCSRF(h.deletePremiumUser))))
+	mux.HandleFunc("GET /api/admin/mail-templates", h.withSession(h.withAdmin(h.getMailTemplates)))
+	mux.HandleFunc("PUT /api/admin/mail-templates/{kind}", h.withSession(h.withAdmin(h.withCSRF(h.putMailTemplate))))
 	mux.HandleFunc("GET /api/favorites", h.withSession(h.getFavorites))
 	mux.HandleFunc("POST /api/favorites", h.withSession(h.withCSRF(h.createFavorite)))
 	mux.HandleFunc("DELETE /api/favorites/{favoriteID}", h.withSession(h.withCSRF(h.deleteFavorite)))
@@ -309,6 +344,32 @@ func (h *Handler) putProfile(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, saved)
 }
 
+func (h *Handler) getAccountSettings(w http.ResponseWriter, r *http.Request) {
+	settings, err := h.repo.GetAccountSettings(r)
+	if err != nil {
+		h.serverError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, settings)
+}
+
+func (h *Handler) putAccountSettings(w http.ResponseWriter, r *http.Request) {
+	var settings domain.AccountSettings
+	if err := decodeJSON(w, r, &settings); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	saved, err := h.repo.SaveAccountSettings(r, domain.AccountSettings{
+		WeeklyPlanEmailEnabled: settings.WeeklyPlanEmailEnabled,
+		RecipeEmailEnabled:     settings.RecipeEmailEnabled,
+	})
+	if err != nil {
+		h.serverError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, saved)
+}
+
 func (h *Handler) getFamily(w http.ResponseWriter, r *http.Request) {
 	family, err := h.repo.GetFamily(r)
 	if err != nil {
@@ -340,12 +401,27 @@ func (h *Handler) createFamilyInvite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	invite.InviteLink = h.absoluteRequestURL(r, "/family/invites/accept").String() + "?token=" + token
+	templates, err := h.repo.ListMailTemplates(r)
+	if err != nil {
+		h.serverError(w, r, err)
+		return
+	}
+	template := mailTemplateByKind(templates, mailer.TemplateKindFamilyInvite)
+	values := map[string]string{
+		"{{family_name}}":   family.Name,
+		"{{invite_link}}":   invite.InviteLink,
+		"{{warning_text}}":  invite.WarningText,
+		"{{support_email}}": "info@markushartmann.dev",
+	}
 	if err := h.mailer.SendInviteEmail(r.Context(), mailer.InviteEmail{
 		To:           strings.TrimSpace(req.Email),
 		FamilyName:   family.Name,
 		InviteLink:   invite.InviteLink,
 		WarningText:  invite.WarningText,
 		SupportEmail: "info@markushartmann.dev",
+		Subject:      renderMailTemplate(template.Subject, values),
+		TextBody:     renderMailTemplate(template.TextBody, values),
+		HTMLBody:     renderMailTemplate(template.HTMLBody, values),
 	}); err != nil {
 		h.logger.Error("invite email failed", "family_id", family.ID, "email", strings.TrimSpace(req.Email), "error", err)
 	} else {
@@ -435,8 +511,35 @@ func (h *Handler) updateFamilyMemberLink(w http.ResponseWriter, r *http.Request)
 	writeJSON(w, http.StatusOK, family)
 }
 
+func (h *Handler) updateFamilyAccountSettings(w http.ResponseWriter, r *http.Request) {
+	var req domain.UpdateFamilyAccountSettingsRequest
+	if err := decodeJSON(w, r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if strings.TrimSpace(req.AccountUserID) == "" {
+		writeError(w, http.StatusBadRequest, "Account fehlt.")
+		return
+	}
+	family, err := h.repo.UpdateFamilyAccountSettings(r, strings.TrimSpace(req.AccountUserID), req.Settings)
+	if errors.Is(err, store.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "Familienkonto-Zuordnung nicht gefunden.")
+		return
+	}
+	if err != nil {
+		h.serverError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, family)
+}
+
 func (h *Handler) getAdminOverview(w http.ResponseWriter, r *http.Request) {
 	premiumUsers, err := h.repo.ListPremiumUsers(r)
+	if err != nil {
+		h.serverError(w, r, err)
+		return
+	}
+	mailTemplates, err := h.repo.ListMailTemplates(r)
 	if err != nil {
 		h.serverError(w, r, err)
 		return
@@ -452,14 +555,18 @@ func (h *Handler) getAdminOverview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, domain.AdminOverview{
-		PremiumUsers: premiumUsers,
-		Feedback:     feedback,
-		Stats:        stats,
+		PremiumUsers:  premiumUsers,
+		Feedback:      feedback,
+		MailTemplates: mailTemplates,
+		Stats:         stats,
 	})
 }
 
 func (h *Handler) createPremiumUser(w http.ResponseWriter, r *http.Request) {
-	var req domain.CreatePremiumUserRequest
+	var req struct {
+		Email      string `json:"email"`
+		SendInvite bool   `json:"sendInvite"`
+	}
 	if err := decodeJSON(w, r, &req); err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
@@ -474,7 +581,42 @@ func (h *Handler) createPremiumUser(w http.ResponseWriter, r *http.Request) {
 		h.serverError(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusCreated, premiumUser)
+	emailSent := false
+	if req.SendInvite {
+		templates, err := h.repo.ListMailTemplates(r)
+		if err != nil {
+			h.serverError(w, r, err)
+			return
+		}
+		template := mailTemplateByKind(templates, mailer.TemplateKindPremiumInvite)
+		appURL := h.absoluteRequestURL(r, "/").String()
+		values := map[string]string{
+			"{{app_url}}":       appURL,
+			"{{support_email}}": "info@markushartmann.dev",
+		}
+		if err := h.mailer.SendPremiumInviteEmail(r.Context(), mailer.PremiumInviteEmail{
+			To:           email,
+			SupportEmail: "info@markushartmann.dev",
+			FeedbackURL:  appURL,
+			Subject:      renderMailTemplate(template.Subject, values),
+			TextBody:     renderMailTemplate(template.TextBody, values),
+			HTMLBody:     renderMailTemplate(template.HTMLBody, values),
+		}); err != nil {
+			h.logger.Error("premium invite email failed", "email", email, "error", err)
+		} else {
+			emailSent = true
+		}
+	}
+	writeJSON(w, http.StatusCreated, domain.PremiumInviteResult{PremiumUser: premiumUser, EmailSent: emailSent})
+}
+
+func (h *Handler) getMailTemplates(w http.ResponseWriter, r *http.Request) {
+	templates, err := h.repo.ListMailTemplates(r)
+	if err != nil {
+		h.serverError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, templates)
 }
 
 func (h *Handler) deletePremiumUser(w http.ResponseWriter, r *http.Request) {
@@ -487,6 +629,28 @@ func (h *Handler) deletePremiumUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) putMailTemplate(w http.ResponseWriter, r *http.Request) {
+	var req domain.UpdateMailTemplateRequest
+	if err := decodeJSON(w, r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if strings.TrimSpace(req.Subject) == "" || strings.TrimSpace(req.TextBody) == "" || strings.TrimSpace(req.HTMLBody) == "" {
+		writeError(w, http.StatusBadRequest, "Bitte alle Template-Felder ausfuellen.")
+		return
+	}
+	saved, err := h.repo.SaveMailTemplate(r, r.PathValue("kind"), req)
+	if errors.Is(err, store.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "template not found")
+		return
+	}
+	if err != nil {
+		h.serverError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, saved)
 }
 
 func (h *Handler) createFeedback(w http.ResponseWriter, r *http.Request) {
@@ -667,6 +831,12 @@ func (h *Handler) createPlansForAllUsers(w http.ResponseWriter, r *http.Request)
 	var failures []map[string]string
 	var emailFailures []map[string]string
 	emailsSent := 0
+	templates, err := h.repo.ListMailTemplates(r)
+	if err != nil {
+		h.serverError(w, r, err)
+		return
+	}
+	weeklyTemplate := mailTemplateByKind(templates, mailer.TemplateKindWeeklyPlanReady)
 	for _, userID := range userIDs {
 		req := withUserID(r, userID)
 		family, err := h.repo.GetFamily(req)
@@ -708,12 +878,34 @@ func (h *Handler) createPlansForAllUsers(w http.ResponseWriter, r *http.Request)
 				continue
 			}
 			seenEmails[normalized] = struct{}{}
+			settings, err := h.repo.GetAccountSettingsForUser(req, account.UserID)
+			if err != nil {
+				emailFailures = append(emailFailures, map[string]string{
+					"userID":   userID,
+					"familyID": family.ID,
+					"email":    email,
+					"error":    err.Error(),
+				})
+				continue
+			}
+			if !settings.WeeklyPlanEmailEnabled {
+				continue
+			}
+			values := map[string]string{
+				"{{family_name}}":   family.Name,
+				"{{week_start}}":    saved.WeekStart,
+				"{{plan_url}}":      planURL,
+				"{{support_email}}": "info@markushartmann.dev",
+			}
 			if err := h.mailer.SendWeeklyPlanReadyEmail(req.Context(), mailer.WeeklyPlanReadyEmail{
 				To:           email,
 				FamilyName:   family.Name,
 				WeekStart:    saved.WeekStart,
 				PlanURL:      planURL,
 				SupportEmail: "info@markushartmann.dev",
+				Subject:      renderMailTemplate(weeklyTemplate.Subject, values),
+				TextBody:     renderMailTemplate(weeklyTemplate.TextBody, values),
+				HTMLBody:     renderMailTemplate(weeklyTemplate.HTMLBody, values),
 			}); err != nil {
 				h.logger.Error("weekly plan email failed", "family_id", family.ID, "user_id", userID, "email", email, "error", err)
 				emailFailures = append(emailFailures, map[string]string{
@@ -1098,4 +1290,27 @@ func rateLimitFromEnv() int {
 		return 60
 	}
 	return parsed
+}
+
+func mailTemplateByKind(templates []domain.MailTemplate, kind string) domain.MailTemplate {
+	for _, template := range templates {
+		if strings.TrimSpace(template.Kind) == strings.TrimSpace(kind) {
+			return template
+		}
+	}
+	if defaults, ok := mailer.DefaultTemplate(kind); ok {
+		return domain.MailTemplate{
+			Kind:         kind,
+			Subject:      defaults.Subject,
+			TextBody:     defaults.TextBody,
+			HTMLBody:     defaults.HTMLBody,
+			Description:  defaults.Description,
+			VariableHint: append([]string(nil), defaults.Variables...),
+		}
+	}
+	return domain.MailTemplate{Kind: kind}
+}
+
+func renderMailTemplate(template string, values map[string]string) string {
+	return mailer.RenderTemplate(template, values)
 }
