@@ -39,7 +39,7 @@ export function MealBoard({ planId, days = [], selectedMealId, onSelectMeal }: M
       <div className="surface-header">
         <div>
           <h2>Diese Woche auf dem Tisch</h2>
-          <p>Ein Tag nach dem anderen. Details öffnen direkt darunter.</p>
+          <p>Ein Tag nach dem anderen. Kurz scannen, dann die Details darunter öffnen.</p>
         </div>
         {days.length > 0 ? (
           <div className="carousel-actions" aria-label="Tage wechseln">
@@ -64,6 +64,7 @@ export function MealBoard({ planId, days = [], selectedMealId, onSelectMeal }: M
           >
             <span>{day.label ?? formatDate(day.date)}</span>
             <strong>{formatDate(day.date)}</strong>
+            <small>{day.meals.length} Mahlzeiten</small>
           </button>
         ))}
       </div>

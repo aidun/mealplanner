@@ -631,7 +631,7 @@ describe('Mealplanner app', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Logout' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Logout gerade nicht möglich');
-    expect(screen.getByText('Was kommt diese Woche auf den Tisch?')).toBeInTheDocument();
+    expect(screen.getByText('Planen, auswählen, kochen.')).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Mit Google anmelden' })).not.toBeInTheDocument();
   });
 

@@ -32,7 +32,7 @@ export function ShoppingListPanel({ planId, shoppingList, loading }: ShoppingLis
           <p>
             {items.length > 0
               ? `${items.length} Artikel${categories.length > 0 ? ` · ${categories.length} Bereiche` : ''}`
-              : 'Zusammenstellung für den aktuellen Plan.'}
+              : 'Alles für den aktuellen Plan an einem Ort.'}
           </p>
         </div>
         {canExport ? (

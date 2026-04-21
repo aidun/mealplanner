@@ -22,7 +22,7 @@ export function Header({
         <Link to="/" className="brand-mark" aria-label="Mealplanner Startseite">
           Familienküche
         </Link>
-        <p className="brand-subtitle">Essen planen, einkaufen, entspannt kochen</p>
+        <p className="brand-subtitle">Woche für Woche entspannt kochen</p>
       </div>
 
       <div className="header-meta">

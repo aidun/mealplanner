@@ -30,34 +30,51 @@ export function PlanBackdrop() {
       context.clearRect(0, 0, width, height);
 
       const pulse = media.matches ? 0 : Math.sin(frame / 90) * 18;
+      const drift = media.matches ? 0 : Math.cos(frame / 120) * 12;
       const gradient = context.createLinearGradient(0, 0, width, height);
       gradient.addColorStop(0, 'rgba(255,255,255,0.92)');
-      gradient.addColorStop(1, 'rgba(232,246,239,0.86)');
+      gradient.addColorStop(0.58, 'rgba(244,248,244,0.88)');
+      gradient.addColorStop(1, 'rgba(231,239,233,0.82)');
       context.fillStyle = gradient;
       context.fillRect(0, 0, width, height);
 
-      context.fillStyle = 'rgba(15,118,110,0.10)';
+      context.fillStyle = 'rgba(13,138,99,0.09)';
       context.beginPath();
-      context.ellipse(width * 0.22, height * 0.32, width * 0.16, height * 0.36, 0.6, 0, Math.PI * 2);
+      context.ellipse(width * 0.2, height * 0.28, width * 0.18, height * 0.38, 0.58, 0, Math.PI * 2);
       context.fill();
 
-      context.fillStyle = 'rgba(228,87,61,0.08)';
+      context.fillStyle = 'rgba(223,106,70,0.08)';
       context.beginPath();
-      context.ellipse(width * 0.78, height * 0.22, width * 0.14, height * 0.24, -0.4, 0, Math.PI * 2);
+      context.ellipse(width * 0.8, height * 0.24, width * 0.15, height * 0.24, -0.42, 0, Math.PI * 2);
       context.fill();
 
-      context.strokeStyle = 'rgba(15,118,110,0.14)';
-      context.lineWidth = 1.2;
+      const glaze = context.createRadialGradient(width * 0.74, height * 0.72, 8, width * 0.74, height * 0.72, width * 0.26);
+      glaze.addColorStop(0, 'rgba(255,255,255,0.34)');
+      glaze.addColorStop(1, 'rgba(255,255,255,0)');
+      context.fillStyle = glaze;
       context.beginPath();
-      context.moveTo(width * 0.12, height * 0.68);
-      context.bezierCurveTo(width * 0.32, height * 0.52 + pulse, width * 0.58, height * 0.84 - pulse, width * 0.86, height * 0.62);
+      context.ellipse(width * 0.74, height * 0.72, width * 0.26, height * 0.18, -0.22, 0, Math.PI * 2);
+      context.fill();
+
+      context.strokeStyle = 'rgba(13,138,99,0.16)';
+      context.lineWidth = 1.1;
+      context.beginPath();
+      context.moveTo(width * 0.08, height * 0.7);
+      context.bezierCurveTo(
+        width * 0.28,
+        height * 0.5 + pulse,
+        width * 0.58,
+        height * 0.86 - pulse,
+        width * 0.9,
+        height * 0.58 + drift
+      );
       context.stroke();
 
-      context.fillStyle = 'rgba(255,255,255,0.82)';
+      context.fillStyle = 'rgba(255,255,255,0.9)';
       for (const [x, y, radius] of [
-        [0.18, 0.62, 20],
-        [0.52, 0.48, 14],
-        [0.82, 0.68, 18],
+        [0.16, 0.6, 22],
+        [0.48, 0.46, 14],
+        [0.82, 0.7, 20],
       ] as const) {
         context.beginPath();
         context.arc(width * x, height * y, radius + pulse * 0.08, 0, Math.PI * 2);

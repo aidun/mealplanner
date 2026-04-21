@@ -49,7 +49,7 @@ export function MealInspector({
       <div className="surface-header">
         <div>
           <h2>{meal.title}</h2>
-          <p>{meal.slot ?? 'Mahlzeit'}</p>
+          <p>{meal.slot ?? 'Mahlzeit'}{dayDate ? ` · ${dayDate}` : ''}</p>
         </div>
         <div className="surface-actions">
           <button

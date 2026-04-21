@@ -186,13 +186,10 @@ export function DashboardPage() {
       <main className="app-main">
         <section className="plan-stage" aria-labelledby="home-title">
           <PlanBackdrop />
-          <div className="plan-stage-copy">
-            <span className="eyebrow">Wochenplan</span>
-            <h1 id="home-title">Was kommt diese Woche auf den Tisch?</h1>
-            <p>
-              Tage durchgehen, Mahlzeit öffnen, Einkaufsbezug prüfen und nur dort eingreifen, wo ihr etwas ändern
-              wollt.
-            </p>
+          <div className="plan-stage-copy plan-stage-copy-compact">
+            <span className="eyebrow">Diese Woche</span>
+            <h1 id="home-title">Planen, auswählen, kochen.</h1>
+            <p>Der Wochenplan bleibt im Fokus. Alles andere ordnet sich darunter ein.</p>
           </div>
           <div className="plan-stage-actions">
             <button
@@ -206,6 +203,20 @@ export function DashboardPage() {
             <Link to="/onboarding" className="button button-secondary">
               Profil
             </Link>
+          </div>
+          <div className="plan-stage-meta" aria-label="Planstatus">
+            <div className="stage-stat">
+              <strong>{currentPlanQuery.data?.days.length ?? 0}</strong>
+              <span>Tage im Plan</span>
+            </div>
+            <div className="stage-stat">
+              <strong>{allMeals.length}</strong>
+              <span>Mahlzeiten</span>
+            </div>
+            <div className="stage-stat">
+              <strong>{shoppingListQuery.data ? countShoppingItems(shoppingListQuery.data) : 0}</strong>
+              <span>Einkäufe</span>
+            </div>
           </div>
         </section>
 
@@ -307,4 +318,17 @@ function errorMessage(error: unknown) {
     }
   }
   return 'Aktion konnte nicht ausgeführt werden.';
+}
+
+function countShoppingItems(shoppingList: unknown) {
+  if (!shoppingList) return 0;
+  if (Array.isArray(shoppingList)) return shoppingList.length;
+  if (typeof shoppingList === 'object' && shoppingList !== null) {
+    const value = shoppingList as { sections?: { items?: unknown[] }[]; items?: unknown[] };
+    if (Array.isArray(value.sections) && value.sections.length > 0) {
+      return value.sections.reduce((sum, section) => sum + (Array.isArray(section.items) ? section.items.length : 0), 0);
+    }
+    if (Array.isArray(value.items)) return value.items.length;
+  }
+  return 0;
 }
