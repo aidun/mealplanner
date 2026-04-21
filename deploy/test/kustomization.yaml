@@ -24,17 +24,22 @@ patches:
       kind: Namespace
       name: mealplanner-test
   - patch: |-
-      - op: replace
-        path: /spec/template/spec/containers/0/env/0/value
-        value: "test"
-      - op: replace
-        path: /spec/template/spec/containers/0/env/16/value
-        value: "live"
-      - op: add
-        path: /spec/template/spec/containers/0/env/-
-        value:
-          name: PROMPT_DEBUG
-          value: "true"
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: api
+      spec:
+        template:
+          spec:
+            containers:
+              - name: api
+                env:
+                  - name: APP_ENV
+                    value: "test"
+                  - name: PROVIDER_MODE
+                    value: "live"
+                  - name: PROMPT_DEBUG
+                    value: "true"
     target:
       kind: Deployment
       name: api
