@@ -6,6 +6,7 @@ import { MealBoard } from '../components/MealBoard';
 import { MealInspector } from '../components/MealInspector';
 import { PlanBackdrop } from '../components/PlanBackdrop';
 import { ShoppingListPanel } from '../components/ShoppingListPanel';
+import { readableApiError } from '../lib/api-error';
 import { LoginPage } from './LoginPage';
 import {
   createPlan,
@@ -30,6 +31,7 @@ export function DashboardPage() {
   const [selectedMealId, setSelectedMealId] = useState<string | undefined>();
   const [selectedFavoriteId, setSelectedFavoriteId] = useState<string | undefined>();
   const [activeWorkspacePane, setActiveWorkspacePane] = useState<'plan' | 'detail' | 'shopping'>('plan');
+  const [favoriteSlotFilter, setFavoriteSlotFilter] = useState<'all' | string>('all');
   const [loggedOut, setLoggedOut] = useState(false);
 
   const currentPlanQuery = useQuery({
@@ -133,6 +135,10 @@ export function DashboardPage() {
     [favoritesQuery.data, selectedFavoriteId]
   );
   const favorites = favoritesQuery.data ?? [];
+  const filteredFavorites = useMemo(
+    () => favorites.filter((favorite) => favoriteSlotFilter === 'all' || favorite.meal.slot === favoriteSlotFilter),
+    [favoriteSlotFilter, favorites]
+  );
   const favoriteSlots = useMemo(() => summarizeFavoriteSlots(favorites), [favorites]);
   const favoriteTags = useMemo(() => summarizeFavoriteTags(favorites), [favorites]);
   const inspectedMeal = selectedFavorite?.meal ?? selectedMeal;
@@ -199,14 +205,14 @@ export function DashboardPage() {
   const planMessage = createPlanMutation.isPending
     ? 'Wir stellen eure Woche zusammen.'
     : createPlanMutation.isError
-      ? errorMessage(createPlanMutation.error)
+    ? readableApiError(createPlanMutation.error)
       : createPlanMutation.isSuccess
         ? 'Der neue Wochenplan ist fertig.'
         : currentPlanQuery.isError
           ? 'Der aktuelle Plan konnte nicht geladen werden.'
           : '';
   const regenerateMessage = regenerateMealMutation.isError
-    ? errorMessage(regenerateMealMutation.error)
+    ? readableApiError(regenerateMealMutation.error)
     : regenerateMealMutation.isSuccess
       ? 'Das Gericht wurde ausgetauscht.'
       : '';
@@ -230,7 +236,7 @@ export function DashboardPage() {
           <div className="plan-stage-copy plan-stage-copy-compact">
             <span className="eyebrow">Diese Woche</span>
             <h1 id="home-title">Planen, auswählen, kochen.</h1>
-            <p>Von der Woche aus gedacht: Gerichte waehlen, anpassen und direkt in den Alltag holen.</p>
+            <p>Der Wochenplan steht im Mittelpunkt: Gerichte wählen, feinjustieren und ohne Umwege in den Alltag bringen.</p>
           </div>
           <div className="plan-stage-actions">
             <button
@@ -276,7 +282,7 @@ export function DashboardPage() {
             <div className="favorites-rail-copy">
               <span className="eyebrow">Favoriten</span>
               <h2 id="favorites-title">Wieder gern kochen</h2>
-              <p>Gerichte, die ihr behalten wollt und die bei neuen Wochen wieder auftauchen duerfen.</p>
+              <p>Rezepte, die zu euch passen und bei neuen Wochen bewusst wieder auftauchen dürfen.</p>
             </div>
             <div className="favorites-rail-summary" aria-label="Favoriten wirken auf neue Wochen">
               <div className="favorites-rail-stat">
@@ -292,8 +298,27 @@ export function DashboardPage() {
                 <span>taucht bevorzugt als Richtung wieder auf</span>
               </div>
             </div>
+            <div className="favorites-filter-row" aria-label="Favoriten filtern">
+              <button
+                type="button"
+                className={`tag-button${favoriteSlotFilter === 'all' ? ' tag-button-active' : ''}`}
+                onClick={() => setFavoriteSlotFilter('all')}
+              >
+                Alle
+              </button>
+              {Array.from(new Set(favorites.map((favorite) => favorite.meal.slot).filter(Boolean))).map((slot) => (
+                <button
+                  key={slot}
+                  type="button"
+                  className={`tag-button${favoriteSlotFilter === slot ? ' tag-button-active' : ''}`}
+                  onClick={() => setFavoriteSlotFilter(slot)}
+                >
+                  {slotLabel(slot)}
+                </button>
+              ))}
+            </div>
             <div className="favorites-rail-list">
-              {favorites.map((favorite) => {
+              {filteredFavorites.map((favorite) => {
                 const active = selectedFavoriteId === favorite.id;
                 return (
                   <button
@@ -307,6 +332,23 @@ export function DashboardPage() {
                   </button>
                 );
               })}
+            </div>
+            <div className="favorites-collection">
+              {filteredFavorites.slice(0, 6).map((favorite) => (
+                <article key={`collection-${favorite.id}`} className="favorite-collection-card">
+                  <div>
+                    <span className="eyebrow">{slotLabel(favorite.meal.slot || 'Mahlzeit')}</span>
+                    <h3>{favorite.meal.title}</h3>
+                    <p>{favorite.meal.description || 'Bleibt in eurer Sammlung und darf wieder auftauchen.'}</p>
+                  </div>
+                  <div className="favorite-collection-meta">
+                    <span>{favorite.meal.tags?.[0] ?? 'familientauglich'}</span>
+                    <button type="button" className="button button-secondary compact-action" onClick={() => selectFavorite(favorite)}>
+                      Ansehen
+                    </button>
+                  </div>
+                </article>
+              ))}
             </div>
           </section>
         ) : null}
@@ -495,18 +537,6 @@ function PromptDebugOverlay({
   );
 }
 
-function errorMessage(error: unknown) {
-  if (error instanceof Error) {
-    try {
-      const parsed = JSON.parse(error.message) as { error?: string };
-      return parsed.error ?? error.message;
-    } catch {
-      return error.message;
-    }
-  }
-  return 'Aktion konnte nicht ausgeführt werden.';
-}
-
 function summarizeFavoriteSlots(favorites: FavoriteRecipe[]) {
   return Array.from(
     new Set(
@@ -581,6 +611,8 @@ function formatPromptMetaKey(value: string) {
   switch (value) {
     case 'requestedWeekStart':
       return 'Angefragter Start';
+    case 'promptVersion':
+      return 'Prompt-Version';
     case 'members':
       return 'Mitglieder';
     case 'favorites':

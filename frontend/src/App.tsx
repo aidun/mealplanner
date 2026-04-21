@@ -2,6 +2,7 @@ import type { ReactElement } from 'react';
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { acceptFamilyInvite, getSession } from './api';
+import { readableApiError } from './lib/api-error';
 import { DashboardPage } from './pages/DashboardPage';
 import { LegalPage } from './pages/LegalPage';
 import { LoginPage } from './pages/LoginPage';
@@ -56,7 +57,7 @@ function AcceptInvitePage() {
           >
             {mutation.isPending ? 'Wird zusammengeführt' : 'Einladung annehmen'}
           </button>
-          {mutation.isError ? <p className="error-copy">Einladung konnte nicht angenommen werden.</p> : null}
+          {mutation.isError ? <p className="error-copy">{readableApiError(mutation.error, 'Einladung konnte nicht angenommen werden.')}</p> : null}
         </section>
       </main>
     </div>

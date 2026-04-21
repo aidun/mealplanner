@@ -8,6 +8,7 @@ import {
   saveProfile,
   updateFamilyMemberLink,
 } from '../api';
+import { readableApiError } from '../lib/api-error';
 import { emptyMember, formToProfile, profileToForm } from '../lib/profile-form';
 import type { MemberFormState, ProfileFormState } from '../types';
 
@@ -141,7 +142,7 @@ export function OnboardingPage() {
 
   const statusMessage = useMemo(() => {
     if (saveMutation.isPending) return 'Profil wird gespeichert.';
-    if (saveMutation.isError) return errorMessage(saveMutation.error);
+    if (saveMutation.isError) return readableApiError(saveMutation.error);
     if (saveMutation.isSuccess && !hasEdited) return 'Profil gespeichert. Der nächste Wochenplan nutzt diese Angaben.';
     if (hasEdited) return 'Ungespeicherte Änderungen.';
     return 'Bereit zum Speichern.';
@@ -152,9 +153,9 @@ export function OnboardingPage() {
       <header className="app-header compact-header">
         <div className="brand-block">
           <button type="button" className="brand-mark brand-button" onClick={() => navigate('/')}>
-            Mealplanner
+            Familienküche
           </button>
-          <p className="brand-subtitle">Familie, Aliase und Regeln fuer kommende Wochen.</p>
+          <p className="brand-subtitle">Mitglieder, Aliase und Regeln für kommende Wochen.</p>
         </div>
       </header>
 
@@ -163,7 +164,7 @@ export function OnboardingPage() {
           <div className="profile-page-intro">
             <span className="eyebrow">Profil</span>
             <h1>Familienkonto pflegen</h1>
-            <p>Mitglieder, Aliase, verknuepfte Logins und die Regeln fuer eure kommenden Wochen.</p>
+            <p>Hier liegen Mitglieder, verknüpfte Logins und die Regeln, nach denen neue Wochen geplant werden.</p>
             <div className="profile-overview-grid" aria-label="Profilübersicht">
               <div className="profile-overview-card">
                 <strong>{form.members.length}</strong>
@@ -430,7 +431,7 @@ export function OnboardingPage() {
                     <p className="muted">Noch keine verknüpften Login-Accounts sichtbar.</p>
                   )}
                 </div>
-                {linkMutation.isError ? <p className="error-copy">{errorMessage(linkMutation.error)}</p> : null}
+                {linkMutation.isError ? <p className="error-copy">{readableApiError(linkMutation.error)}</p> : null}
                 {linkMutation.isSuccess ? (
                   <p className="success-copy">
                     {lastLinkedAccountEmail ? `${lastLinkedAccountEmail} wurde aktualisiert.` : 'Zuordnung gespeichert.'}
@@ -481,7 +482,7 @@ export function OnboardingPage() {
                     {inviteCopyState === 'failed' ? <p className="error-copy">Link konnte nicht kopiert werden.</p> : null}
                   </div>
                 ) : null}
-                {inviteMutation.isError ? <p className="error-copy">{errorMessage(inviteMutation.error)}</p> : null}
+                {inviteMutation.isError ? <p className="error-copy">{readableApiError(inviteMutation.error)}</p> : null}
               </div>
             </section>
 
@@ -599,16 +600,4 @@ export function OnboardingPage() {
       </main>
     </div>
   );
-}
-
-function errorMessage(error: unknown) {
-  if (error instanceof Error) {
-    try {
-      const parsed = JSON.parse(error.message) as { error?: string };
-      return parsed.error ?? error.message;
-    } catch {
-      return error.message;
-    }
-  }
-  return 'Aktion konnte nicht ausgeführt werden.';
 }

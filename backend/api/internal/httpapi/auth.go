@@ -50,7 +50,7 @@ func (h *Handler) startGoogle(w http.ResponseWriter, r *http.Request) {
 	}
 	state, nonce, verifier, challenge, err := auth.NewOAuthState()
 	if err != nil {
-		h.serverError(w, err)
+		h.serverError(w, r, err)
 		return
 	}
 	raw, _ := json.Marshal(oauthState{State: state, Nonce: nonce, Verifier: verifier})
@@ -83,17 +83,17 @@ func (h *Handler) googleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		h.serverError(w, err)
+		h.serverError(w, r, err)
 		return
 	}
 	userID, err := h.repo.UpsertUser(r, identity.Provider, identity.SubjectHash, identity.Email, identity.EmailHash)
 	if err != nil {
-		h.serverError(w, err)
+		h.serverError(w, r, err)
 		return
 	}
 	sessionID, _, expiresAt, err := h.repo.CreateSession(r, userID, 30*24*time.Hour)
 	if err != nil {
-		h.serverError(w, err)
+		h.serverError(w, r, err)
 		return
 	}
 	setSessionCookie(w, r, sessionID, expiresAt)

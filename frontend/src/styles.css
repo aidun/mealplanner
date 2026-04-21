@@ -646,6 +646,28 @@ a:focus-visible {
   display: none;
 }
 
+.favorites-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tag-button {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid rgba(18, 33, 29, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.84);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.tag-button-active {
+  border-color: rgba(13, 138, 99, 0.26);
+  background: rgba(220, 241, 232, 0.92);
+  color: var(--accent-strong);
+}
+
 .favorite-rail-item {
   flex: 0 0 auto;
   display: grid;
@@ -668,6 +690,35 @@ a:focus-visible {
   border-color: rgba(13, 138, 99, 0.24);
   background: linear-gradient(180deg, rgba(220, 241, 232, 0.96), rgba(245, 249, 245, 0.92));
   box-shadow: 0 14px 28px rgba(13, 138, 99, 0.08);
+}
+
+.favorites-collection {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.favorite-collection-card {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid rgba(18, 33, 29, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.favorite-collection-card h3,
+.favorite-collection-card p {
+  margin: 0;
+}
+
+.favorite-collection-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 0.84rem;
 }
 
 .workspace-pane-switch {
@@ -1847,7 +1898,8 @@ a:focus-visible {
   .workspace,
   .member-grid,
   .field-group,
-  .preset-grid {
+  .preset-grid,
+  .favorites-collection {
     grid-template-columns: 1fr;
   }
 

@@ -780,6 +780,41 @@ func TestPromptDebugEndpointOnlyWhenEnabled(t *testing.T) {
 	}
 }
 
+func TestAuthProvidersAreRateLimitedWhenConfigured(t *testing.T) {
+	t.Setenv("RATE_LIMIT_REQUESTS_PER_MINUTE", "1")
+	handler := New(newMemoryRepo(), planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/auth/providers", nil)
+	req.RemoteAddr = "203.0.113.10:4321"
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected first request 200, got %d", rec.Code)
+	}
+
+	req = httptest.NewRequest(http.MethodGet, "/api/auth/providers", nil)
+	req.RemoteAddr = "203.0.113.10:4321"
+	rec = httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusTooManyRequests || !strings.Contains(rec.Body.String(), "Zu viele Anfragen") {
+		t.Fatalf("expected rate limit 429, got %d: %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestServerErrorIncludesRequestIDHeader(t *testing.T) {
+	repo := newMemoryRepo()
+	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil)
+
+	req := httptest.NewRequest(http.MethodPut, "/api/profile", bytes.NewBufferString(`{"householdName":"`))
+	setAuth(repo, req, "user-1")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Header().Get("X-Request-Id") == "" {
+		t.Fatal("expected request id header")
+	}
+}
+
 func TestSessionEndpoint(t *testing.T) {
 	repo := newMemoryRepo()
 	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil)

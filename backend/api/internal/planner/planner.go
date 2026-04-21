@@ -289,9 +289,14 @@ func normalizeGeneratedMeal(meal domain.Meal, profile domain.Profile, dayDate st
 	meal.Tags = normalizeStrings(meal.Tags)
 	meal.Warnings = normalizeStrings(meal.Warnings)
 	meal.Servings = normalizeServings(meal.Servings, profile)
-	meal.Nutrition, meal.Warnings = normalizeNutrition(meal.Nutrition, meal.Warnings, meal.EstimatedNutrition)
+	nutrition, warnings, nutritionSource := normalizeNutrition(meal, meal.Warnings)
+	meal.Nutrition = nutrition
+	meal.Warnings = warnings
 	if meal.Meta == nil {
 		meal.Meta = map[string]string{}
+	}
+	if nutritionSource != "" {
+		meal.Meta["nutritionSource"] = nutritionSource
 	}
 	return meal
 }
@@ -385,12 +390,24 @@ func portionLabel(factor float64) string {
 	return fmt.Sprintf("%d%% Portion", int(math.Round(factor*100)))
 }
 
-func normalizeNutrition(nutrition domain.Nutrition, warnings []string, estimated bool) (domain.Nutrition, []string) {
+func normalizeNutrition(meal domain.Meal, warnings []string) (domain.Nutrition, []string, string) {
+	nutrition := meal.Nutrition
 	nutrition.Calories = maxInt(nutrition.Calories, 0)
 	nutrition.ProteinG = maxInt(nutrition.ProteinG, 0)
 	nutrition.CarbsG = maxInt(nutrition.CarbsG, 0)
 	nutrition.FatG = maxInt(nutrition.FatG, 0)
 	nutrition.FiberG = maxInt(nutrition.FiberG, 0)
+	source := "provider"
+	if estimated, ok := estimateNutritionFromIngredients(meal); ok {
+		source = "ingredients"
+		if meal.EstimatedNutrition {
+			nutrition = estimated
+			warnings = append(warnings, "Naehrwerte wurden aus Zutaten und Portionsgroessen geschaetzt.")
+		} else if nutrition.Calories == 0 {
+			nutrition = estimated
+			warnings = append(warnings, "Naehrwerte wurden aus Zutaten und Portionsgroessen ergaenzt.")
+		}
+	}
 	if nutrition.CarbsG > 0 && nutrition.FiberG > nutrition.CarbsG {
 		nutrition.FiberG = nutrition.CarbsG
 	}
@@ -400,12 +417,12 @@ func normalizeNutrition(nutrition domain.Nutrition, warnings []string, estimated
 		threshold := maxInt(120, int(math.Round(float64(macroCalories)*0.35)))
 		if nutrition.Calories == 0 || diff > threshold {
 			nutrition.Calories = macroCalories
-			if estimated {
+			if meal.EstimatedNutrition {
 				warnings = append(warnings, "Naehrwerte wurden aus Makros plausibilisiert.")
 			}
 		}
 	}
-	return nutrition, normalizeStrings(warnings)
+	return nutrition, normalizeStrings(warnings), source
 }
 
 func slotFallbackTitle(slot string) string {

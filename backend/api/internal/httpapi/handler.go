@@ -2,14 +2,18 @@ package httpapi
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/subtle"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/aidun/mealplanner/backend/api/internal/auth"
@@ -155,6 +159,7 @@ type Handler struct {
 	corsOrigins []string
 	logger      *slog.Logger
 	promptDebug bool
+	rateLimiter *rateLimiter
 }
 
 const maxJSONBodyBytes = 1 << 20
@@ -163,7 +168,17 @@ func New(repo Repository, planner planner.Planner, authService auth.Service, api
 	if logger == nil {
 		logger = slog.Default()
 	}
-	h := &Handler{repo: repo, planner: planner, auth: authService, metrics: NewMetrics(), apiSecret: strings.TrimSpace(apiSecret), corsOrigins: corsOrigins, logger: logger, promptDebug: strings.EqualFold(strings.TrimSpace(getenv("PROMPT_DEBUG")), "true")}
+	h := &Handler{
+		repo:        repo,
+		planner:     planner,
+		auth:        authService,
+		metrics:     NewMetrics(),
+		apiSecret:   strings.TrimSpace(apiSecret),
+		corsOrigins: corsOrigins,
+		logger:      logger,
+		promptDebug: strings.EqualFold(strings.TrimSpace(getenv("PROMPT_DEBUG")), "true"),
+		rateLimiter: newRateLimiter(rateLimitFromEnv(), time.Minute),
+	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", h.health)
 	mux.Handle("GET /metrics", h.metrics)
@@ -191,7 +206,12 @@ func New(repo Repository, planner planner.Planner, authService auth.Service, api
 	mux.HandleFunc("GET /api/plans/{planID}/bring-export-url", h.withSession(h.getBringExportURL))
 	mux.HandleFunc("GET /api/plans/{planID}/shopping-list", h.withSession(h.getShoppingList))
 	mux.HandleFunc("POST /api/plans/{planID}/meals/{mealID}/regenerate", h.withSession(h.withCSRF(h.regenerateMeal)))
-	return h.metrics.Middleware(h.withSecurityHeaders(h.withCORS(mux)))
+	handler := h.withRecover(mux)
+	handler = h.withRequestContext(handler)
+	handler = h.withRateLimit(handler)
+	handler = h.withSecurityHeaders(handler)
+	handler = h.withCORS(handler)
+	return h.metrics.Middleware(handler)
 }
 
 func (h *Handler) health(w http.ResponseWriter, _ *http.Request) {
@@ -201,7 +221,7 @@ func (h *Handler) health(w http.ResponseWriter, _ *http.Request) {
 func (h *Handler) getProfile(w http.ResponseWriter, r *http.Request) {
 	profile, err := h.repo.GetProfile(r)
 	if err != nil {
-		h.serverError(w, err)
+		h.serverError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, profile)
@@ -219,7 +239,7 @@ func (h *Handler) putProfile(w http.ResponseWriter, r *http.Request) {
 	}
 	saved, err := h.repo.SaveProfile(r, profile)
 	if err != nil {
-		h.serverError(w, err)
+		h.serverError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, saved)
@@ -228,7 +248,7 @@ func (h *Handler) putProfile(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) getFamily(w http.ResponseWriter, r *http.Request) {
 	family, err := h.repo.GetFamily(r)
 	if err != nil {
-		h.serverError(w, err)
+		h.serverError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, family)
@@ -247,7 +267,7 @@ func (h *Handler) createFamilyInvite(w http.ResponseWriter, r *http.Request) {
 	}
 	invite, token, err := h.repo.CreateFamilyInvite(r, emailHash, 7*24*time.Hour)
 	if err != nil {
-		h.serverError(w, err)
+		h.serverError(w, r, err)
 		return
 	}
 	invite.InviteLink = h.absoluteRequestURL(r, "/family/invites/accept").String() + "?token=" + token
@@ -271,17 +291,17 @@ func (h *Handler) acceptFamilyInvite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		h.serverError(w, err)
+		h.serverError(w, r, err)
 		return
 	}
 	targetProfile, err := h.repo.GetProfileByFamily(r, targetFamilyID)
 	if err != nil {
-		h.serverError(w, err)
+		h.serverError(w, r, err)
 		return
 	}
 	incomingProfile, err := h.repo.GetProfile(r)
 	if err != nil {
-		h.serverError(w, err)
+		h.serverError(w, r, err)
 		return
 	}
 	if h.promptDebug {
@@ -290,6 +310,7 @@ func (h *Handler) acceptFamilyInvite(w http.ResponseWriter, r *http.Request) {
 			Model:     "mealplanner",
 			Prompt:    h.planner.PreviewMergePrompt(targetProfile, incomingProfile),
 			Meta: map[string]string{
+				"promptVersion":   "2026-04-21",
 				"targetMembers":   fmt.Sprintf("%d", len(targetProfile.Members)),
 				"incomingMembers": fmt.Sprintf("%d", len(incomingProfile.Members)),
 			},
@@ -297,7 +318,7 @@ func (h *Handler) acceptFamilyInvite(w http.ResponseWriter, r *http.Request) {
 	}
 	merged, err := h.planner.MergeProfiles(r.Context(), targetProfile, incomingProfile)
 	if err != nil {
-		h.serverError(w, err)
+		h.serverError(w, r, err)
 		return
 	}
 	family, err := h.repo.AcceptFamilyInvite(r, token, merged)
@@ -306,7 +327,7 @@ func (h *Handler) acceptFamilyInvite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		h.serverError(w, err)
+		h.serverError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, family)
@@ -328,7 +349,7 @@ func (h *Handler) updateFamilyMemberLink(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	if err != nil {
-		h.serverError(w, err)
+		h.serverError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, family)
@@ -337,7 +358,7 @@ func (h *Handler) updateFamilyMemberLink(w http.ResponseWriter, r *http.Request)
 func (h *Handler) getFavorites(w http.ResponseWriter, r *http.Request) {
 	favorites, err := h.repo.ListFavorites(r)
 	if err != nil {
-		h.serverError(w, err)
+		h.serverError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, favorites)
@@ -355,7 +376,7 @@ func (h *Handler) createFavorite(w http.ResponseWriter, r *http.Request) {
 	}
 	favorite, err := h.repo.SaveFavorite(r, req.Meal)
 	if err != nil {
-		h.serverError(w, err)
+		h.serverError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusCreated, favorite)
@@ -368,7 +389,7 @@ func (h *Handler) deleteFavorite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		h.serverError(w, err)
+		h.serverError(w, r, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -381,7 +402,7 @@ func (h *Handler) getLatestPromptDebug(w http.ResponseWriter, r *http.Request) {
 	}
 	recent, err := h.repo.ListPromptDebug(r, 5)
 	if err != nil && !errors.Is(err, store.ErrNotFound) {
-		h.serverError(w, err)
+		h.serverError(w, r, err)
 		return
 	}
 	var latest *domain.PromptDebugEntry
@@ -395,7 +416,7 @@ func (h *Handler) getLatestPromptDebug(w http.ResponseWriter, r *http.Request) {
 			latest = &entry
 			recent = []domain.PromptDebugEntry{entry}
 		} else if !errors.Is(latestErr, store.ErrNotFound) {
-			h.serverError(w, latestErr)
+			h.serverError(w, r, latestErr)
 			return
 		}
 	}
@@ -442,12 +463,12 @@ func (h *Handler) createPlan(w http.ResponseWriter, r *http.Request) {
 	}
 	profile, err := h.repo.GetProfile(r)
 	if err != nil {
-		h.serverError(w, err)
+		h.serverError(w, r, err)
 		return
 	}
 	favorites, err := h.repo.ListFavorites(r)
 	if err != nil {
-		h.serverError(w, err)
+		h.serverError(w, r, err)
 		return
 	}
 	if h.promptDebug {
@@ -457,6 +478,7 @@ func (h *Handler) createPlan(w http.ResponseWriter, r *http.Request) {
 				Model:     "mealplanner",
 				Prompt:    prompt,
 				Meta: map[string]string{
+					"promptVersion":      "2026-04-21",
 					"requestedWeekStart": strings.TrimSpace(req.WeekStart),
 					"members":            fmt.Sprintf("%d", len(profile.Members)),
 					"favorites":          fmt.Sprintf("%d", len(favorites)),
@@ -466,12 +488,12 @@ func (h *Handler) createPlan(w http.ResponseWriter, r *http.Request) {
 	}
 	plan, err := h.planner.GenerateWeek(r.Context(), profile, req.WeekStart, favorites)
 	if err != nil {
-		h.serverError(w, err)
+		h.serverError(w, r, err)
 		return
 	}
 	saved, err := h.repo.SavePlan(r, plan)
 	if err != nil {
-		h.serverError(w, err)
+		h.serverError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusCreated, saved)
@@ -480,7 +502,7 @@ func (h *Handler) createPlan(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) createPlansForAllUsers(w http.ResponseWriter, r *http.Request) {
 	userIDs, err := h.repo.ListUserIDs(r)
 	if err != nil {
-		h.serverError(w, err)
+		h.serverError(w, r, err)
 		return
 	}
 	var created []string
@@ -527,7 +549,7 @@ func (h *Handler) getCurrentPlan(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		h.serverError(w, err)
+		h.serverError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, plan)
@@ -540,7 +562,7 @@ func (h *Handler) getShoppingList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		h.serverError(w, err)
+		h.serverError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, domain.ConsolidateShoppingList(plan))
@@ -554,7 +576,7 @@ func (h *Handler) regenerateMeal(w http.ResponseWriter, r *http.Request) {
 	}
 	profile, err := h.repo.GetProfile(r)
 	if err != nil {
-		h.serverError(w, err)
+		h.serverError(w, r, err)
 		return
 	}
 	plan, err := h.repo.GetPlan(r, r.PathValue("planID"))
@@ -563,12 +585,12 @@ func (h *Handler) regenerateMeal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		h.serverError(w, err)
+		h.serverError(w, r, err)
 		return
 	}
 	favorites, err := h.repo.ListFavorites(r)
 	if err != nil {
-		h.serverError(w, err)
+		h.serverError(w, r, err)
 		return
 	}
 	if h.promptDebug {
@@ -577,6 +599,7 @@ func (h *Handler) regenerateMeal(w http.ResponseWriter, r *http.Request) {
 			Model:     "mealplanner",
 			Prompt:    h.planner.PreviewRegeneratePrompt(profile, plan, r.PathValue("mealID"), req.Note, favorites),
 			Meta: map[string]string{
+				"promptVersion": "2026-04-21",
 				"mealID":        r.PathValue("mealID"),
 				"noteProvided":  fmt.Sprintf("%t", strings.TrimSpace(req.Note) != ""),
 				"favorites":     fmt.Sprintf("%d", len(favorites)),
@@ -586,12 +609,12 @@ func (h *Handler) regenerateMeal(w http.ResponseWriter, r *http.Request) {
 	}
 	updated, err := h.planner.RegenerateMeal(r.Context(), profile, plan, r.PathValue("mealID"), req.Note, favorites)
 	if err != nil {
-		h.serverError(w, err)
+		h.serverError(w, r, err)
 		return
 	}
 	saved, err := h.repo.SavePlan(r, updated)
 	if err != nil {
-		h.serverError(w, err)
+		h.serverError(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, saved)
@@ -643,6 +666,60 @@ func (h *Handler) withSecurityHeaders(next http.Handler) http.Handler {
 	})
 }
 
+func (h *Handler) withRequestContext(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestID := requestIDFromContext(r.Context())
+		if requestID == "" {
+			requestID = newRequestID()
+			r = r.WithContext(context.WithValue(r.Context(), requestIDKey, requestID))
+		}
+		w.Header().Set("X-Request-Id", requestID)
+		start := time.Now()
+		recorder := &accessStatusRecorder{ResponseWriter: w, status: http.StatusOK}
+		next.ServeHTTP(recorder, r)
+		h.logger.Info("http request",
+			"request_id", requestID,
+			"method", r.Method,
+			"path", r.URL.Path,
+			"status", recorder.status,
+			"duration_ms", time.Since(start).Milliseconds(),
+		)
+	})
+}
+
+func (h *Handler) withRecover(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if recovered := recover(); recovered != nil {
+				err := fmt.Errorf("panic: %v", recovered)
+				h.serverError(w, r, err)
+			}
+		}()
+		next.ServeHTTP(w, r)
+	})
+}
+
+func (h *Handler) withRateLimit(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !shouldRateLimit(r) {
+			next.ServeHTTP(w, r)
+			return
+		}
+		client := clientKey(r)
+		if client == "" {
+			client = "unknown"
+		}
+		key := client + ":" + r.Method + ":" + r.URL.Path
+		if !h.rateLimiter.Allow(key) {
+			writeJSON(w, http.StatusTooManyRequests, map[string]string{
+				"error": "Zu viele Anfragen in kurzer Zeit. Bitte versuche es gleich erneut.",
+			})
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 func originAllowed(origin string, allowed []string) bool {
 	if origin == "" || len(allowed) == 0 {
 		return false
@@ -663,8 +740,11 @@ func countMeals(plan domain.Plan) int {
 	return total
 }
 
-func (h *Handler) serverError(w http.ResponseWriter, err error) {
-	requestID := fmt.Sprintf("%x", time.Now().UnixNano())
+func (h *Handler) serverError(w http.ResponseWriter, r *http.Request, err error) {
+	requestID := requestIDFromContext(r.Context())
+	if requestID == "" {
+		requestID = newRequestID()
+	}
 	h.logger.Error("api error", "request_id", requestID, "error", err)
 	writeJSON(w, http.StatusInternalServerError, map[string]string{
 		"error":     "Das hat gerade nicht geklappt. Bitte versuche es erneut.",
@@ -697,6 +777,105 @@ func configuredSecret(value string) bool {
 	return value != "" && !strings.HasPrefix(value, "__set_")
 }
 
+const requestIDKey contextKey = "request_id"
+
+type accessStatusRecorder struct {
+	http.ResponseWriter
+	status int
+}
+
+func (r *accessStatusRecorder) WriteHeader(status int) {
+	r.status = status
+	r.ResponseWriter.WriteHeader(status)
+}
+
+type rateLimiter struct {
+	limit    int
+	window   time.Duration
+	mu       sync.Mutex
+	requests map[string][]time.Time
+}
+
+func newRateLimiter(limit int, window time.Duration) *rateLimiter {
+	if limit <= 0 {
+		limit = 60
+	}
+	if window <= 0 {
+		window = time.Minute
+	}
+	return &rateLimiter{limit: limit, window: window, requests: map[string][]time.Time{}}
+}
+
+func (l *rateLimiter) Allow(key string) bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	now := time.Now()
+	cutoff := now.Add(-l.window)
+	values := l.requests[key]
+	kept := values[:0]
+	for _, value := range values {
+		if value.After(cutoff) {
+			kept = append(kept, value)
+		}
+	}
+	if len(kept) >= l.limit {
+		l.requests[key] = kept
+		return false
+	}
+	l.requests[key] = append(kept, now)
+	return true
+}
+
+func shouldRateLimit(r *http.Request) bool {
+	if strings.HasPrefix(r.URL.Path, "/api/auth/") {
+		return true
+	}
+	if strings.HasPrefix(r.URL.Path, "/api/family/invites") {
+		return true
+	}
+	if strings.HasPrefix(r.URL.Path, "/api/plans") && r.Method == http.MethodPost {
+		return true
+	}
+	return false
+}
+
+func clientKey(r *http.Request) string {
+	forwarded := strings.TrimSpace(r.Header.Get("X-Forwarded-For"))
+	if forwarded != "" {
+		return strings.Split(forwarded, ",")[0]
+	}
+	host := strings.TrimSpace(r.RemoteAddr)
+	if index := strings.LastIndex(host, ":"); index > 0 {
+		return host[:index]
+	}
+	return host
+}
+
+func newRequestID() string {
+	buf := make([]byte, 8)
+	if _, err := rand.Read(buf); err != nil {
+		return fmt.Sprintf("%x", time.Now().UnixNano())
+	}
+	return hex.EncodeToString(buf)
+}
+
+func requestIDFromContext(ctx context.Context) string {
+	value, _ := ctx.Value(requestIDKey).(string)
+	return value
+}
+
 func getenv(key string) string {
 	return os.Getenv(key)
+}
+
+func rateLimitFromEnv() int {
+	value := strings.TrimSpace(getenv("RATE_LIMIT_REQUESTS_PER_MINUTE"))
+	if value == "" {
+		return 60
+	}
+	parsed, err := strconv.Atoi(value)
+	if err != nil || parsed <= 0 {
+		return 60
+	}
+	return parsed
 }

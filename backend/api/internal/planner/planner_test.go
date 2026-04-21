@@ -141,11 +141,11 @@ func TestGenerateWeekNormalizesNutritionAndMealPayload(t *testing.T) {
 		t.Fatal(err)
 	}
 	meal := plan.Days[0].Meals[0]
-	if meal.Nutrition.Calories != 370 {
-		t.Fatalf("expected calories to be plausibilized from macros, got %d", meal.Nutrition.Calories)
+	if meal.Nutrition.Calories <= 0 {
+		t.Fatalf("expected calories to be estimated, got %d", meal.Nutrition.Calories)
 	}
-	if meal.Nutrition.FiberG != 50 {
-		t.Fatalf("expected fiber to be clamped to carbs, got %d", meal.Nutrition.FiberG)
+	if meal.Nutrition.FiberG > meal.Nutrition.CarbsG {
+		t.Fatalf("expected fiber to be clamped to carbs, got %+v", meal.Nutrition)
 	}
 	if len(meal.Ingredients) != 1 {
 		t.Fatalf("expected empty ingredient rows to be removed, got %d", len(meal.Ingredients))
@@ -153,8 +153,11 @@ func TestGenerateWeekNormalizesNutritionAndMealPayload(t *testing.T) {
 	if len(meal.Instructions) != 1 || meal.Instructions[0] != "Kochen" {
 		t.Fatalf("expected instructions to be normalized, got %#v", meal.Instructions)
 	}
-	if !strings.Contains(strings.Join(meal.Warnings, " "), "plausibilisiert") {
-		t.Fatalf("expected nutrition plausibility warning, got %#v", meal.Warnings)
+	if !strings.Contains(strings.Join(meal.Warnings, " "), "Zutaten") {
+		t.Fatalf("expected nutrition estimate warning, got %#v", meal.Warnings)
+	}
+	if meal.Meta["nutritionSource"] == "" {
+		t.Fatalf("expected nutrition source metadata, got %#v", meal.Meta)
 	}
 }
 
@@ -169,6 +172,27 @@ func TestFavoriteMatchMarksVariants(t *testing.T) {
 	}
 	if updated.Days[0].Meals[0].Meta["favoriteReuse"] != "variant" {
 		t.Fatalf("expected favorite variant marker, got %#v", updated.Days[0].Meals[0].Meta)
+	}
+}
+
+func TestEstimateNutritionFromIngredients(t *testing.T) {
+	meal := domain.Meal{
+		Ingredients: []domain.Ingredient{
+			{Name: "Pasta", Amount: 400, Unit: "g"},
+			{Name: "Joghurt", Amount: 200, Unit: "g"},
+			{Name: "Zucchini", Amount: 2, Unit: "Stk"},
+		},
+		Servings: []domain.Serving{
+			{Name: "Anna", Factor: 1},
+			{Name: "Ben", Factor: 1},
+		},
+	}
+	nutrition, ok := estimateNutritionFromIngredients(meal)
+	if !ok {
+		t.Fatal("expected ingredient nutrition estimate")
+	}
+	if nutrition.Calories <= 0 || nutrition.ProteinG <= 0 || nutrition.CarbsG <= 0 {
+		t.Fatalf("expected useful estimate, got %+v", nutrition)
 	}
 }
 

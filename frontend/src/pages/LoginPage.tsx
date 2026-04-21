@@ -21,8 +21,8 @@ export function LoginPage() {
           <p className="eyebrow">Privater Zugang</p>
           <h1 id="login-title">Mealplanner</h1>
           <p>
-            Melde dich mit einem erlaubten Social Login an. Die App speichert keine Namen, E-Mail-Adressen oder
-            Profilbilder aus dem Login.
+            Melde dich mit einem erlaubten Social Login an. Der Zugang schützt euren privaten Planungsbereich, ohne
+            unnötige Login-Profildaten in die App zu ziehen.
           </p>
         </div>
 

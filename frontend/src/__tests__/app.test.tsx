@@ -218,14 +218,14 @@ function createFetchMock(options: { authenticated?: boolean; familyOverride?: ty
             operation: 'generate_week',
             model: 'gpt-5.4-mini',
             prompt: 'Familienprofil:\\nprivater Haushalt',
-            meta: { requestedWeekStart: '2026-04-13', members: '2', favorites: '1' },
+            meta: { promptVersion: '2026-04-21', requestedWeekStart: '2026-04-13', members: '2', favorites: '1' },
           },
           recent: [
             {
               operation: 'generate_week',
               model: 'gpt-5.4-mini',
               prompt: 'Familienprofil:\\nprivater Haushalt',
-              meta: { requestedWeekStart: '2026-04-13', members: '2', favorites: '1' },
+              meta: { promptVersion: '2026-04-21', requestedWeekStart: '2026-04-13', members: '2', favorites: '1' },
               createdAt: '2026-04-21T09:00:00Z',
             },
             { operation: 'regenerate_meal', model: 'gpt-5.4-mini', prompt: 'Regeneration', meta: { mealID: 'meal-1' }, createdAt: '2026-04-21T08:00:00Z' },
@@ -276,6 +276,7 @@ describe('Mealplanner app', () => {
     expect(screen.getByText('OpenAI Tokens')).toBeInTheDocument();
     expect(screen.getByText('Diagnose')).toBeInTheDocument();
     expect(screen.getByText('Kontext')).toBeInTheDocument();
+    expect(screen.getByText('Prompt-Version')).toBeInTheDocument();
     expect(screen.getByText('Angefragter Start')).toBeInTheDocument();
     expect(screen.getByText('2026-04-13')).toBeInTheDocument();
     expect(screen.getByText('0.70s')).toBeInTheDocument();
@@ -426,7 +427,9 @@ describe('Mealplanner app', () => {
 
     expect(await screen.findByText('Wieder gern kochen')).toBeInTheDocument();
     expect(screen.getByText('liegen fuer die naechste Woche bereit')).toBeInTheDocument();
-    expect(screen.getByText('Fruehstueck')).toBeInTheDocument();
+    expect(screen.getAllByText('Fruehstueck').length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: 'Alle' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Beeren-Porridge' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Beeren-Porridge/ }));
     expect(await screen.findByText(/Favorit aus eurer Sammlung/)).toBeInTheDocument();
     expect(screen.getByText(/Herkunft: Neu fuer diese Woche geplant/)).toBeInTheDocument();
@@ -639,7 +642,7 @@ describe('Mealplanner app', () => {
           return new Response('', { status: 404 });
         }
         if (url.endsWith('/api/plans') && init?.method === 'POST') {
-          return new Response(JSON.stringify({ error: 'Das hat gerade nicht geklappt. Bitte versuche es erneut.' }), {
+          return new Response(JSON.stringify({ error: 'Das hat gerade nicht geklappt. Bitte versuche es erneut.', requestId: 'req-123' }), {
             status: 500,
           });
         }
@@ -652,7 +655,7 @@ describe('Mealplanner app', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Woche planen' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Das hat gerade nicht geklappt. Bitte versuche es erneut.'
+      'Das hat gerade nicht geklappt. Bitte versuche es erneut. Fehler-ID: req-123'
     );
   });
 
@@ -764,7 +767,7 @@ describe('Mealplanner app', () => {
     renderApp('/datenschutz');
 
     expect(await screen.findByRole('heading', { name: 'Datenschutz' })).toBeInTheDocument();
-    expect(screen.getByText('Rechtliche Prüfung ausstehend')).toBeInTheDocument();
+    expect(screen.getByText('Rechtliches')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Verantwortlicher' })).toBeInTheDocument();
 
     renderApp('/impressum');

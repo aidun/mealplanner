@@ -22,11 +22,11 @@ export function LegalPage({ kind }: LegalPageProps) {
         <section className="surface legal-surface">
           <div className="surface-header">
             <div>
-              <p className="eyebrow">Rechtliche Prüfung ausstehend</p>
+              <p className="eyebrow">Rechtliches</p>
               <h1>{isPrivacy ? 'Datenschutz' : 'Impressum'}</h1>
               <p>
-                Diese Seite ist ein technischer Platzhalter. Betreiberangaben und Rechtstexte müssen vor öffentlicher
-                Nutzung geprüft und ergänzt werden.
+                Diese Seite beschreibt den aktuellen technischen Stand der App. Betreiberangaben und die finale
+                rechtliche Prüfung müssen vor einem dauerhaften öffentlichen Betrieb ergänzt werden.
               </p>
             </div>
           </div>
@@ -42,18 +42,24 @@ function PrivacyContent() {
   return (
     <div className="legal-content">
       <h2>Verantwortlicher</h2>
-      <p>Name, Anschrift und Kontakt des Verantwortlichen ergänzen.</p>
+      <p>Betreibername, ladungsfähige Anschrift und direkte Kontaktmöglichkeit ergänzen.</p>
 
       <h2>Login-Daten</h2>
       <p>
-        Beschreiben, dass Social Login nur zur Authentifizierung genutzt wird und keine Namen, E-Mail-Adressen oder
-        Profilbilder dauerhaft gespeichert werden.
+        Die App nutzt Social Login nur für den Zugang. Aus dem Login werden dauerhaft nur die technisch nötigen
+        Zuordnungen gespeichert; Namen, Profilbilder und ähnliche Profildaten sind nicht Teil der Planungslogik.
+      </p>
+
+      <h2>Profil- und Planungsdaten</h2>
+      <p>
+        Gespeichert werden Haushaltsprofil, Familienmitglieder, Aliase, Regeln, Favoriten und erzeugte Wochenpläne.
+        Diese Daten werden für Planung, Regeneration, Einkaufsliste und Familienfunktionen verwendet.
       </p>
 
       <h2>OpenAI-Verarbeitung</h2>
       <p>
-        Beschreiben, welche Essensplanungsdaten zur Generierung verarbeitet werden und welche Aufbewahrungsregeln
-        gelten.
+        Für die Generierung werden Profil- und Planungsdaten an den konfigurierten OpenAI-Dienst übermittelt. Nährwerte
+        bleiben Alltagsschätzungen und sind nicht medizinisch verbindlich.
       </p>
     </div>
   );
@@ -63,10 +69,13 @@ function ImprintContent() {
   return (
     <div className="legal-content">
       <h2>Anbieterkennzeichnung</h2>
-      <p>Name, ladungsfähige Anschrift, Kontakt-E-Mail und weitere Pflichtangaben ergänzen.</p>
+      <p>Vollständiger Name, ladungsfähige Anschrift, Kontakt-E-Mail und weitere Pflichtangaben ergänzen.</p>
 
-      <h2>Verantwortlichkeit</h2>
-      <p>Verantwortliche Person und technische Kontaktadresse ergänzen.</p>
+      <h2>Technischer Betrieb</h2>
+      <p>Domain, Hosting, verantwortliche Kontaktadresse und die zuständige Ansprechperson ergänzen.</p>
+
+      <h2>Hinweis</h2>
+      <p>Diese Seite ersetzt keine rechtliche Prüfung. Vor dauerhaftem öffentlichen Betrieb sollte der Text final geprüft werden.</p>
     </div>
   );
 }

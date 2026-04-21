@@ -105,7 +105,10 @@ export function MealInspector({
       <div className="inspector-summary-grid">
         <div className="inspector-summary-card">
           <strong>{formatNutritionPerPortion(meal.nutrition) || 'Keine Angaben'}</strong>
-          <span>{hasUnevenServings(meal) ? 'Basisportion' : 'Naehrwerte pro Portion'}</span>
+          <span>
+            {hasUnevenServings(meal) ? 'Basisportion' : 'Naehrwerte pro Portion'}
+            {meal.meta?.nutritionSource === 'ingredients' ? ' · aus Zutaten' : ''}
+          </span>
         </div>
         <div className="inspector-summary-card">
           <strong>{meal.ingredients.length}</strong>

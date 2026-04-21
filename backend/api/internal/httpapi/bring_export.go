@@ -53,14 +53,14 @@ func (h *Handler) getBringExportURL(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "plan not found")
 		return
 	} else if err != nil {
-		h.serverError(w, err)
+		h.serverError(w, r, err)
 		return
 	}
 	if _, err := scopedBringPlan(plan, scope); errors.Is(err, store.ErrNotFound) {
 		writeError(w, http.StatusNotFound, "bring export scope not found")
 		return
 	} else if err != nil {
-		h.serverError(w, err)
+		h.serverError(w, r, err)
 		return
 	}
 	token, ok := h.signBringExport(planID, scope)
@@ -91,7 +91,7 @@ func (h *Handler) getBringExport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		h.serverError(w, err)
+		h.serverError(w, r, err)
 		return
 	}
 	plan, err = scopedBringPlan(plan, scope)
@@ -100,7 +100,7 @@ func (h *Handler) getBringExport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		h.serverError(w, err)
+		h.serverError(w, r, err)
 		return
 	}
 
@@ -108,7 +108,7 @@ func (h *Handler) getBringExport(w http.ResponseWriter, r *http.Request) {
 	canonicalURL.RawQuery = r.URL.RawQuery
 	view, err := newBringExportView(plan, canonicalURL.String())
 	if err != nil {
-		h.serverError(w, err)
+		h.serverError(w, r, err)
 		return
 	}
 
