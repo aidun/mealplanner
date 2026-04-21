@@ -13,13 +13,13 @@ import {
   updateFamilyMemberLink,
 } from '../api';
 import { readableApiError } from '../lib/api-error';
-import { defaultMealPlanSlots, emptyMember, formToProfile, profileToForm, syncMealPlanSlots } from '../lib/profile-form';
+import { defaultMealPlanDays, emptyMember, formToProfile, profileToForm, syncMealPlanDays } from '../lib/profile-form';
 import type { MemberFormState, ProfileFormState } from '../types';
 
 const EMPTY_FORM: ProfileFormState = {
   householdName: '',
   members: [emptyMember(0)],
-  mealPlanSlots: defaultMealPlanSlots(['person-1']),
+  mealPlanDays: defaultMealPlanDays(['person-1']),
   servingsPerMeal: '',
   preferredCuisines: '',
   excludedIngredients: '',
@@ -109,10 +109,20 @@ export function OnboardingPage() {
     setHasEdited(true);
   };
 
-  const updateMealSlot = (slotName: ProfileFormState['mealPlanSlots'][number]['slot'], updater: (slot: ProfileFormState['mealPlanSlots'][number]) => ProfileFormState['mealPlanSlots'][number]) => {
+  const updateMealSlot = (
+    dayName: ProfileFormState['mealPlanDays'][number]['day'],
+    slotName: ProfileFormState['mealPlanDays'][number]['slots'][number]['slot'],
+    updater: (
+      slot: ProfileFormState['mealPlanDays'][number]['slots'][number]
+    ) => ProfileFormState['mealPlanDays'][number]['slots'][number]
+  ) => {
     setForm((current) => ({
       ...current,
-      mealPlanSlots: current.mealPlanSlots.map((slot) => (slot.slot === slotName ? updater(slot) : slot)),
+      mealPlanDays: current.mealPlanDays.map((day) =>
+        day.day === dayName
+          ? { ...day, slots: day.slots.map((slot) => (slot.slot === slotName ? updater(slot) : slot)) }
+          : day
+      ),
     }));
     setHasEdited(true);
   };
@@ -121,7 +131,7 @@ export function OnboardingPage() {
     setForm((current) => ({
       ...current,
       members: [...current.members, emptyMember(current.members.length)],
-      mealPlanSlots: syncMealPlanSlots(current.mealPlanSlots, [...current.members, emptyMember(current.members.length)]),
+      mealPlanDays: syncMealPlanDays(current.mealPlanDays, [...current.members, emptyMember(current.members.length)]),
     }));
     setHasEdited(true);
   };
@@ -130,8 +140,8 @@ export function OnboardingPage() {
     setForm((current) => ({
       ...current,
       members: current.members.length > 1 ? current.members.filter((_, memberIndex) => memberIndex !== index) : current.members,
-      mealPlanSlots: syncMealPlanSlots(
-        current.mealPlanSlots,
+      mealPlanDays: syncMealPlanDays(
+        current.mealPlanDays,
         current.members.length > 1 ? current.members.filter((_, memberIndex) => memberIndex !== index) : current.members
       ),
     }));
@@ -520,48 +530,66 @@ export function OnboardingPage() {
                 <div className="meal-plan-settings member-grid-wide">
                   <div className="meal-plan-settings-copy">
                     <strong>Mahlzeiten pro Tag</strong>
-                    <p>Lege fest, welche Mahlzeiten täglich erzeugt werden und wer jeweils mitessen soll.</p>
+                    <p>Lege für Montag bis Sonntag fest, welche Mahlzeiten erzeugt werden und wer jeweils mitessen soll.</p>
                   </div>
                   <div className="meal-plan-slot-list">
-                    {form.mealPlanSlots.map((slot) => (
-                      <article key={slot.slot} className={`meal-plan-slot-card${slot.enabled ? ' meal-plan-slot-card-active' : ''}`}>
-                        <label className="meal-plan-slot-head">
-                          <input
-                            type="checkbox"
-                            checked={slot.enabled}
-                            onChange={(event) =>
-                              updateMealSlot(slot.slot, (current) => ({
-                                ...current,
-                                enabled: event.target.checked,
-                              }))
-                            }
-                          />
-                          <span>{slot.label}</span>
-                        </label>
-                        <div className="meal-plan-members" aria-label={`${slot.label} Teilnehmende`}>
-                          {form.members.map((member, index) => {
-                            const memberLabel = member.alias.trim() || member.name.trim() || `Mitglied ${index + 1}`;
-                            return (
-                              <label key={`${slot.slot}-${member.id}-${index}`} className={`meal-plan-member-chip${slot.memberIds.includes(member.id) ? ' meal-plan-member-chip-active' : ''}`}>
+                    {form.mealPlanDays.map((day) => (
+                      <section key={day.day} className="meal-plan-day-card" aria-label={day.label}>
+                        <div className="meal-plan-day-head">
+                          <strong>{day.label}</strong>
+                          <span>{day.slots.filter((slot) => slot.enabled).length} Mahlzeiten aktiv</span>
+                        </div>
+                        <div className="meal-plan-slot-list">
+                          {day.slots.map((slot) => (
+                            <article
+                              key={`${day.day}-${slot.slot}`}
+                              className={`meal-plan-slot-card${slot.enabled ? ' meal-plan-slot-card-active' : ''}`}
+                            >
+                              <label className="meal-plan-slot-head">
                                 <input
                                   type="checkbox"
-                                  checked={slot.memberIds.includes(member.id)}
-                                  disabled={!slot.enabled}
+                                  checked={slot.enabled}
                                   onChange={(event) =>
-                                    updateMealSlot(slot.slot, (current) => ({
+                                    updateMealSlot(day.day, slot.slot, (current) => ({
                                       ...current,
-                                      memberIds: event.target.checked
-                                        ? [...current.memberIds, member.id].filter((value, memberIndex, values) => values.indexOf(value) === memberIndex)
-                                        : current.memberIds.filter((memberId) => memberId !== member.id),
+                                      enabled: event.target.checked,
                                     }))
                                   }
                                 />
-                                <span>{memberLabel}</span>
+                                <span>{slot.label}</span>
                               </label>
-                            );
-                          })}
+                              <div className="meal-plan-members" aria-label={`${day.label} ${slot.label} Teilnehmende`}>
+                                {form.members.map((member, index) => {
+                                  const memberLabel = member.alias.trim() || member.name.trim() || `Mitglied ${index + 1}`;
+                                  return (
+                                    <label
+                                      key={`${day.day}-${slot.slot}-${member.id}-${index}`}
+                                      className={`meal-plan-member-chip${slot.memberIds.includes(member.id) ? ' meal-plan-member-chip-active' : ''}`}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={slot.memberIds.includes(member.id)}
+                                        disabled={!slot.enabled}
+                                        onChange={(event) =>
+                                          updateMealSlot(day.day, slot.slot, (current) => ({
+                                            ...current,
+                                            memberIds: event.target.checked
+                                              ? [...current.memberIds, member.id].filter(
+                                                  (value, memberIndex, values) => values.indexOf(value) === memberIndex
+                                                )
+                                              : current.memberIds.filter((memberId) => memberId !== member.id),
+                                          }))
+                                        }
+                                      />
+                                      <span>{memberLabel}</span>
+                                    </label>
+                                  );
+                                })}
+                              </div>
+                            </article>
+                          ))}
                         </div>
-                      </article>
+                      </section>
                     ))}
                   </div>
                 </div>

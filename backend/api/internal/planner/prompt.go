@@ -10,12 +10,12 @@ import (
 )
 
 type promptProfile struct {
-	Household string              `json:"household"`
-	Members   []promptMember      `json:"members"`
-	Defaults  domain.MealDefaults `json:"defaults"`
-	Presets   []string            `json:"presets,omitempty"`
-	Notes     string              `json:"notes,omitempty"`
-	MealPlan  []promptSlotRule    `json:"mealPlan,omitempty"`
+	Household string               `json:"household"`
+	Members   []promptMember       `json:"members"`
+	Defaults  domain.MealDefaults  `json:"defaults"`
+	Presets   []string             `json:"presets,omitempty"`
+	Notes     string               `json:"notes,omitempty"`
+	MealPlan  []promptDaySlotRules `json:"mealPlan,omitempty"`
 }
 
 type promptFavorite struct {
@@ -40,6 +40,11 @@ type promptMember struct {
 type promptSlotRule struct {
 	Slot         string   `json:"slot"`
 	Participants []string `json:"participants,omitempty"`
+}
+
+type promptDaySlotRules struct {
+	Day   string           `json:"day"`
+	Slots []promptSlotRule `json:"slots,omitempty"`
 }
 
 type promptPlanContext struct {
@@ -71,18 +76,17 @@ type promptMealSummary struct {
 func WeekPrompt(profile domain.Profile, weekStart time.Time, favorites []domain.FavoriteRecipe) string {
 	body, _ := json.MarshalIndent(minimizeProfile(profile), "", "  ")
 	favoriteBody, _ := json.MarshalIndent(minimizeFavorites(favorites), "", "  ")
-	enabled := enabledSlots(profile)
-	slotRuleText := strings.Join(humanSlotLabels(enabled), ", ")
+	slotRuleText := strings.Join(humanDaySlotLabels(profile), "; ")
 	return fmt.Sprintf(`Erstelle einen Wochen-Essensplan fuer eine Familie.
 
 Woche startet am %s.
 
 Regeln:
 - Plane 7 Tage.
-- Pro Tag genau diese Mahlzeiten, wenn sie aktiviert sind: %s.
-- Generiere keine deaktivierten Mahlzeiten.
+- Plane pro Wochentag nur diese aktivierten Mahlzeiten: %s.
+- Generiere an keinem Tag deaktivierte Mahlzeiten.
 - Ein gemeinsames Gericht pro Mahlzeit, Portionen pro Person skalieren.
-- Pro Mahlzeit nur fuer die hinterlegten Teilnehmenden planen und Portionen nur fuer diese Personen ausgeben.
+- Pro Mahlzeit nur fuer die hinterlegten Teilnehmenden des jeweiligen Wochentags planen und Portionen nur fuer diese Personen ausgeben.
 - Jede Mahlzeit braucht Beschreibung, Zutaten, Anleitung und geschaetzte Naehrwerte pro Portion.
 - Beachte alle Vorlieben, Abneigungen und Einschraenkungen pro Person.
 - Nutze Favoriten als Inspiration. Wiederhole passende Favoriten oder Varianten davon, aber mache die Woche nicht monoton.
@@ -156,22 +160,29 @@ func minimizeProfile(profile domain.Profile) promptProfile {
 			Restrictions:   trimPromptText(member.Restrictions, 300),
 		})
 	}
-	slotRules := make([]promptSlotRule, 0, len(mealSlotConfig))
-	for _, rule := range planningRules(profile) {
-		if !rule.Enabled {
-			continue
-		}
-		participants := participantsForSlot(profile, rule.Slot)
-		labels := make([]string, 0, len(participants))
-		for _, member := range participants {
-			label := preferredAlias(member)
-			if label != "" {
-				labels = append(labels, label)
+	dayRules := make([]promptDaySlotRules, 0, len(weekdayConfig))
+	for _, weekday := range weekdayConfig {
+		slotRules := make([]promptSlotRule, 0, len(mealSlotConfig))
+		for _, rule := range planningRulesForDay(profile, weekday.Key) {
+			if !rule.Enabled {
+				continue
 			}
+			participants := participantsForSlotOnDay(profile, rule.Slot, weekday.Key)
+			labels := make([]string, 0, len(participants))
+			for _, member := range participants {
+				label := preferredAlias(member)
+				if label != "" {
+					labels = append(labels, label)
+				}
+			}
+			slotRules = append(slotRules, promptSlotRule{
+				Slot:         rule.Slot,
+				Participants: labels,
+			})
 		}
-		slotRules = append(slotRules, promptSlotRule{
-			Slot:         rule.Slot,
-			Participants: labels,
+		dayRules = append(dayRules, promptDaySlotRules{
+			Day:   weekday.Title,
+			Slots: slotRules,
 		})
 	}
 	return promptProfile{
@@ -180,13 +191,25 @@ func minimizeProfile(profile domain.Profile) promptProfile {
 		Defaults:  profile.Defaults,
 		Presets:   profile.Presets,
 		Notes:     trimPromptText(profile.Notes, 500),
-		MealPlan:  slotRules,
+		MealPlan:  dayRules,
 	}
+}
+
+func humanDaySlotLabels(profile domain.Profile) []string {
+	out := make([]string, 0, len(weekdayConfig))
+	for _, weekday := range weekdayConfig {
+		labels := humanSlotLabels(enabledSlotsForDay(profile, weekday.Key))
+		if len(labels) == 0 {
+			labels = []string{"keine"}
+		}
+		out = append(out, fmt.Sprintf("%s: %s", weekday.Title, strings.Join(labels, ", ")))
+	}
+	return out
 }
 
 func humanSlotLabels(slots []string) []string {
 	if len(slots) == 0 {
-		return []string{"Frühstück", "Mittagessen", "Abendessen"}
+		return nil
 	}
 	out := make([]string, 0, len(slots))
 	for _, slot := range slots {

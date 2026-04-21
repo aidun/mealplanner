@@ -2106,13 +2106,39 @@ a:focus-visible {
   gap: 12px;
 }
 
-.meal-plan-slot-card {
+.meal-plan-day-card {
   display: grid;
   gap: 12px;
   padding: 14px;
   border: 1px solid rgba(18, 33, 29, 0.08);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.82);
+}
+
+.meal-plan-day-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.meal-plan-day-head strong {
+  font-size: 0.95rem;
+}
+
+.meal-plan-day-head span {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.meal-plan-slot-card {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid rgba(18, 33, 29, 0.08);
+  border-radius: 8px;
+  background: rgba(247, 250, 247, 0.86);
 }
 
 .meal-plan-slot-card-active {
@@ -2125,6 +2151,7 @@ a:focus-visible {
   align-items: center;
   gap: 10px;
   font-weight: 700;
+  min-height: 36px;
 }
 
 .meal-plan-members {

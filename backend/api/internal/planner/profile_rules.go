@@ -2,6 +2,7 @@ package planner
 
 import (
 	"strings"
+	"time"
 
 	"github.com/aidun/mealplanner/backend/api/internal/domain"
 )
@@ -23,9 +24,31 @@ var mealSlotConfig = []struct {
 	{Slot: "snack", Title: "Snack", ParticipantHead: "Teilnehmende Snack"},
 }
 
+var weekdayConfig = []struct {
+	Key   string
+	Title string
+}{
+	{Key: "monday", Title: "Montag"},
+	{Key: "tuesday", Title: "Dienstag"},
+	{Key: "wednesday", Title: "Mittwoch"},
+	{Key: "thursday", Title: "Donnerstag"},
+	{Key: "friday", Title: "Freitag"},
+	{Key: "saturday", Title: "Samstag"},
+	{Key: "sunday", Title: "Sonntag"},
+}
+
 func planningRules(profile domain.Profile) []slotPlanRule {
+	return planningRulesForDay(profile, "monday")
+}
+
+func planningRulesForDay(profile domain.Profile, weekday string) []slotPlanRule {
 	sections := parseNoteSections(profile.Notes)
-	active := normalizeTokenSet(splitRuleLines(sections["Aktive Mahlzeiten"]))
+	weekdayTitle := weekdayTitle(weekday)
+	activeKey := "Aktive Mahlzeiten"
+	if weekdayTitle != "" {
+		activeKey = "Aktive Mahlzeiten " + weekdayTitle
+	}
+	active := normalizeTokenSet(splitRuleLines(firstSection(sections, activeKey, "Aktive Mahlzeiten")))
 	memberLookup := map[string]domain.Member{}
 	for _, member := range profile.Members {
 		memberLookup[strings.ToLower(strings.TrimSpace(member.ID))] = member
@@ -34,7 +57,11 @@ func planningRules(profile domain.Profile) []slotPlanRule {
 	rules := make([]slotPlanRule, 0, len(mealSlotConfig))
 	for _, config := range mealSlotConfig {
 		enabled := len(active) == 0 || active[config.Slot]
-		participants := parseRuleMembers(splitRuleLines(sections[config.ParticipantHead]), memberLookup)
+		participantKey := config.ParticipantHead
+		if weekdayTitle != "" {
+			participantKey = config.ParticipantHead + " " + weekdayTitle
+		}
+		participants := parseRuleMembers(splitRuleLines(firstSection(sections, participantKey, config.ParticipantHead)), memberLookup)
 		rules = append(rules, slotPlanRule{
 			Slot:      config.Slot,
 			Enabled:   enabled,
@@ -45,7 +72,11 @@ func planningRules(profile domain.Profile) []slotPlanRule {
 }
 
 func enabledSlots(profile domain.Profile) []string {
-	rules := planningRules(profile)
+	return enabledSlotsForDay(profile, "monday")
+}
+
+func enabledSlotsForDay(profile domain.Profile, weekday string) []string {
+	rules := planningRulesForDay(profile, weekday)
 	out := make([]string, 0, len(rules))
 	for _, rule := range rules {
 		if rule.Enabled {
@@ -56,9 +87,13 @@ func enabledSlots(profile domain.Profile) []string {
 }
 
 func participantsForSlot(profile domain.Profile, slot string) []domain.Member {
+	return participantsForSlotOnDay(profile, slot, "monday")
+}
+
+func participantsForSlotOnDay(profile domain.Profile, slot string, weekday string) []domain.Member {
 	slot = strings.ToLower(strings.TrimSpace(slot))
 	var matched *slotPlanRule
-	for _, rule := range planningRules(profile) {
+	for _, rule := range planningRulesForDay(profile, weekday) {
 		if rule.Slot == slot {
 			ruleCopy := rule
 			matched = &ruleCopy
@@ -84,6 +119,44 @@ func participantsForSlot(profile domain.Profile, slot string) []domain.Member {
 	return out
 }
 
+func weekdayKeyFromDate(value string) string {
+	if strings.TrimSpace(value) == "" {
+		return ""
+	}
+	date, err := time.Parse("2006-01-02", value)
+	if err != nil {
+		return ""
+	}
+	switch date.Weekday() {
+	case time.Monday:
+		return "monday"
+	case time.Tuesday:
+		return "tuesday"
+	case time.Wednesday:
+		return "wednesday"
+	case time.Thursday:
+		return "thursday"
+	case time.Friday:
+		return "friday"
+	case time.Saturday:
+		return "saturday"
+	case time.Sunday:
+		return "sunday"
+	default:
+		return ""
+	}
+}
+
+func weekdayTitle(key string) string {
+	key = strings.ToLower(strings.TrimSpace(key))
+	for _, weekday := range weekdayConfig {
+		if weekday.Key == key {
+			return weekday.Title
+		}
+	}
+	return ""
+}
+
 func parseNoteSections(notes string) map[string]string {
 	knownTitles := []string{
 		"Standard-Portionen",
@@ -95,6 +168,12 @@ func parseNoteSections(notes string) map[string]string {
 		"Teilnehmende Mittagessen",
 		"Teilnehmende Abendessen",
 		"Teilnehmende Snack",
+	}
+	for _, weekday := range weekdayConfig {
+		knownTitles = append(knownTitles, "Aktive Mahlzeiten "+weekday.Title)
+		for _, slot := range mealSlotConfig {
+			knownTitles = append(knownTitles, slot.ParticipantHead+" "+weekday.Title)
+		}
 	}
 	sections := map[string]string{}
 	var currentTitle string
@@ -127,6 +206,15 @@ func parseNoteSections(notes string) map[string]string {
 	}
 	flush()
 	return sections
+}
+
+func firstSection(sections map[string]string, keys ...string) string {
+	for _, key := range keys {
+		if value := sections[key]; strings.TrimSpace(value) != "" {
+			return value
+		}
+	}
+	return ""
 }
 
 func splitRuleLines(value string) []string {

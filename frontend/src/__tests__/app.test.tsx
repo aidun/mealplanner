@@ -519,20 +519,21 @@ describe('Mealplanner app', () => {
     fireEvent.change(screen.getByLabelText('Haushaltsname'), { target: { value: 'Familie Weber' } });
     fireEvent.change(screen.getAllByLabelText('Alias')[0]!, { target: { value: 'Mama' } });
     fireEvent.change(screen.getByLabelText('Standard-Portionen'), { target: { value: '4' } });
-    fireEvent.click(screen.getByLabelText('Snack'));
-    fireEvent.click(screen.getAllByLabelText('Ben')[0]!);
+    const mondayCard = screen.getByLabelText('Montag');
+    fireEvent.click(within(mondayCard).getByLabelText('Snack'));
+    fireEvent.click(within(screen.getByLabelText('Montag Snack Teilnehmende')).getByLabelText('Ben'));
 
     fireEvent.click(screen.getByRole('button', { name: 'Profil speichern' }));
 
     await waitFor(() => {
-      expect(fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/api/profile'),
-        expect.objectContaining({
-          method: 'PUT',
-          headers: expect.objectContaining({ 'X-CSRF-Token': 'csrf-token-1' }),
-          body: expect.stringContaining('Aktive Mahlzeiten'),
-        })
-      );
+        expect(fetch).toHaveBeenCalledWith(
+          expect.stringContaining('/api/profile'),
+          expect.objectContaining({
+            method: 'PUT',
+            headers: expect.objectContaining({ 'X-CSRF-Token': 'csrf-token-1' }),
+            body: expect.stringContaining('Aktive Mahlzeiten Montag'),
+          })
+        );
     });
     await waitFor(() => {
       expect(screen.getAllByText('Profil gespeichert. Der nächste Wochenplan nutzt diese Angaben.').length).toBeGreaterThan(0);

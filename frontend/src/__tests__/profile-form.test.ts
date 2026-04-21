@@ -28,11 +28,77 @@ describe('profile form mapping', () => {
           restrictions: '',
         },
       ],
-      mealPlanSlots: [
-        { slot: 'breakfast', label: 'Frühstück', enabled: true, memberIds: ['anna'] },
-        { slot: 'lunch', label: 'Mittagessen', enabled: false, memberIds: ['anna', 'ben'] },
-        { slot: 'dinner', label: 'Abendessen', enabled: true, memberIds: ['anna', 'ben'] },
-        { slot: 'snack', label: 'Snack', enabled: false, memberIds: ['ben'] },
+      mealPlanDays: [
+        {
+          day: 'monday',
+          label: 'Montag',
+          slots: [
+            { slot: 'breakfast', label: 'Frühstück', enabled: true, memberIds: ['anna'] },
+            { slot: 'lunch', label: 'Mittagessen', enabled: false, memberIds: ['anna', 'ben'] },
+            { slot: 'dinner', label: 'Abendessen', enabled: true, memberIds: ['anna', 'ben'] },
+            { slot: 'snack', label: 'Snack', enabled: false, memberIds: ['ben'] },
+          ],
+        },
+        {
+          day: 'tuesday',
+          label: 'Dienstag',
+          slots: [
+            { slot: 'breakfast', label: 'Frühstück', enabled: true, memberIds: ['anna', 'ben'] },
+            { slot: 'lunch', label: 'Mittagessen', enabled: true, memberIds: ['anna'] },
+            { slot: 'dinner', label: 'Abendessen', enabled: true, memberIds: ['anna', 'ben'] },
+            { slot: 'snack', label: 'Snack', enabled: false, memberIds: ['ben'] },
+          ],
+        },
+        {
+          day: 'wednesday',
+          label: 'Mittwoch',
+          slots: [
+            { slot: 'breakfast', label: 'Frühstück', enabled: true, memberIds: ['anna', 'ben'] },
+            { slot: 'lunch', label: 'Mittagessen', enabled: true, memberIds: ['anna', 'ben'] },
+            { slot: 'dinner', label: 'Abendessen', enabled: true, memberIds: ['anna', 'ben'] },
+            { slot: 'snack', label: 'Snack', enabled: false, memberIds: ['ben'] },
+          ],
+        },
+        {
+          day: 'thursday',
+          label: 'Donnerstag',
+          slots: [
+            { slot: 'breakfast', label: 'Frühstück', enabled: true, memberIds: ['anna', 'ben'] },
+            { slot: 'lunch', label: 'Mittagessen', enabled: true, memberIds: ['anna', 'ben'] },
+            { slot: 'dinner', label: 'Abendessen', enabled: true, memberIds: ['anna', 'ben'] },
+            { slot: 'snack', label: 'Snack', enabled: false, memberIds: ['ben'] },
+          ],
+        },
+        {
+          day: 'friday',
+          label: 'Freitag',
+          slots: [
+            { slot: 'breakfast', label: 'Frühstück', enabled: true, memberIds: ['anna', 'ben'] },
+            { slot: 'lunch', label: 'Mittagessen', enabled: true, memberIds: ['anna', 'ben'] },
+            { slot: 'dinner', label: 'Abendessen', enabled: true, memberIds: ['anna', 'ben'] },
+            { slot: 'snack', label: 'Snack', enabled: false, memberIds: ['ben'] },
+          ],
+        },
+        {
+          day: 'saturday',
+          label: 'Samstag',
+          slots: [
+            { slot: 'breakfast', label: 'Frühstück', enabled: true, memberIds: ['anna', 'ben'] },
+            { slot: 'lunch', label: 'Mittagessen', enabled: true, memberIds: ['anna', 'ben'] },
+            { slot: 'dinner', label: 'Abendessen', enabled: true, memberIds: ['anna', 'ben'] },
+            { slot: 'snack', label: 'Snack', enabled: false, memberIds: ['ben'] },
+          ],
+        },
+        {
+          day: 'sunday',
+          label: 'Sonntag',
+          slots: [
+            { slot: 'breakfast', label: 'Frühstück', enabled: true, memberIds: ['anna', 'ben'] },
+            { slot: 'lunch', label: 'Mittagessen', enabled: true, memberIds: ['anna', 'ben'] },
+            { slot: 'dinner', label: 'Abendessen', enabled: true, memberIds: ['anna', 'ben'] },
+            { slot: 'snack', label: 'Snack', enabled: false, memberIds: ['ben'] },
+          ],
+        },
       ],
       servingsPerMeal: '4',
       preferredCuisines: 'Mediterran\nAsiatisch',
@@ -54,7 +120,8 @@ describe('profile form mapping', () => {
     expect(roundtrip.excludedIngredients).toBe('Koriander\nSellerie');
     expect(roundtrip.cookingStyle).not.toContain('Wochentags unter 30 Minuten');
     expect(roundtrip.members[0]?.alias).toBe('Mama');
-    expect(roundtrip.mealPlanSlots.find((slot) => slot.slot === 'lunch')?.enabled).toBe(false);
-    expect(roundtrip.mealPlanSlots.find((slot) => slot.slot === 'breakfast')?.memberIds).toEqual(['anna']);
+    expect(roundtrip.mealPlanDays.find((day) => day.day === 'monday')?.slots.find((slot) => slot.slot === 'lunch')?.enabled).toBe(false);
+    expect(roundtrip.mealPlanDays.find((day) => day.day === 'monday')?.slots.find((slot) => slot.slot === 'breakfast')?.memberIds).toEqual(['anna']);
+    expect(roundtrip.mealPlanDays.find((day) => day.day === 'tuesday')?.slots.find((slot) => slot.slot === 'lunch')?.memberIds).toEqual(['anna']);
   });
 });

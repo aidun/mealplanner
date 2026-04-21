@@ -212,9 +212,8 @@ func TestGenerateWeekFiltersDisabledSlotsAndParticipants(t *testing.T) {
 		{ID: "markus", Name: "Markus", Alias: "Markus"},
 		{ID: "alex", Name: "Alex", Alias: "Alex"},
 	}
-	profile.Notes = "Aktive Mahlzeiten:\nFrühstück\nAbendessen\n\nTeilnehmende Frühstück:\nMarkus\n\nTeilnehmende Abendessen:\nMarkus\nAlex"
-	p := New(fakeGenerator{
-	})
+	profile.Notes = "Aktive Mahlzeiten Montag:\nFrühstück\nAbendessen\n\nTeilnehmende Frühstück Montag:\nMarkus\n\nTeilnehmende Abendessen Montag:\nMarkus\nAlex"
+	p := New(fakeGenerator{})
 	plan, err := p.GenerateWeek(context.Background(), profile, "2026-04-20", nil)
 	if err != nil {
 		t.Fatal(err)
@@ -233,9 +232,9 @@ func TestWeekPromptIncludesMealPlanRules(t *testing.T) {
 		{ID: "markus", Name: "Markus", Alias: "Markus"},
 		{ID: "alex", Name: "Alex", Alias: "Alex"},
 	}
-	profile.Notes = "Aktive Mahlzeiten:\nFrühstück\nAbendessen\n\nTeilnehmende Frühstück:\nMarkus\n\nTeilnehmende Abendessen:\nMarkus\nAlex"
+	profile.Notes = "Aktive Mahlzeiten Montag:\nFrühstück\nAbendessen\n\nTeilnehmende Frühstück Montag:\nMarkus\n\nTeilnehmende Abendessen Montag:\nMarkus\nAlex"
 	prompt := WeekPrompt(profile, time.Date(2026, 4, 19, 0, 0, 0, 0, time.UTC), nil)
-	if !strings.Contains(prompt, "Frühstück, Abendessen") || !strings.Contains(prompt, "\"participants\": [") {
+	if !strings.Contains(prompt, "Montag: Frühstück, Abendessen") || !strings.Contains(prompt, "\"day\": \"Montag\"") || !strings.Contains(prompt, "\"participants\": [") {
 		t.Fatalf("expected meal plan rules in prompt, got %s", prompt)
 	}
 }

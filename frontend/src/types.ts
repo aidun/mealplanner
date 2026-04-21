@@ -220,10 +220,16 @@ export interface MealPlanSlotFormState {
   memberIds: string[];
 }
 
+export interface MealPlanDayFormState {
+  day: 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
+  label: string;
+  slots: MealPlanSlotFormState[];
+}
+
 export interface ProfileFormState {
   householdName: string;
   members: MemberFormState[];
-  mealPlanSlots: MealPlanSlotFormState[];
+  mealPlanDays: MealPlanDayFormState[];
   servingsPerMeal: string;
   preferredCuisines: string;
   excludedIngredients: string;

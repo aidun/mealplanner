@@ -45,8 +45,8 @@ func (p Planner) GenerateWeek(ctx context.Context, profile domain.Profile, weekS
 	plan.WeekStart = start.Format("2006-01-02")
 	plan.Status = "planned"
 	plan.Days = normalizeDays(plan.Days, start)
-	allowedSlots := normalizeSlotSet(enabledSlots(profile))
 	for dayIndex := range plan.Days {
+		allowedSlots := normalizeSlotSet(enabledSlotsForDay(profile, weekdayKeyFromDate(plan.Days[dayIndex].Date)))
 		filteredMeals := make([]domain.Meal, 0, len(plan.Days[dayIndex].Meals))
 		for mealIndex := range plan.Days[dayIndex].Meals {
 			meal := plan.Days[dayIndex].Meals[mealIndex]
@@ -295,7 +295,7 @@ func normalizeGeneratedMeal(meal domain.Meal, profile domain.Profile, dayDate st
 	meal.Instructions = normalizeInstructions(meal.Instructions)
 	meal.Tags = normalizeStrings(meal.Tags)
 	meal.Warnings = normalizeStrings(meal.Warnings)
-	meal.Servings = normalizeServings(meal.Servings, profile, meal.Slot)
+	meal.Servings = normalizeServings(meal.Servings, profile, meal.Slot, dayDate)
 	nutrition, warnings, nutritionSource := normalizeNutrition(meal, meal.Warnings)
 	meal.Nutrition = nutrition
 	meal.Warnings = warnings
@@ -358,8 +358,8 @@ func normalizeStrings(values []string) []string {
 	return out
 }
 
-func normalizeServings(servings []domain.Serving, profile domain.Profile, slot string) []domain.Serving {
-	selectedMembers := participantsForSlot(profile, slot)
+func normalizeServings(servings []domain.Serving, profile domain.Profile, slot string, dayDate string) []domain.Serving {
+	selectedMembers := participantsForSlotOnDay(profile, slot, weekdayKeyFromDate(dayDate))
 	if len(servings) == 0 {
 		out := make([]domain.Serving, 0, len(selectedMembers))
 		for _, member := range selectedMembers {
@@ -402,7 +402,7 @@ func normalizeServings(servings []domain.Serving, profile domain.Profile, slot s
 		out = append(out, serving)
 	}
 	if len(out) == 0 {
-		return normalizeServings(nil, profile, slot)
+		return normalizeServings(nil, profile, slot, dayDate)
 	}
 	return out
 }

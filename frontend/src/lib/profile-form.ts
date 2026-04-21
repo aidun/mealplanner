@@ -1,10 +1,27 @@
-import type { MealPlanSlotFormState, Member, MemberFormState, Profile, ProfileFormState } from '../types';
+import type {
+  MealPlanDayFormState,
+  MealPlanSlotFormState,
+  Member,
+  MemberFormState,
+  Profile,
+  ProfileFormState,
+} from '../types';
 
 const SLOT_CONFIG: Array<{ slot: MealPlanSlotFormState['slot']; label: string; section: string }> = [
   { slot: 'breakfast', label: 'Frühstück', section: 'Teilnehmende Frühstück' },
   { slot: 'lunch', label: 'Mittagessen', section: 'Teilnehmende Mittagessen' },
   { slot: 'dinner', label: 'Abendessen', section: 'Teilnehmende Abendessen' },
   { slot: 'snack', label: 'Snack', section: 'Teilnehmende Snack' },
+];
+
+const WEEKDAY_CONFIG: Array<{ day: MealPlanDayFormState['day']; label: string }> = [
+  { day: 'monday', label: 'Montag' },
+  { day: 'tuesday', label: 'Dienstag' },
+  { day: 'wednesday', label: 'Mittwoch' },
+  { day: 'thursday', label: 'Donnerstag' },
+  { day: 'friday', label: 'Freitag' },
+  { day: 'saturday', label: 'Samstag' },
+  { day: 'sunday', label: 'Sonntag' },
 ];
 
 function splitLines(value: string) {
@@ -55,20 +72,36 @@ export function defaultMealPlanSlots(memberIds: string[] = []): MealPlanSlotForm
   }));
 }
 
+export function defaultMealPlanDays(memberIds: string[] = []): MealPlanDayFormState[] {
+  return WEEKDAY_CONFIG.map(({ day, label }) => ({
+    day,
+    label,
+    slots: defaultMealPlanSlots(memberIds),
+  }));
+}
+
 export function profileToForm(profile?: Profile | null): ProfileFormState {
   const noteSections = parseNoteSections(profile?.notes ?? '');
   const members = profile?.members?.length ? profile.members.map(memberToForm) : [emptyMember(0)];
   const memberIds = members.map((member) => member.id);
-  const activeSlots = parseLines(noteSections['Aktive Mahlzeiten']).map(normalizeSlotLabel);
+  const mealPlanDays = WEEKDAY_CONFIG.map(({ day, label }) => {
+    const activeKey = `Aktive Mahlzeiten ${label}`;
+    const activeSlots = parseLines(noteSections[activeKey] ?? noteSections['Aktive Mahlzeiten']).map(normalizeSlotLabel);
+    return {
+      day,
+      label,
+      slots: SLOT_CONFIG.map(({ slot, label: slotLabel, section }) => ({
+        slot,
+        label: slotLabel,
+        enabled: activeSlots.length === 0 ? slot !== 'snack' : activeSlots.includes(slot),
+        memberIds: parseParticipantIds(noteSections[`${section} ${label}`] ?? noteSections[section], members, memberIds),
+      })),
+    };
+  });
   return {
     householdName: profile?.householdName ?? '',
     members,
-    mealPlanSlots: SLOT_CONFIG.map(({ slot, label, section }) => ({
-      slot,
-      label,
-      enabled: activeSlots.length === 0 ? slot !== 'snack' : activeSlots.includes(slot),
-      memberIds: parseParticipantIds(noteSections[section], members, memberIds),
-    })),
+    mealPlanDays,
     servingsPerMeal: noteSections['Standard-Portionen'] ?? '',
     preferredCuisines: joinLines(profile?.presets),
     excludedIngredients: noteSections['Ausgeschlossene Zutaten'] ?? '',
@@ -82,10 +115,27 @@ export function profileToForm(profile?: Profile | null): ProfileFormState {
 }
 
 export function formToProfile(state: ProfileFormState): Profile {
-  const mealPlanSlots = state.mealPlanSlots ?? defaultMealPlanSlots(state.members.map((member) => member.id));
+  const mealPlanDays = state.mealPlanDays ?? defaultMealPlanDays(state.members.map((member) => member.id));
   const members = state.members
     .map((member, index) => formToMember(member, index))
     .filter((member) => member.name !== '');
+
+  const noteSections: Record<string, string> = {
+    'Standard-Portionen': state.servingsPerMeal,
+    Kochstil: state.cookingStyle,
+    Planungsregeln: state.mealPlanningRules,
+    'Ausgeschlossene Zutaten': state.excludedIngredients,
+  };
+
+  for (const day of mealPlanDays) {
+    noteSections[`Aktive Mahlzeiten ${day.label}`] = day.slots
+      .filter((slot) => slot.enabled)
+      .map((slot) => slot.label)
+      .join('\n');
+    for (const slot of SLOT_CONFIG) {
+      noteSections[`${slot.section} ${day.label}`] = stringifyParticipants(day.slots, slot.slot, members);
+    }
+  }
 
   return {
     householdName: state.householdName.trim(),
@@ -97,17 +147,7 @@ export function formToProfile(state: ProfileFormState): Profile {
       snacks: state.snackPresets.trim(),
     },
     presets: splitLines(state.preferredCuisines),
-    notes: formatNoteSections({
-      'Aktive Mahlzeiten': mealPlanSlots.filter((slot) => slot.enabled).map((slot) => slot.label).join('\n'),
-      'Teilnehmende Frühstück': stringifyParticipants(mealPlanSlots, 'breakfast', members),
-      'Teilnehmende Mittagessen': stringifyParticipants(mealPlanSlots, 'lunch', members),
-      'Teilnehmende Abendessen': stringifyParticipants(mealPlanSlots, 'dinner', members),
-      'Teilnehmende Snack': stringifyParticipants(mealPlanSlots, 'snack', members),
-      'Standard-Portionen': state.servingsPerMeal,
-      Kochstil: state.cookingStyle,
-      Planungsregeln: state.mealPlanningRules,
-      'Ausgeschlossene Zutaten': state.excludedIngredients,
-    }),
+    notes: formatNoteSections(noteSections),
   };
 }
 
@@ -158,10 +198,9 @@ function parseNoteSections(notes: string) {
   const sections: Record<string, string> = {};
   const knownTitles = [
     'Aktive Mahlzeiten',
-    'Teilnehmende Frühstück',
-    'Teilnehmende Mittagessen',
-    'Teilnehmende Abendessen',
-    'Teilnehmende Snack',
+    ...WEEKDAY_CONFIG.map(({ label }) => `Aktive Mahlzeiten ${label}`),
+    ...WEEKDAY_CONFIG.flatMap(({ label }) => SLOT_CONFIG.map(({ section }) => `${section} ${label}`)),
+    ...SLOT_CONFIG.map(({ section }) => section),
     'Standard-Portionen',
     'Kochstil',
     'Planungsregeln',
@@ -253,7 +292,7 @@ function stringifyParticipants(slots: MealPlanSlotFormState[], slotName: MealPla
   return labels.join('\n');
 }
 
-export function syncMealPlanSlots(slots: MealPlanSlotFormState[], members: MemberFormState[]) {
+function syncMealPlanSlots(slots: MealPlanSlotFormState[], members: MemberFormState[]) {
   const memberIds = members.map((member) => member.id);
   if (slots.length === 0) {
     return defaultMealPlanSlots(memberIds);
@@ -264,5 +303,17 @@ export function syncMealPlanSlots(slots: MealPlanSlotFormState[], members: Membe
       const filtered = slot.memberIds.filter((memberId) => memberIds.includes(memberId));
       return filtered.length > 0 ? filtered : [...memberIds];
     })(),
+  }));
+}
+
+export function syncMealPlanDays(days: MealPlanDayFormState[], members: MemberFormState[]) {
+  const memberIds = members.map((member) => member.id);
+  if (days.length === 0) {
+    return defaultMealPlanDays(memberIds);
+  }
+  return days.map((day, index) => ({
+    day: day.day || WEEKDAY_CONFIG[index]?.day || 'monday',
+    label: day.label || WEEKDAY_CONFIG[index]?.label || 'Montag',
+    slots: syncMealPlanSlots(day.slots, members),
   }));
 }
