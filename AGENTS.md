@@ -96,6 +96,10 @@
 - Skills:
   - `openai-docs` nur wenn OpenAI-Doku verlinkt oder aktualisiert wird
 - Einsatz: bei materialen Architektur-, Betriebs- oder Produktänderungen
+- Qualitätsmaßstab:
+  - Markdown-Dokumente in GitHub müssen das Niveau technischer Dokumentation haben
+  - Quellcode-Dokumentation muss professionell, präzise und wartbar sein
+  - das Backend muss eine gepflegte API-Dokumentation besitzen
 
 ### 10. Data & Admin Insights
 
@@ -144,6 +148,7 @@
 - OpenAI-Modellwahl, Responses API, Structured Outputs -> Backend & AI Engineer mit `openai-docs`
 - Admin-, Monitoring- und Metrik-Flächen -> Data & Admin Insights zusätzlich
 - Repo- und Betriebsdoku, `README`, `CODEX_MEMORY.md`, `AGENTS.md` -> Docs & Ops Writer
+- Backend-HTTP-Endpunkte und Vertragsänderungen -> Backend & AI Engineer plus Docs & Ops Writer; API-Dokumentation ist Pflicht
 
 ## Handoffs und Qualitätsregeln
 
@@ -162,6 +167,11 @@
   - grünem lokalen Build/Test
   - grünem QA-Check
   - bestandenem Review Gate
+- Docs & Ops Writer muss bei materiellen Änderungen prüfen und nachziehen:
+  - technische Markdown-Dokumentation auf professionellem Niveau
+  - Quellcode-Dokumentation an den geänderten Stellen
+  - Backend-API-Dokumentation bei neuen oder geänderten Endpunkten, Payloads, Auth- oder Fehlerverträgen
+- Review Gate blockiert Rollouts, wenn fachlich notwendige Doku oder API-Doku fehlt oder offenkundig veraltet ist
 - Für alle UI-Änderungen gilt ab sofort verbindlich:
   - Desktop prüfen
   - Tablet prüfen
