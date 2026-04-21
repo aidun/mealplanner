@@ -1,7 +1,7 @@
 import { Link, NavLink } from 'react-router-dom';
 import { AppLogo } from './AppLogo';
 import { LogoutIcon, PlusIcon, ShieldIcon, UserIcon } from './icons';
-import { formatWeekRange } from '../lib/format';
+import { formatWeekRange, formatWeekRangeCompact } from '../lib/format';
 
 interface HeaderProps {
   weekStart?: string;
@@ -35,7 +35,8 @@ export function Header({
         <div className="header-meta">
           <div className="week-chip">
             <span className="week-chip-label">Aktuelle Woche</span>
-            <strong>{formatWeekRange(weekStart)}</strong>
+            <strong className="week-chip-value week-chip-value-default">{formatWeekRange(weekStart)}</strong>
+            <strong className="week-chip-value week-chip-value-compact">{formatWeekRangeCompact(weekStart)}</strong>
           </div>
         </div>
       </div>

@@ -21,6 +21,17 @@ export function formatWeekRange(weekStart?: string) {
   return `${formatter.format(start)} - ${formatter.format(end)}`;
 }
 
+export function formatWeekRangeCompact(weekStart?: string) {
+  if (!weekStart) return 'Diese Woche';
+  const start = new Date(weekStart);
+  if (Number.isNaN(start.getTime())) return 'Diese Woche';
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  const startFormatter = new Intl.DateTimeFormat('de-DE', { day: '2-digit' });
+  const endFormatter = new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: 'short' });
+  return `${startFormatter.format(start)}.–${endFormatter.format(end)}`;
+}
+
 export function formatNutrition(nutrition?: Nutrition) {
   if (!nutrition) return '';
   const parts = [

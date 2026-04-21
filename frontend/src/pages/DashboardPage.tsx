@@ -36,6 +36,7 @@ export function DashboardPage() {
   const [selectedMealId, setSelectedMealId] = useState<string | undefined>();
   const [activeWorkspacePane, setActiveWorkspacePane] = useState<'plan' | 'detail' | 'shopping'>('plan');
   const [loggedOut, setLoggedOut] = useState(false);
+  const [mobileTopPanelHidden, setMobileTopPanelHidden] = useState(false);
 
   const currentPlanQuery = useQuery({
     queryKey: ['current-plan'],
@@ -161,6 +162,51 @@ export function DashboardPage() {
     }
   }, [allMeals, selectedMealId]);
 
+  useEffect(() => {
+    let lastY = window.scrollY;
+
+    const onScroll = () => {
+      const isMobile = window.innerWidth <= 760;
+      const nextY = window.scrollY;
+      if (!isMobile) {
+        if (mobileTopPanelHidden) {
+          setMobileTopPanelHidden(false);
+        }
+        lastY = nextY;
+        return;
+      }
+
+      if (nextY <= 24) {
+        if (mobileTopPanelHidden) {
+          setMobileTopPanelHidden(false);
+        }
+        lastY = nextY;
+        return;
+      }
+
+      if (nextY > lastY + 8 && nextY > 80) {
+        if (!mobileTopPanelHidden) {
+          setMobileTopPanelHidden(true);
+        }
+      } else if (nextY < lastY - 12) {
+        if (mobileTopPanelHidden) {
+          setMobileTopPanelHidden(false);
+        }
+      }
+
+      lastY = nextY;
+    };
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+    onScroll();
+
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+    };
+  }, [mobileTopPanelHidden]);
+
   const handleRegenerate = (note: string) => {
     const plan = currentPlanQuery.data;
     if (!plan || !inspectedMeal || !inspectedMealInPlan) return;
@@ -217,7 +263,10 @@ export function DashboardPage() {
       />
 
       <main className="app-main">
-        <section className="plan-stage" aria-labelledby="home-title">
+        <section
+          className={`plan-stage${mobileTopPanelHidden ? ' plan-stage-mobile-hidden' : ''}`}
+          aria-labelledby="home-title"
+        >
           <PlanBackdrop />
           <div className="plan-stage-copy plan-stage-copy-compact">
             <span className="eyebrow">Wochenplan</span>

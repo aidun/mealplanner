@@ -249,6 +249,10 @@ h3 {
   letter-spacing: 0.02em;
 }
 
+.week-chip-value-compact {
+  display: none;
+}
+
 .header-actions {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -401,6 +405,12 @@ a:focus-visible {
     linear-gradient(145deg, rgba(255, 255, 255, 0.88), rgba(244, 248, 244, 0.72)),
     rgba(255, 255, 255, 0.5);
   box-shadow: 0 26px 64px rgba(18, 33, 29, 0.08);
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease,
+    max-height 180ms ease,
+    margin-bottom 180ms ease,
+    padding 180ms ease;
 }
 
 .plan-stage-copy,
@@ -2538,6 +2548,21 @@ a:focus-visible {
 
   .week-chip {
     min-width: 0;
+    padding: 9px 11px;
+  }
+
+  .week-chip-label {
+    font-size: 0.68rem;
+  }
+
+  .week-chip-value-default {
+    display: none;
+  }
+
+  .week-chip-value-compact {
+    display: block;
+    font-size: 0.87rem;
+    line-height: 1.1;
   }
 
   .home-hero-actions,
@@ -2548,6 +2573,19 @@ a:focus-visible {
   .plan-stage {
     padding: 16px;
     gap: 12px;
+  }
+
+  .plan-stage-mobile-hidden {
+    opacity: 0;
+    transform: translateY(-18px);
+    max-height: 0;
+    margin-bottom: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    overflow: hidden;
+    pointer-events: none;
+    border-width: 0;
+    box-shadow: none;
   }
 
   .plan-stage-copy h1 {
