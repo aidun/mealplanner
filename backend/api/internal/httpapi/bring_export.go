@@ -19,13 +19,12 @@ import (
 )
 
 type bringExportView struct {
-	Kind         string
-	IsRecipe     bool
 	Title        string
 	WeekStart    string
 	Description  string
 	Yield        string
 	Category     string
+	ImageURL     template.URL
 	CanonicalURL string
 	Items        []bringExportItem
 	Ingredients  []string
@@ -302,12 +301,14 @@ func newBringExportView(plan domain.Plan, canonicalURL string) (bringExportView,
 
 	title, description, yield, category := bringExportCopy(plan, kind, onlyDay, onlyMeal)
 	instructions := bringExportInstructions(kind, onlyMeal)
+	imageURL := bringExportImageURL(title)
 	schema := map[string]any{
 		"@context":           "https://schema.org",
 		"@type":              "Recipe",
 		"author":             "Mealplanner",
 		"cookTime":           "PT0M",
 		"description":        description,
+		"image":              imageURL,
 		"keywords":           bringKeywords(kind, onlyMeal),
 		"name":               title,
 		"prepTime":           "PT10M",
@@ -335,12 +336,11 @@ func newBringExportView(plan domain.Plan, canonicalURL string) (bringExportView,
 
 	return bringExportView{
 		Title:        title,
-		Kind:         kind,
-		IsRecipe:     kind == "meal",
 		WeekStart:    strings.TrimSpace(plan.WeekStart),
 		Description:  description,
 		Yield:        yield,
 		Category:     category,
+		ImageURL:     template.URL(imageURL),
 		CanonicalURL: strings.TrimSpace(canonicalURL),
 		Items:        items,
 		Ingredients:  ingredients,
@@ -357,11 +357,9 @@ func bringExportCopy(plan domain.Plan, kind string, onlyDay domain.DayPlan, only
 		if category == "" {
 			category = "Rezept"
 		}
-		title = strings.TrimSpace(onlyMeal.Title)
+		title = "Mealplanner Rezept"
 		if strings.TrimSpace(onlyMeal.Title) != "" {
-			title = strings.TrimSpace(onlyMeal.Title)
-		} else {
-			title = "Mealplanner Rezept"
+			title = "Mealplanner Rezept: " + strings.TrimSpace(onlyMeal.Title)
 		}
 		description = strings.TrimSpace(onlyMeal.Description)
 		if description == "" {
@@ -480,6 +478,29 @@ func bringSchemaInstructions(instructions []string) []map[string]string {
 	return steps
 }
 
+func bringExportImageURL(title string) string {
+	title = strings.TrimSpace(title)
+	if title == "" {
+		title = "Mealplanner Rezept"
+	}
+	svg := fmt.Sprintf(`<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630"><rect width="1200" height="630" fill="#f6fbf8"/><rect x="42" y="42" width="1116" height="546" rx="24" fill="#ffffff" stroke="#c9ddd5" stroke-width="4"/><text x="90" y="180" font-family="Inter,Arial,sans-serif" font-size="34" font-weight="700" fill="#0f766e">Mealplanner Rezept</text><text x="90" y="270" font-family="Inter,Arial,sans-serif" font-size="66" font-weight="800" fill="#12211d">%s</text><text x="90" y="352" font-family="Inter,Arial,sans-serif" font-size="28" fill="#5c756d">Import fuer Bring</text></svg>`, bringSVGText(trimForSVG(title, 28)))
+	return "data:image/svg+xml;utf8," + url.PathEscape(svg)
+}
+
+func trimForSVG(value string, max int) string {
+	value = strings.TrimSpace(value)
+	runes := []rune(value)
+	if len(runes) <= max {
+		return value
+	}
+	return strings.TrimSpace(string(runes[:max-1])) + "…"
+}
+
+func bringSVGText(value string) string {
+	replacer := strings.NewReplacer("&", "&amp;", "<", "&lt;", ">", "&gt;", `"`, "&quot;")
+	return replacer.Replace(value)
+}
+
 func bringKeywords(kind string, onlyMeal domain.Meal) string {
 	keywords := []string{"Mealplanner", "Familienkueche"}
 	if kind == "meal" {
@@ -575,6 +596,7 @@ var bringExportTemplate = template.Must(template.New("bring-export").Funcs(templ
   <title>{{ .Title }}</title>
   {{ if .CanonicalURL }}<link rel="canonical" href="{{ .CanonicalURL }}">{{ end }}
   <script type="application/ld+json">{{ .SchemaJSON }}</script>
+  <script async="async" src="https://platform.getbring.com/widgets/import.js"></script>
   <style>
     :root {
       color-scheme: light;
@@ -606,38 +628,34 @@ var bringExportTemplate = template.Must(template.New("bring-export").Funcs(templ
     }
     h1 {
       margin: 0;
-      font-size: clamp(1.9rem, 8vw, 3.6rem);
-      line-height: 0.98;
+      font-size: clamp(2rem, 9vw, 4rem);
+      line-height: 0.96;
       letter-spacing: 0;
     }
     .lead {
-      margin: 14px 0 20px;
+      margin: 14px 0 26px;
       color: var(--muted);
       font-size: 1.05rem;
     }
-    .recipe-meta {
-      display: flex;
-      flex-wrap: wrap;
+    .bring-box {
+      display: grid;
       gap: 10px;
-      margin: 0 0 18px;
-      color: var(--muted);
-      font-size: 0.95rem;
-    }
-    .recipe-meta span {
-      display: inline-flex;
-      align-items: center;
-      min-height: 30px;
-      padding: 0 10px;
+      margin: 0 0 24px;
+      padding: 16px;
       border: 1px solid var(--line);
       border-radius: 8px;
       background: #ffffff;
     }
-    h2 {
-      margin: 0 0 8px;
-      font-size: 1rem;
+    .bring-box p {
+      margin: 0;
+      color: var(--muted);
     }
-    section {
-      margin-top: 24px;
+    .instruction {
+      margin: 0 0 18px;
+      padding: 14px 0;
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      color: var(--muted);
     }
     ul {
       display: grid;
@@ -666,61 +684,53 @@ var bringExportTemplate = template.Must(template.New("bring-export").Funcs(templ
       border-bottom: 1px solid var(--line);
       color: var(--muted);
     }
-    .instructions {
-      margin: 0;
-      padding-left: 20px;
-      color: var(--text);
-    }
-    .instructions li {
-      display: list-item;
-      gap: 0;
-      padding: 8px 0;
-      border-top: 0;
-    }
-    .instructions li:last-child {
-      border-bottom: 0;
-    }
   </style>
 </head>
 <body>
-  <main itemscope itemtype="https://schema.org/Recipe">
-    <p class="eyebrow">{{ if .IsRecipe }}Bring Rezept{{ else }}Bring Liste{{ end }}</p>
+  <main itemscope itemtype="http://schema.org/Recipe">
+    <p class="eyebrow">Bring Import</p>
     <h1 itemprop="name">{{ .Title }}</h1>
     <div style="display:none" itemprop="author" itemscope itemtype="https://schema.org/Organization">
       <span itemprop="name">Mealplanner</span>
     </div>
     {{ if .CanonicalURL }}<meta itemprop="url" content="{{ .CanonicalURL }}">{{ end }}
+    {{ if .ImageURL }}<meta itemprop="image" content="{{ .ImageURL }}">{{ end }}
     <meta itemprop="recipeYield" content="{{ .Yield }}">
+    <meta itemprop="yield" content="{{ .Yield }}">
     <meta itemprop="prepTime" content="PT10M">
     <meta itemprop="cookTime" content="PT0M">
     <meta itemprop="totalTime" content="PT10M">
     <meta itemprop="recipeCategory" content="{{ .Category }}">
     <meta itemprop="recipeCuisine" content="Familienkueche">
+    <meta itemprop="tagline" content="{{ .Description }}">
     {{ if .WeekStart }}<meta itemprop="datePublished" content="{{ .WeekStart }}">{{ end }}
+    {{ if .ImageURL }}<img src="{{ .ImageURL }}" alt="{{ .Title }}" itemprop="image" style="width:100%;max-width:560px;aspect-ratio:1200/630;object-fit:cover;border-radius:8px;border:1px solid var(--line);margin:18px 0 14px;">{{ end }}
     <p class="lead" itemprop="description">{{ .Description }}</p>
-    <div class="recipe-meta">
-      <span itemprop="recipeYield">{{ .Yield }}</span>
+    <p class="lead" style="margin-top:-10px">
+      <span>Von Mealplanner</span>
+      <span aria-hidden="true"> · </span>
+      <span itemprop="yield">{{ .Yield }}</span>
+      <span aria-hidden="true"> · </span>
       <span itemprop="recipeCategory">{{ .Category }}</span>
-      <span>Mealplanner</span>
-    </div>
-    <section aria-label="Zubereitung">
-      <h2>Zubereitung</h2>
-      <ol class="instructions" itemprop="recipeInstructions">
+    </p>
+    <section class="bring-box" aria-label="Bring Import">
+      <div {{ if .CanonicalURL }}data-bring-import="{{ .CanonicalURL }}"{{ else }}data-bring-import{{ end }} style="display:none"></div>
+      <a href="https://www.getbring.com">Bring! Einkaufsliste App fuer iPhone und Android</a>
+      <p>Falls Bring die Rezeptdaten nicht automatisch uebernimmt, kopiere die Liste direkt aus der Mealplanner-App.</p>
+    </section>
+    <ol class="instruction" style="padding-left:20px" itemprop="recipeInstructions">
       {{ range $index, $instruction := .Instructions }}
-        <li itemprop="recipeInstructions" itemscope itemtype="https://schema.org/HowToStep">
+        <li itemprop="recipeInstructions instructions" itemscope itemtype="https://schema.org/HowToStep" style="margin:0 0 10px;color:var(--muted);">
           <meta itemprop="position" content="{{ add $index 1 }}">
           <span itemprop="text">{{ $instruction }}</span>
         </li>
       {{ end }}
-      </ol>
-    </section>
-    <section aria-label="Zutaten">
-      <h2>Zutaten</h2>
-      {{ if .Items }}
+    </ol>
+    {{ if .Items }}
       <ul>
         {{ range .Items }}
           <li>
-            <strong itemprop="recipeIngredient">{{ .Line }}</strong>
+            <strong itemprop="recipeIngredient ingredients">{{ .Line }}</strong>
             {{ if .Category }}<span>{{ .Category }}</span>{{ end }}
           </li>
         {{ end }}
@@ -728,7 +738,6 @@ var bringExportTemplate = template.Must(template.New("bring-export").Funcs(templ
     {{ else }}
       <p class="empty">Keine Zutaten in diesem Wochenplan gefunden.</p>
     {{ end }}
-    </section>
   </main>
 </body>
 </html>`))
