@@ -54,7 +54,7 @@ SPF-/DKIM-Records gesetzt werden; DMARC sollte mindestens im Monitoring-Modus do
 
 Der Test-Overlay nutzt weiterhin `192.168.2.204` im LAN und zusaetzlich Cloudflare Tunnel fuer
 `mealplanner.markushartmann.dev`. `PROVIDER_MODE=live` startet nur sauber, wenn
-`api-secrets.OPENAI_API_KEY` auf einen echten Wert gesetzt ist. Platzhalter wie
+`mealplanner-openai.OPENAI_API_KEY` auf einen echten Wert gesetzt ist. Platzhalter wie
 `__set_openai_api_key__` werden vom Backend abgelehnt.
 
 Fuer Segmentierung, SealedSecrets, Secret-Monitoring und die zugehoerigen Cluster-Konventionen

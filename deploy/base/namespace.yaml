@@ -3,5 +3,5 @@ kind: Namespace
 metadata:
   name: mealplanner
   labels:
-    security.aidun.dev/segmentation: planned
+    security.aidun.dev/segmentation: enforced
     security.aidun.dev/owner: mealplanner

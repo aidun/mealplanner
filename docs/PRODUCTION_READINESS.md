@@ -26,12 +26,17 @@ Diese Werte muessen fuer einen echten Production-Rollout gesetzt und geprueft se
 Vor Production muss die Secret-Klassifizierung fachlich klar sein:
 
 - `mealplanner-database`: `generated`
+- `mealplanner-api-internal`: `live-only`
+- `mealplanner-auth-core`: `live-only`
+- `mealplanner-openai`: `live-only`
+- `mealplanner-email-provider`: `live-only`
+- `mealplanner-oidc-google`: `live-only`
+- `mealplanner-oidc-apple`: `live-only`
 - `ghcr-pull-secret`: `live-only`
 - `entrypoint-secrets`: `live-only`
 - `cloudflared-credentials`: `live-only`
-- `api-secrets`: dokumentierte Phase-1-Ausnahme mit `secret-exception=true`, bis das Sammel-Secret spaeter getrennt wird
 
-Die Details und die key-genaue Einordnung von `api-secrets` stehen in [security.md](/Users/markus/repo/mealplanner/docs/security.md).
+Die Details zur Secret-Aufteilung und zur nicht-sensitiven ConfigMap `mealplanner-api-config` stehen in [security.md](/Users/markus/repo/mealplanner/docs/security.md).
 
 ## Rechtliche Angaben im Frontend
 

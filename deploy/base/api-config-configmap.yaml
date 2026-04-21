@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mealplanner-api-config
+data:
+  AUTH_BASE_URL: https://mealplanner.markushartmann.dev
+  CORS_ORIGINS: https://mealplanner.markushartmann.dev
+  EMAIL_ENABLED: "true"
+  EMAIL_PROVIDER: resend
+  EMAIL_FROM: info@markushartmann.dev
+  EMAIL_REPLY_TO: info@markushartmann.dev
+  GOOGLE_CLIENT_ID: 694644500598-a98siurq4a9ivb084ltf58d98p6bfout.apps.googleusercontent.com
+  APPLE_CLIENT_ID: ""
+  APPLE_TEAM_ID: ""
+  APPLE_KEY_ID: ""

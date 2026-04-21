@@ -23,34 +23,60 @@ data:
       fi
     }
 
-    ensure_api_secret_key() {
-      key="$1"
-      value="$2"
+    secret_value() {
+      name="$1"
+      key="$2"
+      raw="$(kubectl get secret "${name}" -o "jsonpath={.data.${key}}" 2>/dev/null || true)"
+      if [ -z "${raw}" ]; then
+        return 0
+      fi
+      printf '%s' "${raw}" | base64 -d 2>/dev/null || true
+    }
 
-      existing="$(kubectl get secret api-secrets -o "jsonpath={.data.${key}}" 2>/dev/null || true)"
-      if [ -n "${existing}" ]; then
-        decoded="$(printf '%s' "${existing}" | base64 -d 2>/dev/null || true)"
-        case "${decoded}" in
-          __set_*)
-            case "${value}" in
-              __set_*)
-                echo "api-secrets key ${key} still has placeholder"
-                return
-                ;;
-              *)
-                echo "api-secrets key ${key} replaces placeholder"
-                ;;
-            esac
-            ;;
+    resolved_secret_value() {
+      target_secret="$1"
+      key="$2"
+      fallback_value="$3"
+      legacy_secret="${4:-}"
+
+      current="$(secret_value "${target_secret}" "${key}")"
+      case "${current}" in
+        ""|__set_*) ;;
+        *)
+          printf '%s' "${current}"
+          return 0
+          ;;
+      esac
+
+      if [ -n "${legacy_secret}" ]; then
+        legacy="$(secret_value "${legacy_secret}" "${key}")"
+        case "${legacy}" in
+          ""|__set_*) ;;
           *)
-            echo "api-secrets key ${key} already exists"
-            return
+            printf '%s' "${legacy}"
+            return 0
             ;;
         esac
       fi
 
-      encoded="$(printf '%s' "${value}" | base64 | tr -d '\n')"
-      kubectl patch secret api-secrets --type merge -p "{\"data\":{\"${key}\":\"${encoded}\"}}"
+      printf '%s' "${fallback_value}"
+    }
+
+    ensure_secret_key() {
+      secret_name="$1"
+      key="$2"
+      value="$3"
+      management="$4"
+      exception="${5:-false}"
+
+      if kubectl get secret "${secret_name}" >/dev/null 2>&1; then
+        encoded="$(printf '%s' "${value}" | base64 | tr -d '\n')"
+        kubectl patch secret "${secret_name}" --type merge -p "{\"data\":{\"${key}\":\"${encoded}\"}}" >/dev/null
+      else
+        kubectl create secret generic "${secret_name}" --from-literal="${key}=${value}" >/dev/null
+      fi
+
+      label_secret "${secret_name}" "${management}" "${exception}"
     }
 
     if kubectl get secret mealplanner-database >/dev/null 2>&1; then
@@ -69,50 +95,36 @@ data:
     fi
     label_secret mealplanner-database generated
 
+    ensure_secret_key mealplanner-api-internal API_SECRET \
+      "$(resolved_secret_value mealplanner-api-internal API_SECRET "${API_SECRET_PLACEHOLDER:-__set_api_secret__}" api-secrets)" \
+      live-only
+    ensure_secret_key mealplanner-auth-core SESSION_SECRET \
+      "$(resolved_secret_value mealplanner-auth-core SESSION_SECRET "${SESSION_SECRET_PLACEHOLDER:-__set_random_session_secret_min_32_bytes__}" api-secrets)" \
+      live-only
+    ensure_secret_key mealplanner-auth-core AUTH_ALLOWED_SUBJECT_HASHES \
+      "$(resolved_secret_value mealplanner-auth-core AUTH_ALLOWED_SUBJECT_HASHES "${AUTH_ALLOWED_SUBJECT_HASHES_PLACEHOLDER:-__set_allowed_subject_hashes__}" api-secrets)" \
+      live-only
+    ensure_secret_key mealplanner-auth-core AUTH_ALLOWED_EMAIL_HASHES \
+      "$(resolved_secret_value mealplanner-auth-core AUTH_ALLOWED_EMAIL_HASHES "${AUTH_ALLOWED_EMAIL_HASHES_PLACEHOLDER:-}" api-secrets)" \
+      live-only
+
+    ensure_secret_key mealplanner-openai OPENAI_API_KEY \
+      "$(resolved_secret_value mealplanner-openai OPENAI_API_KEY "${OPENAI_API_KEY_PLACEHOLDER:-__set_openai_api_key__}" api-secrets)" \
+      live-only
+    ensure_secret_key mealplanner-oidc-google GOOGLE_CLIENT_SECRET \
+      "$(resolved_secret_value mealplanner-oidc-google GOOGLE_CLIENT_SECRET "${GOOGLE_CLIENT_SECRET_PLACEHOLDER:-__set_google_client_secret__}" api-secrets)" \
+      live-only
+    ensure_secret_key mealplanner-oidc-apple APPLE_PRIVATE_KEY \
+      "$(resolved_secret_value mealplanner-oidc-apple APPLE_PRIVATE_KEY "${APPLE_PRIVATE_KEY_PLACEHOLDER:-}" api-secrets)" \
+      live-only
+
+    ensure_secret_key mealplanner-email-provider RESEND_API_KEY \
+      "$(resolved_secret_value mealplanner-email-provider RESEND_API_KEY "${RESEND_API_KEY_PLACEHOLDER:-}" api-secrets)" \
+      live-only
+
     if kubectl get secret api-secrets >/dev/null 2>&1; then
-      echo "api-secrets already exists"
-    else
-      api_secret="${API_SECRET_PLACEHOLDER:-__set_api_secret__}"
-      openai_api_key="${OPENAI_API_KEY_PLACEHOLDER:-__set_openai_api_key__}"
-
-      kubectl create secret generic api-secrets \
-        --from-literal=API_SECRET="${api_secret}" \
-        --from-literal=OPENAI_API_KEY="${openai_api_key}" \
-        --from-literal=EMAIL_ENABLED="${EMAIL_ENABLED_PLACEHOLDER:-true}" \
-        --from-literal=EMAIL_PROVIDER="${EMAIL_PROVIDER_PLACEHOLDER:-resend}" \
-        --from-literal=EMAIL_FROM="${EMAIL_FROM_PLACEHOLDER:-info@markushartmann.dev}" \
-        --from-literal=EMAIL_REPLY_TO="${EMAIL_REPLY_TO_PLACEHOLDER:-info@markushartmann.dev}" \
-        --from-literal=RESEND_API_KEY="${RESEND_API_KEY_PLACEHOLDER:-}" \
-        --from-literal=AUTH_BASE_URL="${AUTH_BASE_URL_PLACEHOLDER:-__set_https_auth_base_url__}" \
-        --from-literal=SESSION_SECRET="${SESSION_SECRET_PLACEHOLDER:-__set_random_session_secret_min_32_bytes__}" \
-        --from-literal=AUTH_ALLOWED_SUBJECT_HASHES="${AUTH_ALLOWED_SUBJECT_HASHES_PLACEHOLDER:-__set_allowed_subject_hashes__}" \
-        --from-literal=AUTH_ALLOWED_EMAIL_HASHES="${AUTH_ALLOWED_EMAIL_HASHES_PLACEHOLDER:-}" \
-        --from-literal=GOOGLE_CLIENT_ID="${GOOGLE_CLIENT_ID_PLACEHOLDER:-__set_google_client_id__}" \
-        --from-literal=GOOGLE_CLIENT_SECRET="${GOOGLE_CLIENT_SECRET_PLACEHOLDER:-__set_google_client_secret__}" \
-        --from-literal=APPLE_CLIENT_ID="${APPLE_CLIENT_ID_PLACEHOLDER:-}" \
-        --from-literal=APPLE_TEAM_ID="${APPLE_TEAM_ID_PLACEHOLDER:-}" \
-        --from-literal=APPLE_KEY_ID="${APPLE_KEY_ID_PLACEHOLDER:-}" \
-        --from-literal=APPLE_PRIVATE_KEY="${APPLE_PRIVATE_KEY_PLACEHOLDER:-}"
+      kubectl delete secret api-secrets >/dev/null
     fi
-    label_secret api-secrets live-only true
-
-    ensure_api_secret_key AUTH_BASE_URL "${AUTH_BASE_URL_PLACEHOLDER:-__set_https_auth_base_url__}"
-    ensure_api_secret_key API_SECRET "${API_SECRET_PLACEHOLDER:-__set_api_secret__}"
-    ensure_api_secret_key OPENAI_API_KEY "${OPENAI_API_KEY_PLACEHOLDER:-__set_openai_api_key__}"
-    ensure_api_secret_key EMAIL_ENABLED "${EMAIL_ENABLED_PLACEHOLDER:-true}"
-    ensure_api_secret_key EMAIL_PROVIDER "${EMAIL_PROVIDER_PLACEHOLDER:-resend}"
-    ensure_api_secret_key EMAIL_FROM "${EMAIL_FROM_PLACEHOLDER:-info@markushartmann.dev}"
-    ensure_api_secret_key EMAIL_REPLY_TO "${EMAIL_REPLY_TO_PLACEHOLDER:-info@markushartmann.dev}"
-    ensure_api_secret_key RESEND_API_KEY "${RESEND_API_KEY_PLACEHOLDER:-}"
-    ensure_api_secret_key SESSION_SECRET "${SESSION_SECRET_PLACEHOLDER:-__set_random_session_secret_min_32_bytes__}"
-    ensure_api_secret_key AUTH_ALLOWED_SUBJECT_HASHES "${AUTH_ALLOWED_SUBJECT_HASHES_PLACEHOLDER:-__set_allowed_subject_hashes__}"
-    ensure_api_secret_key AUTH_ALLOWED_EMAIL_HASHES "${AUTH_ALLOWED_EMAIL_HASHES_PLACEHOLDER:-}"
-    ensure_api_secret_key GOOGLE_CLIENT_ID "${GOOGLE_CLIENT_ID_PLACEHOLDER:-__set_google_client_id__}"
-    ensure_api_secret_key GOOGLE_CLIENT_SECRET "${GOOGLE_CLIENT_SECRET_PLACEHOLDER:-__set_google_client_secret__}"
-    ensure_api_secret_key APPLE_CLIENT_ID "${APPLE_CLIENT_ID_PLACEHOLDER:-}"
-    ensure_api_secret_key APPLE_TEAM_ID "${APPLE_TEAM_ID_PLACEHOLDER:-}"
-    ensure_api_secret_key APPLE_KEY_ID "${APPLE_KEY_ID_PLACEHOLDER:-}"
-    ensure_api_secret_key APPLE_PRIVATE_KEY "${APPLE_PRIVATE_KEY_PLACEHOLDER:-}"
 
     if kubectl get secret ghcr-pull-secret >/dev/null 2>&1; then
       echo "ghcr-pull-secret already exists"

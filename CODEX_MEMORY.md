@@ -28,8 +28,8 @@ Last updated: 2026-04-21
 - Admin kann Mail-Templates fuer `family_invite`, `premium_invite` und `weekly_plan_ready` direkt in der App pflegen; die Vorlagen werden in `mail_templates` gespeichert und zur Laufzeit mit festen Platzhaltern wie `{{family_name}}`, `{{invite_link}}`, `{{week_start}}`, `{{plan_url}}`, `{{app_url}}` und `{{support_email}}` gerendert.
 - Test-Deployments aktivieren Mail jetzt standardmaessig ueber `EMAIL_ENABLED=true` und `EMAIL_PROVIDER=resend`; fuer echte Zustellung werden weiterhin ein gueltiger `RESEND_API_KEY` und eine bei Resend verifizierte Sender-Domain fuer `markushartmann.dev` benoetigt.
 - Seit 2026-04-21 gibt es eine zentrale Architekturseite unter `docs/ARCHITECTURE.md`, die Frontend, API, Postgres, Traefik/Entrypoint, Cloudflare Tunnel, OpenAI, Google OIDC, Resend, Bring, Monitoring, GitOps und Umgebungen zusammenfasst.
-- Seit 2026-04-21 ist Phase 1 der Cluster-Security-Anpassung im Repo verankert: Namespace-Segmentierung bleibt `planned`, Workloads tragen `security.aidun.dev/owner=mealplanner`, Baseline-NetworkPolicies sind markiert und App-Secrets werden als `live-only` klassifiziert und im Bootstrap nachgelabelt.
-- Seit 2026-04-21 ist Phase 2 der Namespace-Segmentierung im Repo umgesetzt: Default-Deny fuer Ingress und Egress plus explizite Allow-Policies fuer `entrypoint`, `api`, `frontend`, `postgres`, `cloudflared`, `weekly-plan`, `database-bootstrap`, Monitoring, DNS und benoetigte Internet-Egress-Flows.
+- Seit 2026-04-21 ist die Cluster-Security fuer `mealplanner` bis `security.aidun.dev/segmentation=enforced` hochgezogen: Default-Deny fuer Ingress und Egress plus explizite Allow-Policies fuer `entrypoint`, `api`, `frontend`, `postgres`, `cloudflared`, `weekly-plan`, `database-bootstrap`, Monitoring, DNS und benoetigte Internet-Egress-Flows.
+- Das frühere Sammel-Secret `api-secrets` ist fachlich aufgeteilt in `mealplanner-api-internal`, `mealplanner-auth-core`, `mealplanner-openai`, `mealplanner-email-provider`, `mealplanner-oidc-google` und `mealplanner-oidc-apple`; nicht-sensitive Laufzeitwerte liegen in `mealplanner-api-config`.
 
 ## Wichtige Arbeitsregeln
 

@@ -75,8 +75,9 @@ flowchart LR
   - [deploy/base/database-bootstrap-script-configmap.yaml](/Users/markus/repo/mealplanner/deploy/base/database-bootstrap-script-configmap.yaml)
   - [deploy/base/database-bootstrap-rbac.yaml](/Users/markus/repo/mealplanner/deploy/base/database-bootstrap-rbac.yaml)
 - Aufgabe:
-  - initiale Secrets für Datenbank und API sicherstellen
+  - initiale Secrets für Datenbank und Laufzeit-Provider sicherstellen
   - Platzhalter/Defaults für Namespace-Setup setzen
+  - Altbestand aus dem früheren Sammel-Secret `api-secrets` in die getrennten Ziel-Secrets migrieren
 
 ### Wöchentliche Planung
 
@@ -223,11 +224,11 @@ flowchart LR
 - CSRF-Schutz über `X-CSRF-Token`
 - Security Headers in API/Frontend-Pfad
 - signierte Bring-Export-Links
-- Namespace-Segmentierung aktuell auf `security.aidun.dev/segmentation=planned`
+- Namespace-Segmentierung aktuell auf `security.aidun.dev/segmentation=enforced`
 - Workloads tragen `security.aidun.dev/owner=mealplanner`
 - Baseline-NetworkPolicies sind mit `security.aidun.dev/baseline=true` markiert
 - Default-Deny fuer Ingress und Egress wird ueber Namespace-weite NetworkPolicies umgesetzt; erlaubte Flows sind in [security.md](/Users/markus/repo/mealplanner/docs/security.md) dokumentiert
-- Laufzeit-Secrets werden aktuell als `live-only` klassifiziert; `SealedSecret`-Migration ist vorbereitet, aber noch nicht umgesetzt
+- Laufzeit-Secrets sind auf `mealplanner-api-internal`, `mealplanner-auth-core`, `mealplanner-openai`, `mealplanner-email-provider`, `mealplanner-oidc-google` und `mealplanner-oidc-apple` aufgeteilt; nicht-sensitive Laufzeitwerte liegen in `mealplanner-api-config`
 - NetworkPolicies:
   - [deploy/base/network-policy.yaml](/Users/markus/repo/mealplanner/deploy/base/network-policy.yaml)
 

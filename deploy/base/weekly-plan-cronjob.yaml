@@ -26,7 +26,7 @@ spec:
                 - name: API_SECRET
                   valueFrom:
                     secretKeyRef:
-                      name: api-secrets
+                      name: mealplanner-api-internal
                       key: API_SECRET
               command:
                 - /bin/sh

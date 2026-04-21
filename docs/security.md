@@ -17,7 +17,7 @@ Breaking Changes muessen vorab angekuendigt werden.
 - Public URL: `https://mealplanner.markushartmann.dev`.
 - Cloudflare Tunnel: named tunnel `mealplanner-test`, Connector im Namespace `mealplanner-test`.
 - Tunnel-Credentials liegen nur lokal unter `~/.cloudflared/` und im Kubernetes Secret `cloudflared-credentials`.
-- Secrets werden nicht committed. Bei Neuaufbau des Namespace muessen `api-secrets`, `mealplanner-database`, `ghcr-pull-secret` und `cloudflared-credentials` vorhanden sein.
+- Secrets werden nicht committed. Bei Neuaufbau des Namespace muessen `mealplanner-database`, `mealplanner-api-internal`, `mealplanner-auth-core`, `mealplanner-openai`, `mealplanner-email-provider`, `mealplanner-oidc-google`, `mealplanner-oidc-apple`, `ghcr-pull-secret` und `cloudflared-credentials` vorhanden sein.
 - `entrypoint` bleibt fuer LAN/Traefik vorhanden. Der oeffentliche Internetpfad geht ueber Cloudflare Tunnel.
 - GitHub Actions ist ein Pflicht-Gate. Wenn Jobs ohne Runner/Steps fehlschlagen, zuerst GitHub Billing/Spending-Limit pruefen; das ist ein Infrastrukturblocker, kein Code-Gate.
 
@@ -25,7 +25,7 @@ Breaking Changes muessen vorab angekuendigt werden.
 
 ### Segmentierung
 
-- Der Namespace wird auf `security.aidun.dev/segmentation=planned` gehalten.
+- Der Namespace wird auf `security.aidun.dev/segmentation=enforced` gehalten.
 - Workloads tragen `security.aidun.dev/owner=mealplanner`.
 - Baseline-NetworkPolicies tragen `security.aidun.dev/baseline=true`.
 - Phase 2 fuehrt Namespace-weites Default-Deny fuer Ingress und Egress ein.
@@ -37,46 +37,21 @@ Aktueller Zielzustand fuer `mealplanner-test` und spaeter `mealplanner`:
 
 | Secret | Klasse | Begruendung |
 | --- | --- | --- |
-| `api-secrets` | `live-only` | Phase-1-Sammel-Secret mit gemischten Laufzeitwerten und Fremd-Credentials |
 | `mealplanner-database` | `generated` | wird im Namespace initial erzeugt und enthaelt lokale DB-Zugangsdaten |
+| `mealplanner-api-internal` | `live-only` | internes API-Secret fuer CronJob und interne Endpunkte |
+| `mealplanner-auth-core` | `live-only` | Session-Secret und Allowlist-Hashes |
+| `mealplanner-openai` | `live-only` | OpenAI-Credential |
+| `mealplanner-email-provider` | `live-only` | Mail-Provider-Credential |
+| `mealplanner-oidc-google` | `live-only` | Google-OIDC-Client-Secret |
+| `mealplanner-oidc-apple` | `live-only` | Apple-OIDC-Private-Key |
 | `ghcr-pull-secret` | `live-only` | Registry-Zugang ausserhalb von Git |
 | `entrypoint-secrets` | `live-only` | Edge-/DNS-Credentials fuer Traefik |
 | `cloudflared-credentials` | `live-only` | Tunnel-Credentials aus Cloudflare |
 
 - Diese Secrets muessen im Cluster mit `security.aidun.dev/management=*` und `security.aidun.dev/owner=mealplanner` markiert sein.
-- `api-secrets` traegt in Phase 1 zusaetzlich `security.aidun.dev/secret-exception=true`, weil das Objekt noch nicht sauber nach Management-Klassen getrennt ist.
 - Das Bootstrap-Script labelt die von ihm erzeugten oder vorgefundenen App-Secrets entsprechend nach.
-- Eine spaetere Migration auf `SealedSecret` bleibt moeglich, ist aber nicht Teil des aktuellen Schritts.
-
-#### Phase-1-Ausnahme `api-secrets`
-
-`api-secrets` bleibt vorerst ein Sammel-Secret. Fuer die Betriebsdokumentation gilt:
-
-- klar `live-only`:
-  - `OPENAI_API_KEY`
-  - `RESEND_API_KEY`
-  - `GOOGLE_CLIENT_SECRET`
-  - `APPLE_PRIVATE_KEY`
-- sicherheitsrelevante Laufzeit-Secrets:
-  - `SESSION_SECRET`
-  - `API_SECRET`
-  - `AUTH_ALLOWED_SUBJECT_HASHES`
-  - `AUTH_ALLOWED_EMAIL_HASHES`
-- Konfigurationswerte ohne eigentlichen Secret-Charakter:
-  - `AUTH_BASE_URL`
-  - `EMAIL_ENABLED`
-  - `EMAIL_PROVIDER`
-  - `EMAIL_FROM`
-  - `EMAIL_REPLY_TO`
-  - `GOOGLE_CLIENT_ID`
-  - `APPLE_CLIENT_ID`
-  - `APPLE_TEAM_ID`
-  - `APPLE_KEY_ID`
-
-### Betriebsgrenze von Phase 1
-
-- Phase 1 schafft Sichtbarkeit und Klassifizierung, aber noch keine vollstaendige erzwungene Segmentierung.
-- Solange `security.aidun.dev/segmentation=planned` gilt, ist der Namespace gehaertet, aber nicht im Zielbild der Cluster-Baseline angekommen.
+- Nicht-sensitive Laufzeitwerte liegen in der ConfigMap `mealplanner-api-config`.
+- Eine spaetere Migration der verbleibenden `live-only`-Secrets auf `SealedSecret` bleibt moeglich, ist aber nicht Teil des aktuellen Schritts.
 
 ## Erlaubte Netzwerkfluesse ab Phase 2
 
@@ -130,7 +105,7 @@ Nicht ohne explizite Freigabe:
 
 ## Bekannte bewusst offene Punkte
 
-- Egress-NetworkPolicies sind noch nicht strikt. Das ist absichtlich nicht in einem produktiven Quick-Hardening umgesetzt, weil DNS, OpenAI und Cloudflare-Tunnel sonst leicht gebrochen werden koennen. Naechster Schritt: Egress-Policy mit expliziten DNS- und HTTPS-Ausnahmen in einem separaten Change.
+- Die aktuelle Egress-Policy ist technisch strikt, arbeitet fuer Internet-Ziele aber bewusst mit portbasierten Allow-Listen (`443`, `7844`) statt mit domain-spezifischer Steuerung. Der naechste Reifegrad waere ein sauber dokumentierter Egress-Gateway- oder FQDN-Ansatz.
 - Bring-Export-Tokens sind statische HMAC-Links pro Plan. Fuer v2 sollte ein expirierendes Tokenformat eingefuehrt werden, ohne bestehende Links sofort zu brechen.
 - Der LAN-LoadBalancer auf dem `entrypoint` ist ein zweiter Origin-Zugang neben Cloudflare Tunnel. Ein Wechsel auf `ClusterIP` wuerde den direkten LAN-Zugang entfernen und ist deshalb ein angekuendigtes Breaking Change.
 - Datenschutz und Impressum enthalten technische Platzhalter. Fuer produktive externe Nutzung fehlen echte Betreiberangaben und rechtlich gepruefte Texte.

@@ -55,109 +55,109 @@ spec:
             - name: API_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: api-secrets
+                  name: mealplanner-api-internal
                   key: API_SECRET
                   optional: true
             - name: CORS_ORIGINS
               valueFrom:
-                secretKeyRef:
-                  name: api-secrets
+                configMapKeyRef:
+                  name: mealplanner-api-config
                   key: CORS_ORIGINS
                   optional: true
             - name: OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: api-secrets
+                  name: mealplanner-openai
                   key: OPENAI_API_KEY
                   optional: true
             - name: EMAIL_ENABLED
               valueFrom:
-                secretKeyRef:
-                  name: api-secrets
+                configMapKeyRef:
+                  name: mealplanner-api-config
                   key: EMAIL_ENABLED
                   optional: true
             - name: EMAIL_PROVIDER
               valueFrom:
-                secretKeyRef:
-                  name: api-secrets
+                configMapKeyRef:
+                  name: mealplanner-api-config
                   key: EMAIL_PROVIDER
                   optional: true
             - name: EMAIL_FROM
               valueFrom:
-                secretKeyRef:
-                  name: api-secrets
+                configMapKeyRef:
+                  name: mealplanner-api-config
                   key: EMAIL_FROM
                   optional: true
             - name: EMAIL_REPLY_TO
               valueFrom:
-                secretKeyRef:
-                  name: api-secrets
+                configMapKeyRef:
+                  name: mealplanner-api-config
                   key: EMAIL_REPLY_TO
                   optional: true
             - name: RESEND_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: api-secrets
+                  name: mealplanner-email-provider
                   key: RESEND_API_KEY
                   optional: true
             - name: AUTH_BASE_URL
               valueFrom:
-                secretKeyRef:
-                  name: api-secrets
+                configMapKeyRef:
+                  name: mealplanner-api-config
                   key: AUTH_BASE_URL
                   optional: true
             - name: SESSION_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: api-secrets
+                  name: mealplanner-auth-core
                   key: SESSION_SECRET
                   optional: true
             - name: AUTH_ALLOWED_SUBJECT_HASHES
               valueFrom:
                 secretKeyRef:
-                  name: api-secrets
+                  name: mealplanner-auth-core
                   key: AUTH_ALLOWED_SUBJECT_HASHES
                   optional: true
             - name: AUTH_ALLOWED_EMAIL_HASHES
               valueFrom:
                 secretKeyRef:
-                  name: api-secrets
+                  name: mealplanner-auth-core
                   key: AUTH_ALLOWED_EMAIL_HASHES
                   optional: true
             - name: GOOGLE_CLIENT_ID
               valueFrom:
-                secretKeyRef:
-                  name: api-secrets
+                configMapKeyRef:
+                  name: mealplanner-api-config
                   key: GOOGLE_CLIENT_ID
                   optional: true
             - name: GOOGLE_CLIENT_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: api-secrets
+                  name: mealplanner-oidc-google
                   key: GOOGLE_CLIENT_SECRET
                   optional: true
             - name: APPLE_CLIENT_ID
               valueFrom:
-                secretKeyRef:
-                  name: api-secrets
+                configMapKeyRef:
+                  name: mealplanner-api-config
                   key: APPLE_CLIENT_ID
                   optional: true
             - name: APPLE_TEAM_ID
               valueFrom:
-                secretKeyRef:
-                  name: api-secrets
+                configMapKeyRef:
+                  name: mealplanner-api-config
                   key: APPLE_TEAM_ID
                   optional: true
             - name: APPLE_KEY_ID
               valueFrom:
-                secretKeyRef:
-                  name: api-secrets
+                configMapKeyRef:
+                  name: mealplanner-api-config
                   key: APPLE_KEY_ID
                   optional: true
             - name: APPLE_PRIVATE_KEY
               valueFrom:
                 secretKeyRef:
-                  name: api-secrets
+                  name: mealplanner-oidc-apple
                   key: APPLE_PRIVATE_KEY
                   optional: true
             - name: PROVIDER_MODE

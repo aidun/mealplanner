@@ -11,6 +11,7 @@ resources:
   - namespace.yaml
   - network-policy.yaml
   - default-serviceaccount.yaml
+  - api-config-configmap.yaml
   - database-bootstrap-rbac.yaml
   - database-bootstrap-script-configmap.yaml
   - database-bootstrap-job.yaml
