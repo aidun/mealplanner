@@ -26,8 +26,9 @@ export function BringLink({ planId, scope = {}, label, className, disabled }: Br
     getBringExportUrl(planId, scope)
       .then((response) => {
         if (cancelled) return;
-        if (!response?.url) throw new Error('missing bring export url');
-        setUrl(response.url);
+        const target = response?.pageUrl || response?.url;
+        if (!target) throw new Error('missing bring export url');
+        setUrl(target);
         setState('ready');
       })
       .catch(() => {

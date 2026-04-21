@@ -336,11 +336,11 @@ describe('Mealplanner app', () => {
     expect(await screen.findByRole('link', { name: 'Woche zu Bring' })).toBeInTheDocument();
     expect(await screen.findByRole('link', { name: 'Tag zu Bring' })).toHaveAttribute(
       'href',
-      expect.stringContaining('day=2026-04-13')
+      expect.stringContaining('/api/plans/plan-1/bring-export?day=2026-04-13')
     );
     expect(await screen.findByRole('link', { name: 'Rezept zu Bring' })).toHaveAttribute(
       'href',
-      expect.stringContaining('meal=meal-1')
+      expect.stringContaining('/api/plans/plan-1/bring-export?day=2026-04-13&meal=meal-1')
     );
     expect(screen.getAllByText(/pro Portion/).length).toBeGreaterThan(0);
     expect(screen.getByText('Die Aufteilung ist nicht gleichmäßig. Nährwerte beziehen sich auf die angegebene Portion.')).toBeInTheDocument();
@@ -354,7 +354,7 @@ describe('Mealplanner app', () => {
 
     const bringLink = await screen.findByRole('link', { name: 'Woche zu Bring' });
 
-    expect(bringLink).toHaveAttribute('href', expect.stringContaining('https://enjoy.getbring.com/ZAzR'));
+    expect(bringLink).toHaveAttribute('href', expect.stringContaining('/api/plans/plan-1/bring-export?token=test-token'));
     expect(bringLink).toHaveAttribute('target', '_blank');
     expect(bringLink).toHaveAttribute('rel', 'noopener noreferrer');
     expect(window.open).not.toHaveBeenCalled();
@@ -393,7 +393,7 @@ describe('Mealplanner app', () => {
       const url = String(input);
       if (url.endsWith('/api/plans/plan-1/bring-export-url')) {
         exportCalls += 1;
-        return new Response(JSON.stringify({ url: `https://enjoy.getbring.com/ZAzR?token=${exportCalls}` }), {
+        return new Response(JSON.stringify({ url: `https://enjoy.getbring.com/ZAzR?token=${exportCalls}`, pageUrl: `/api/plans/plan-1/bring-export?token=${exportCalls}` }), {
           status: 200,
         });
       }
@@ -406,7 +406,7 @@ describe('Mealplanner app', () => {
     );
     expect(await screen.findByRole('link', { name: 'Woche zu Bring' })).toHaveAttribute(
       'href',
-      'https://enjoy.getbring.com/ZAzR?token=1'
+      '/api/plans/plan-1/bring-export?token=1'
     );
 
     rerender(
@@ -420,7 +420,7 @@ describe('Mealplanner app', () => {
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
     expect(await screen.findByRole('link', { name: 'Woche zu Bring' })).toHaveAttribute(
       'href',
-      'https://enjoy.getbring.com/ZAzR?token=1'
+      '/api/plans/plan-1/bring-export?token=1'
     );
   });
 
@@ -615,7 +615,7 @@ describe('Mealplanner app', () => {
           return new Response(JSON.stringify(shoppingList), { status: 200 });
         }
         if (url.includes('/api/plans/plan-1/bring-export-url')) {
-          return new Response(JSON.stringify({ url: 'https://enjoy.getbring.com/ZAzR?token=test-token' }), {
+          return new Response(JSON.stringify({ url: 'https://enjoy.getbring.com/ZAzR?token=test-token', pageUrl: '/api/plans/plan-1/bring-export?token=test-token' }), {
             status: 200,
           });
         }
