@@ -2087,6 +2087,38 @@ a:focus-visible {
   justify-content: flex-start;
 }
 
+.premium-entry-row,
+.admin-stats-grid,
+.admin-bucket-grid,
+.admin-bucket-list {
+  display: grid;
+  gap: 12px;
+}
+
+.premium-entry-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+}
+
+.admin-stats-grid,
+.admin-bucket-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.admin-bucket-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 36px;
+  padding: 0 2px;
+  border-bottom: 1px solid rgba(18, 33, 29, 0.06);
+}
+
+.admin-bucket-row:last-child {
+  border-bottom: 0;
+}
+
 .meal-plan-settings {
   display: grid;
   gap: 14px;
@@ -2427,7 +2459,10 @@ a:focus-visible {
   .workspace,
   .member-grid,
   .field-group,
-  .preset-grid {
+  .preset-grid,
+  .admin-stats-grid,
+  .admin-bucket-grid,
+  .premium-entry-row {
     grid-template-columns: 1fr;
   }
 

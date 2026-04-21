@@ -189,13 +189,10 @@ func (s Service) VerifyGoogleIDToken(ctx context.Context, idToken string, expect
 	}
 	if strings.TrimSpace(info.Email) != "" {
 		identity.Email = strings.ToLower(strings.TrimSpace(info.Email))
-		if len(s.cfg.AllowedEmailHashes) > 0 && !googleEmailVerified(info.EmailVerified) {
+		if !googleEmailVerified(info.EmailVerified) {
 			return Identity{}, errors.New("google token email is not verified")
 		}
 		identity.EmailHash = s.Hash("email:" + identity.Email)
-	}
-	if !s.Allowed(identity) {
-		return Identity{}, ErrNotAllowed
 	}
 	return identity, nil
 }

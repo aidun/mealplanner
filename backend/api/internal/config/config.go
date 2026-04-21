@@ -122,9 +122,6 @@ func (c Config) Validate() error {
 	if !configuredValue(c.GoogleClientID) || !configuredValue(c.GoogleClientSecret) {
 		return errors.New("GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be configured in production")
 	}
-	if len(c.AuthAllowedSubjectHashes) == 0 && len(c.AuthAllowedEmailHashes) == 0 {
-		return errors.New("an auth allowlist must be configured in production")
-	}
 	return nil
 }
 

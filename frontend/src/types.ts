@@ -195,6 +195,38 @@ export interface AuthProvidersResponse {
 export interface Session {
   authenticated: boolean;
   csrfToken?: string;
+  userID?: string;
+  email?: string;
+  isAdmin?: boolean;
+}
+
+export interface PremiumUser {
+  id: string;
+  email: string;
+  createdAt?: string;
+}
+
+export interface StatsBucket {
+  label: string;
+  count: number;
+}
+
+export interface GenerationCount {
+  category: string;
+  count: number;
+}
+
+export interface AdminStats {
+  averageActiveAccountsPerFamily: number;
+  averageProfileMembersPerFamily: number;
+  familyDistributionByAccounts?: StatsBucket[];
+  familyDistributionByMembers?: StatsBucket[];
+  generations?: GenerationCount[];
+}
+
+export interface AdminOverview {
+  premiumUsers?: PremiumUser[];
+  stats: AdminStats;
 }
 
 export interface UpdateFamilyMemberLinkRequest {

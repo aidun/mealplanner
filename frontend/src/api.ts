@@ -4,6 +4,8 @@ import type {
   FamilySummary,
   FavoriteRecipe,
   Meal,
+  AdminOverview,
+  PremiumUser,
   PromptDebugSnapshot,
   Plan,
   Profile,
@@ -186,4 +188,19 @@ export async function getShoppingList(planId: string) {
 
 export async function getLatestPromptDebug() {
   return request<PromptDebugSnapshot>('/api/debug/prompts/latest', undefined, { allow404: true });
+}
+
+export async function getAdminOverview() {
+  return request<AdminOverview>('/api/admin/overview');
+}
+
+export async function createPremiumUser(email: string) {
+  return request<PremiumUser>('/api/admin/premium-users', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  });
+}
+
+export async function deletePremiumUser(premiumUserId: string) {
+  return request<null>(`/api/admin/premium-users/${encodeURIComponent(premiumUserId)}`, { method: 'DELETE' });
 }

@@ -16,8 +16,8 @@ func TestLoadMigrations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(migrations) != 5 {
-		t.Fatalf("expected five migrations, got %d", len(migrations))
+	if len(migrations) != 6 {
+		t.Fatalf("expected six migrations, got %d", len(migrations))
 	}
 }
 

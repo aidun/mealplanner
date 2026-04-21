@@ -28,11 +28,13 @@ type memoryRepo struct {
 	sessions       map[string]memorySession
 	emails         map[string]string
 	emailHashes    map[string]string
+	premiumUsers   map[string]domain.PremiumUser
 	activeFamilies map[string]string
 	familyMembers  map[string]map[string]memoryFamilyMember
 	invites        map[string]memoryInvite
 	favorites      map[string][]domain.FavoriteRecipe
 	prompts        map[string][]domain.PromptDebugEntry
+	generation     map[string]int
 }
 
 type memorySession struct {
@@ -76,11 +78,13 @@ func newMemoryRepo() *memoryRepo {
 		sessions:       map[string]memorySession{},
 		emails:         map[string]string{},
 		emailHashes:    map[string]string{},
+		premiumUsers:   map[string]domain.PremiumUser{},
 		activeFamilies: map[string]string{},
 		familyMembers:  map[string]map[string]memoryFamilyMember{},
 		invites:        map[string]memoryInvite{},
 		favorites:      map[string][]domain.FavoriteRecipe{},
 		prompts:        map[string][]domain.PromptDebugEntry{},
+		generation:     map[string]int{},
 	}
 }
 
@@ -101,6 +105,27 @@ func (m *memoryRepo) CreateSession(_ *http.Request, userID string, ttl time.Dura
 	expiresAt := time.Now().Add(ttl)
 	m.sessions[sessionID] = memorySession{userID: userID, csrf: csrf, expiresAt: expiresAt}
 	return sessionID, csrf, expiresAt, nil
+}
+
+func (m *memoryRepo) GetUserEmail(_ *http.Request, userID string) (string, error) {
+	return m.emails[userID], nil
+}
+
+func (m *memoryRepo) LoginAllowed(_ *http.Request, email string, emailHash string) (bool, error) {
+	if strings.EqualFold(strings.TrimSpace(email), "markush1986@gmail.com") {
+		return true, nil
+	}
+	for _, premiumUser := range m.premiumUsers {
+		if strings.EqualFold(strings.TrimSpace(premiumUser.Email), strings.TrimSpace(email)) {
+			return true, nil
+		}
+	}
+	for _, hash := range m.emailHashes {
+		if hash == emailHash && strings.TrimSpace(emailHash) != "" {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func (m *memoryRepo) GetSession(_ *http.Request, sessionID string) (string, string, time.Time, error) {
@@ -315,6 +340,57 @@ func (m *memoryRepo) ListPromptDebug(r *http.Request, limit int) ([]domain.Promp
 	return entries, nil
 }
 
+func (m *memoryRepo) ListPremiumUsers(_ *http.Request) ([]domain.PremiumUser, error) {
+	out := make([]domain.PremiumUser, 0, len(m.premiumUsers))
+	for _, premiumUser := range m.premiumUsers {
+		out = append(out, premiumUser)
+	}
+	return out, nil
+}
+
+func (m *memoryRepo) SavePremiumUser(_ *http.Request, email string, _ string) (domain.PremiumUser, error) {
+	id := "premium-" + strings.ReplaceAll(strings.ToLower(strings.TrimSpace(email)), "@", "-")
+	user := domain.PremiumUser{ID: id, Email: strings.ToLower(strings.TrimSpace(email)), CreatedAt: time.Now()}
+	m.premiumUsers[id] = user
+	return user, nil
+}
+
+func (m *memoryRepo) DeletePremiumUser(_ *http.Request, id string) error {
+	if _, ok := m.premiumUsers[id]; !ok {
+		return store.ErrNotFound
+	}
+	delete(m.premiumUsers, id)
+	return nil
+}
+
+func (m *memoryRepo) AdminStats(_ *http.Request) (domain.AdminStats, error) {
+	return domain.AdminStats{
+		AverageActiveAccountsPerFamily: 1.5,
+		AverageProfileMembersPerFamily: 2.5,
+		FamilyDistributionByAccounts: []domain.StatsBucket{
+			{Label: "1", Count: 1},
+			{Label: "2", Count: 2},
+			{Label: "3", Count: 0},
+			{Label: "4+", Count: 0},
+		},
+		FamilyDistributionByMembers: []domain.StatsBucket{
+			{Label: "1", Count: 0},
+			{Label: "2", Count: 1},
+			{Label: "3", Count: 1},
+			{Label: "4+", Count: 0},
+		},
+		Generations: []domain.GenerationCount{
+			{Category: "weekly_cron", Count: m.generation["weekly_cron"]},
+			{Category: "regenerate_dinner", Count: m.generation["regenerate_dinner"]},
+		},
+	}, nil
+}
+
+func (m *memoryRepo) RecordGenerationEvent(_ *http.Request, category string) error {
+	m.generation[category]++
+	return nil
+}
+
 func (m *memoryRepo) familyID(userID string) string {
 	m.ensureFamily(userID)
 	return m.activeFamilies[userID]
@@ -381,6 +457,43 @@ func TestSessionRequired(t *testing.T) {
 	handler.ServeHTTP(rec, req)
 	if rec.Code != http.StatusUnauthorized {
 		t.Fatalf("expected 401, got %d", rec.Code)
+	}
+}
+
+func TestAdminOverviewRequiresAdminEmail(t *testing.T) {
+	repo := newMemoryRepo()
+	repo.emails["user-1"] = "anna@example.test"
+	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil, nil)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/admin/overview", nil)
+	setAuth(repo, req, "user-1")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("expected 403, got %d: %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestAdminOverviewListsPremiumUsersAndStats(t *testing.T) {
+	repo := newMemoryRepo()
+	repo.emails["user-1"] = "markush1986@gmail.com"
+	repo.premiumUsers["premium-anna"] = domain.PremiumUser{ID: "premium-anna", Email: "anna@example.test", CreatedAt: time.Now()}
+	repo.generation["weekly_cron"] = 3
+	repo.generation["regenerate_dinner"] = 5
+	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil, nil)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/admin/overview", nil)
+	setAuth(repo, req, "user-1")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, "anna@example.test") || !strings.Contains(body, `"averageActiveAccountsPerFamily":1.5`) || !strings.Contains(body, `"weekly_cron"`) {
+		t.Fatalf("unexpected admin overview: %s", body)
 	}
 }
 

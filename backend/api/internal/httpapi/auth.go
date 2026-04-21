@@ -18,6 +18,8 @@ type contextKey string
 const (
 	userIDKey contextKey = "userID"
 	csrfKey   contextKey = "csrf"
+	emailKey  contextKey = "email"
+	adminKey  contextKey = "admin"
 )
 
 type oauthState struct {
@@ -36,9 +38,16 @@ func (h *Handler) getSession(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{"authenticated": false})
 		return
 	}
+	email, err := h.repo.GetUserEmail(r, userID)
+	if err != nil {
+		h.serverError(w, r, err)
+		return
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"authenticated": true,
 		"userID":        userID,
+		"email":         email,
+		"isAdmin":       isAdminEmail(email),
 		"csrfToken":     csrf,
 	})
 }
@@ -78,12 +87,17 @@ func (h *Handler) googleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	identity, err := h.auth.ExchangeGoogleCode(r.Context(), r.URL.Query().Get("code"), saved.Verifier, saved.Nonce)
-	if errors.Is(err, auth.ErrNotAllowed) {
-		writeError(w, http.StatusForbidden, "login not allowed")
-		return
-	}
 	if err != nil {
 		h.serverError(w, r, err)
+		return
+	}
+	allowed, err := h.repo.LoginAllowed(r, identity.Email, identity.EmailHash)
+	if err != nil {
+		h.serverError(w, r, err)
+		return
+	}
+	if !allowed {
+		writeError(w, http.StatusForbidden, "login not allowed")
 		return
 	}
 	userID, err := h.repo.UpsertUser(r, identity.Provider, identity.SubjectHash, identity.Email, identity.EmailHash)
@@ -120,8 +134,15 @@ func (h *Handler) withSession(next http.HandlerFunc) http.HandlerFunc {
 			writeError(w, http.StatusUnauthorized, "unauthorized")
 			return
 		}
+		email, err := h.repo.GetUserEmail(r, userID)
+		if err != nil {
+			h.serverError(w, r, err)
+			return
+		}
 		ctx := context.WithValue(r.Context(), userIDKey, userID)
 		ctx = context.WithValue(ctx, csrfKey, csrf)
+		ctx = context.WithValue(ctx, emailKey, email)
+		ctx = context.WithValue(ctx, adminKey, isAdminEmail(email))
 		next(w, r.WithContext(ctx))
 	}
 }
@@ -131,6 +152,17 @@ func (h *Handler) withCSRF(next http.HandlerFunc) http.HandlerFunc {
 		csrf, _ := r.Context().Value(csrfKey).(string)
 		if csrf == "" || strings.TrimSpace(r.Header.Get("X-CSRF-Token")) != csrf {
 			writeError(w, http.StatusForbidden, "csrf token required")
+			return
+		}
+		next(w, r)
+	}
+}
+
+func (h *Handler) withAdmin(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		isAdmin, _ := r.Context().Value(adminKey).(bool)
+		if !isAdmin {
+			writeError(w, http.StatusForbidden, "forbidden")
 			return
 		}
 		next(w, r)
@@ -159,6 +191,10 @@ func mustUserID(ctx context.Context) string {
 		panic("missing authenticated user id")
 	}
 	return userID
+}
+
+func isAdminEmail(email string) bool {
+	return strings.EqualFold(strings.TrimSpace(email), "markush1986@gmail.com")
 }
 
 func setSessionCookie(w http.ResponseWriter, _ *http.Request, sessionID string, expiresAt time.Time) {

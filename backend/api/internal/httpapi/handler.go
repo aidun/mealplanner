@@ -26,6 +26,8 @@ import (
 
 type Repository interface {
 	UpsertUser(r *http.Request, provider, subjectHash string, email string, emailHash string) (string, error)
+	GetUserEmail(r *http.Request, userID string) (string, error)
+	LoginAllowed(r *http.Request, email string, emailHash string) (bool, error)
 	CreateSession(r *http.Request, userID string, ttl time.Duration) (string, string, time.Time, error)
 	GetSession(r *http.Request, sessionID string) (string, string, time.Time, error)
 	DeleteSession(r *http.Request, sessionID string) error
@@ -49,6 +51,11 @@ type Repository interface {
 	SavePromptDebug(r *http.Request, entry domain.PromptDebugEntry) error
 	LatestPromptDebug(r *http.Request) (domain.PromptDebugEntry, error)
 	ListPromptDebug(r *http.Request, limit int) ([]domain.PromptDebugEntry, error)
+	ListPremiumUsers(r *http.Request) ([]domain.PremiumUser, error)
+	SavePremiumUser(r *http.Request, email string, emailHash string) (domain.PremiumUser, error)
+	DeletePremiumUser(r *http.Request, id string) error
+	AdminStats(r *http.Request) (domain.AdminStats, error)
+	RecordGenerationEvent(r *http.Request, category string) error
 }
 
 type StoreRepository struct {
@@ -57,6 +64,14 @@ type StoreRepository struct {
 
 func (r StoreRepository) UpsertUser(req *http.Request, provider, subjectHash string, email string, emailHash string) (string, error) {
 	return r.Store.UpsertUser(req.Context(), provider, subjectHash, email, emailHash)
+}
+
+func (r StoreRepository) GetUserEmail(req *http.Request, userID string) (string, error) {
+	return r.Store.GetUserEmail(req.Context(), userID)
+}
+
+func (r StoreRepository) LoginAllowed(req *http.Request, email string, emailHash string) (bool, error) {
+	return r.Store.LoginAllowed(req.Context(), email, emailHash)
 }
 
 func (r StoreRepository) CreateSession(req *http.Request, userID string, ttl time.Duration) (string, string, time.Time, error) {
@@ -151,6 +166,26 @@ func (r StoreRepository) ListPromptDebug(req *http.Request, limit int) ([]domain
 	return r.Store.ListPromptDebug(req.Context(), mustUserID(req.Context()), limit)
 }
 
+func (r StoreRepository) ListPremiumUsers(req *http.Request) ([]domain.PremiumUser, error) {
+	return r.Store.ListPremiumUsers(req.Context())
+}
+
+func (r StoreRepository) SavePremiumUser(req *http.Request, email string, emailHash string) (domain.PremiumUser, error) {
+	return r.Store.SavePremiumUser(req.Context(), mustUserID(req.Context()), email, emailHash)
+}
+
+func (r StoreRepository) DeletePremiumUser(req *http.Request, id string) error {
+	return r.Store.DeletePremiumUser(req.Context(), id)
+}
+
+func (r StoreRepository) AdminStats(req *http.Request) (domain.AdminStats, error) {
+	return r.Store.AdminStats(req.Context())
+}
+
+func (r StoreRepository) RecordGenerationEvent(req *http.Request, category string) error {
+	return r.Store.RecordGenerationEvent(req.Context(), mustUserID(req.Context()), category)
+}
+
 type Handler struct {
 	repo        Repository
 	planner     planner.Planner
@@ -206,6 +241,9 @@ func New(repo Repository, planner planner.Planner, authService auth.Service, api
 	mux.HandleFunc("POST /api/family/invites", h.withSession(h.withCSRF(h.createFamilyInvite)))
 	mux.HandleFunc("POST /api/family/invites/accept", h.withSession(h.withCSRF(h.acceptFamilyInvite)))
 	mux.HandleFunc("PUT /api/family/member-links", h.withSession(h.withCSRF(h.updateFamilyMemberLink)))
+	mux.HandleFunc("GET /api/admin/overview", h.withSession(h.withAdmin(h.getAdminOverview)))
+	mux.HandleFunc("POST /api/admin/premium-users", h.withSession(h.withAdmin(h.withCSRF(h.createPremiumUser))))
+	mux.HandleFunc("DELETE /api/admin/premium-users/{premiumUserID}", h.withSession(h.withAdmin(h.withCSRF(h.deletePremiumUser))))
 	mux.HandleFunc("GET /api/favorites", h.withSession(h.getFavorites))
 	mux.HandleFunc("POST /api/favorites", h.withSession(h.withCSRF(h.createFavorite)))
 	mux.HandleFunc("DELETE /api/favorites/{favoriteID}", h.withSession(h.withCSRF(h.deleteFavorite)))
@@ -381,6 +419,54 @@ func (h *Handler) updateFamilyMemberLink(w http.ResponseWriter, r *http.Request)
 	writeJSON(w, http.StatusOK, family)
 }
 
+func (h *Handler) getAdminOverview(w http.ResponseWriter, r *http.Request) {
+	premiumUsers, err := h.repo.ListPremiumUsers(r)
+	if err != nil {
+		h.serverError(w, r, err)
+		return
+	}
+	stats, err := h.repo.AdminStats(r)
+	if err != nil {
+		h.serverError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, domain.AdminOverview{
+		PremiumUsers: premiumUsers,
+		Stats:        stats,
+	})
+}
+
+func (h *Handler) createPremiumUser(w http.ResponseWriter, r *http.Request) {
+	var req domain.CreatePremiumUserRequest
+	if err := decodeJSON(w, r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	email := strings.ToLower(strings.TrimSpace(req.Email))
+	if email == "" {
+		writeError(w, http.StatusBadRequest, "Bitte gib eine E-Mail-Adresse an.")
+		return
+	}
+	premiumUser, err := h.repo.SavePremiumUser(r, email, h.auth.Hash("email:"+email))
+	if err != nil {
+		h.serverError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, premiumUser)
+}
+
+func (h *Handler) deletePremiumUser(w http.ResponseWriter, r *http.Request) {
+	if err := h.repo.DeletePremiumUser(r, r.PathValue("premiumUserID")); err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			writeError(w, http.StatusNotFound, "premium user not found")
+			return
+		}
+		h.serverError(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (h *Handler) getFavorites(w http.ResponseWriter, r *http.Request) {
 	favorites, err := h.repo.ListFavorites(r)
 	if err != nil {
@@ -522,6 +608,7 @@ func (h *Handler) createPlan(w http.ResponseWriter, r *http.Request) {
 		h.serverError(w, r, err)
 		return
 	}
+	_ = h.repo.RecordGenerationEvent(r, "weekly_manual")
 	writeJSON(w, http.StatusCreated, saved)
 }
 
@@ -562,6 +649,7 @@ func (h *Handler) createPlansForAllUsers(w http.ResponseWriter, r *http.Request)
 			failures = append(failures, map[string]string{"userID": userID, "error": err.Error()})
 			continue
 		}
+		_ = h.repo.RecordGenerationEvent(req, "weekly_cron")
 		created = append(created, saved.ID)
 		planURL := h.absoluteRequestURL(req, "/").String()
 		seenEmails := map[string]struct{}{}
@@ -682,6 +770,7 @@ func (h *Handler) regenerateMeal(w http.ResponseWriter, r *http.Request) {
 		h.serverError(w, r, err)
 		return
 	}
+	_ = h.repo.RecordGenerationEvent(r, regenerationCategory(plan, r.PathValue("mealID")))
 	writeJSON(w, http.StatusOK, saved)
 }
 
@@ -803,6 +892,27 @@ func countMeals(plan domain.Plan) int {
 		total += len(day.Meals)
 	}
 	return total
+}
+
+func regenerationCategory(plan domain.Plan, mealID string) string {
+	slot := strings.TrimSpace(strings.ToLower(mealSlotByID(plan, mealID)))
+	switch slot {
+	case "breakfast", "lunch", "dinner", "snack":
+		return "regenerate_" + slot
+	default:
+		return "regenerate_other"
+	}
+}
+
+func mealSlotByID(plan domain.Plan, mealID string) string {
+	for _, day := range plan.Days {
+		for _, meal := range day.Meals {
+			if meal.ID == mealID {
+				return meal.Slot
+			}
+		}
+	}
+	return ""
 }
 
 func (h *Handler) serverError(w http.ResponseWriter, r *http.Request, err error) {

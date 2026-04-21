@@ -105,7 +105,26 @@ const family = {
   ],
   personal: false,
 };
-const session = { authenticated: true, csrfToken: 'csrf-token-1' };
+const session = { authenticated: true, csrfToken: 'csrf-token-1', email: 'anna@example.test', isAdmin: false };
+const adminOverview = {
+  premiumUsers: [{ id: 'premium-1', email: 'premium@example.test' }],
+  stats: {
+    averageActiveAccountsPerFamily: 1.5,
+    averageProfileMembersPerFamily: 2.5,
+    familyDistributionByAccounts: [
+      { label: '1', count: 1 },
+      { label: '2', count: 2 },
+    ],
+    familyDistributionByMembers: [
+      { label: '2', count: 1 },
+      { label: '3', count: 1 },
+    ],
+    generations: [
+      { category: 'weekly_cron', count: 3 },
+      { category: 'regenerate_dinner', count: 5 },
+    ],
+  },
+};
 const providers = {
   providers: [
     { id: 'google', name: 'Google', enabled: true, startUrl: '/api/auth/google/start' },
@@ -145,7 +164,7 @@ beforeEach(() => {
   vi.stubGlobal('fetch', createFetchMock());
 });
 
-function createFetchMock(options: { authenticated?: boolean; familyOverride?: typeof family } = {}) {
+function createFetchMock(options: { authenticated?: boolean; familyOverride?: typeof family; isAdmin?: boolean } = {}) {
   const authenticated = options.authenticated ?? true;
   const activeFamily = options.familyOverride ?? family;
 
@@ -153,7 +172,7 @@ function createFetchMock(options: { authenticated?: boolean; familyOverride?: ty
     const url = String(input);
 
     if (url.endsWith('/api/session')) {
-      return new Response(JSON.stringify(authenticated ? session : { authenticated: false }), { status: 200 });
+      return new Response(JSON.stringify(authenticated ? { ...session, isAdmin: options.isAdmin ?? false } : { authenticated: false }), { status: 200 });
     }
 
     if (url.endsWith('/api/auth/providers')) {
@@ -239,6 +258,18 @@ function createFetchMock(options: { authenticated?: boolean; familyOverride?: ty
         }),
         { status: 200 }
       );
+    }
+
+    if (url.endsWith('/api/admin/overview')) {
+      return new Response(JSON.stringify(adminOverview), { status: 200 });
+    }
+
+    if (url.endsWith('/api/admin/premium-users') && init?.method === 'POST') {
+      return new Response(JSON.stringify({ id: 'premium-new', email: 'new@example.test' }), { status: 201 });
+    }
+
+    if (url.includes('/api/admin/premium-users/') && init?.method === 'DELETE') {
+      return new Response(null, { status: 204 });
     }
 
     if (url.includes('/api/plans/plan-1/bring-export-url')) {
@@ -538,6 +569,17 @@ describe('Mealplanner app', () => {
     await waitFor(() => {
       expect(screen.getAllByText('Profil gespeichert. Der nächste Wochenplan nutzt diese Angaben.').length).toBeGreaterThan(0);
     });
+  });
+
+  it('shows the admin tab only for the configured admin account', async () => {
+    vi.stubGlobal('fetch', createFetchMock({ isAdmin: true }));
+
+    renderApp('/onboarding');
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Admin' }));
+    expect(await screen.findByRole('heading', { name: 'Admin' })).toBeInTheDocument();
+    expect(screen.getByText('premium@example.test')).toBeInTheDocument();
+    expect(screen.getByText('weekly_cron')).toBeInTheDocument();
   });
 
   it('creates a family invite link from onboarding', async () => {

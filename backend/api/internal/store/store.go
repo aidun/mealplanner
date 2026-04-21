@@ -19,6 +19,8 @@ import (
 
 var ErrNotFound = errors.New("not found")
 
+const adminEmail = "markush1986@gmail.com"
+
 type Store struct {
 	pool *pgxpool.Pool
 }
@@ -71,6 +73,34 @@ func (s Store) GetSession(ctx context.Context, sessionID string) (userID, csrfTo
 		return "", "", time.Time{}, ErrNotFound
 	}
 	return userID, csrfToken, expiresAt, err
+}
+
+func (s Store) GetUserEmail(ctx context.Context, userID string) (string, error) {
+	var email string
+	err := s.pool.QueryRow(ctx, `SELECT COALESCE(email, '') FROM users WHERE id = $1`, userID).Scan(&email)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", ErrNotFound
+	}
+	return strings.TrimSpace(email), err
+}
+
+func (s Store) LoginAllowed(ctx context.Context, email string, emailHash string) (bool, error) {
+	email = normalizeEmail(email)
+	if email == adminEmail {
+		return true, nil
+	}
+	if strings.TrimSpace(emailHash) == "" {
+		return false, nil
+	}
+	var id string
+	err := s.pool.QueryRow(ctx, `SELECT id::text FROM premium_users WHERE email_hash = $1`, emailHash).Scan(&id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 func (s Store) DeleteSession(ctx context.Context, sessionID string) error {
@@ -504,6 +534,101 @@ func (s Store) SavePromptDebug(ctx context.Context, userID string, entry domain.
 	return err
 }
 
+func (s Store) ListPremiumUsers(ctx context.Context) ([]domain.PremiumUser, error) {
+	rows, err := s.pool.Query(ctx, `SELECT id::text, email, created_at FROM premium_users ORDER BY created_at DESC, email ASC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var users []domain.PremiumUser
+	for rows.Next() {
+		var user domain.PremiumUser
+		if err := rows.Scan(&user.ID, &user.Email, &user.CreatedAt); err != nil {
+			return nil, err
+		}
+		users = append(users, user)
+	}
+	return users, rows.Err()
+}
+
+func (s Store) SavePremiumUser(ctx context.Context, grantedByUserID string, email string, emailHash string) (domain.PremiumUser, error) {
+	email = normalizeEmail(email)
+	var user domain.PremiumUser
+	err := s.pool.QueryRow(ctx, `
+		INSERT INTO premium_users(email, email_hash, granted_by_user_id)
+		VALUES ($1, $2, $3::uuid)
+		ON CONFLICT (email) DO UPDATE SET email_hash = EXCLUDED.email_hash
+		RETURNING id::text, email, created_at
+	`, email, strings.TrimSpace(emailHash), grantedByUserID).Scan(&user.ID, &user.Email, &user.CreatedAt)
+	return user, err
+}
+
+func (s Store) DeletePremiumUser(ctx context.Context, id string) error {
+	tag, err := s.pool.Exec(ctx, `DELETE FROM premium_users WHERE id = $1`, id)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+func (s Store) RecordGenerationEvent(ctx context.Context, userID string, category string) error {
+	familyID, err := s.activeFamilyID(ctx, userID)
+	if err != nil {
+		return err
+	}
+	_, err = s.pool.Exec(ctx, `INSERT INTO generation_events(family_id, category) VALUES ($1, $2)`, familyID, strings.TrimSpace(category))
+	return err
+}
+
+func (s Store) AdminStats(ctx context.Context) (domain.AdminStats, error) {
+	accountCounts, err := s.familyCounts(ctx, `
+		SELECT f.id::text, COUNT(fm.user_id)::int
+		FROM families f
+		LEFT JOIN family_members fm ON fm.family_id = f.id
+		WHERE f.status = 'active'
+		GROUP BY f.id
+	`)
+	if err != nil {
+		return domain.AdminStats{}, err
+	}
+	memberCounts, err := s.familyCounts(ctx, `
+		SELECT f.id::text, COALESCE(jsonb_array_length(COALESCE(p.data->'members', '[]'::jsonb)), 0)::int
+		FROM families f
+		LEFT JOIN profiles p ON p.family_id = f.id
+		WHERE f.status = 'active'
+	`)
+	if err != nil {
+		return domain.AdminStats{}, err
+	}
+	stats := domain.AdminStats{
+		AverageActiveAccountsPerFamily: averageCounts(accountCounts),
+		AverageProfileMembersPerFamily: averageCounts(memberCounts),
+		FamilyDistributionByAccounts:   bucketCounts(accountCounts),
+		FamilyDistributionByMembers:    bucketCounts(memberCounts),
+	}
+	rows, err := s.pool.Query(ctx, `
+		SELECT category, COUNT(*)::int
+		FROM generation_events
+		GROUP BY category
+		ORDER BY category ASC
+	`)
+	if err != nil {
+		return domain.AdminStats{}, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var item domain.GenerationCount
+		if err := rows.Scan(&item.Category, &item.Count); err != nil {
+			return domain.AdminStats{}, err
+		}
+		stats.Generations = append(stats.Generations, item)
+	}
+	return stats, rows.Err()
+}
+
 func (s Store) LatestPromptDebug(ctx context.Context, userID string) (domain.PromptDebugEntry, error) {
 	familyID, err := s.activeFamilyID(ctx, userID)
 	if err != nil {
@@ -644,6 +769,61 @@ func mustJSON(value any) []byte {
 
 func familyMergeWarning() string {
 	return "Wenn du diese Einladung annimmst, geht dein persoenlicher Account im Familienaccount auf. Dein Profil wird sinnvoll zusammengefuehrt."
+}
+
+func normalizeEmail(email string) string {
+	return strings.ToLower(strings.TrimSpace(email))
+}
+
+func (s Store) familyCounts(ctx context.Context, query string) ([]int, error) {
+	rows, err := s.pool.Query(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	counts := []int{}
+	for rows.Next() {
+		var familyID string
+		var count int
+		if err := rows.Scan(&familyID, &count); err != nil {
+			return nil, err
+		}
+		counts = append(counts, count)
+	}
+	return counts, rows.Err()
+}
+
+func averageCounts(counts []int) float64 {
+	if len(counts) == 0 {
+		return 0
+	}
+	total := 0
+	for _, count := range counts {
+		total += count
+	}
+	return float64(total) / float64(len(counts))
+}
+
+func bucketCounts(counts []int) []domain.StatsBucket {
+	buckets := []domain.StatsBucket{
+		{Label: "1", Count: 0},
+		{Label: "2", Count: 0},
+		{Label: "3", Count: 0},
+		{Label: "4+", Count: 0},
+	}
+	for _, count := range counts {
+		switch {
+		case count <= 1:
+			buckets[0].Count++
+		case count == 2:
+			buckets[1].Count++
+		case count == 3:
+			buckets[2].Count++
+		default:
+			buckets[3].Count++
+		}
+	}
+	return buckets
 }
 
 func decodePlan(data []byte) (domain.Plan, error) {

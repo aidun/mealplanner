@@ -54,6 +54,39 @@ type FamilyInvite struct {
 	WarningText string    `json:"warningText,omitempty"`
 }
 
+type PremiumUser struct {
+	ID        string    `json:"id"`
+	Email     string    `json:"email"`
+	CreatedAt time.Time `json:"createdAt,omitempty"`
+}
+
+type CreatePremiumUserRequest struct {
+	Email string `json:"email"`
+}
+
+type StatsBucket struct {
+	Label string `json:"label"`
+	Count int    `json:"count"`
+}
+
+type GenerationCount struct {
+	Category string `json:"category"`
+	Count    int    `json:"count"`
+}
+
+type AdminStats struct {
+	AverageActiveAccountsPerFamily float64           `json:"averageActiveAccountsPerFamily"`
+	AverageProfileMembersPerFamily float64           `json:"averageProfileMembersPerFamily"`
+	FamilyDistributionByAccounts   []StatsBucket     `json:"familyDistributionByAccounts,omitempty"`
+	FamilyDistributionByMembers    []StatsBucket     `json:"familyDistributionByMembers,omitempty"`
+	Generations                    []GenerationCount `json:"generations,omitempty"`
+}
+
+type AdminOverview struct {
+	PremiumUsers []PremiumUser `json:"premiumUsers,omitempty"`
+	Stats        AdminStats    `json:"stats"`
+}
+
 type AcceptFamilyInviteRequest struct {
 	Token string `json:"token"`
 }
