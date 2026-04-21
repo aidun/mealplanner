@@ -243,7 +243,7 @@ export function OnboardingPage() {
 
           {joinedFamily ? (
             <div className="status-strip status-strip-success" role="status" aria-live="polite">
-              <span>Familienkonto aktiv. Das gemeinsame Profil wurde geladen und die Logins koennen jetzt sauber Personen zugeordnet werden.</span>
+              <span>Familienkonto aktiv. Das gemeinsame Profil wurde geladen und die Logins können jetzt sauber Personen zugeordnet werden.</span>
             </div>
           ) : null}
 
@@ -368,7 +368,7 @@ export function OnboardingPage() {
                           />
                         </label>
                         <p className="profile-inline-note member-grid-wide">
-                          Allergien und Unvertraeglichkeiten werden in Rezepten nicht verbindlich geprueft. Bitte jede
+                          Allergien und Unverträglichkeiten werden in Rezepten nicht verbindlich geprüft. Bitte jede
                           Zutat vor dem Kochen noch einmal kontrollieren.
                         </p>
                       </div>
@@ -412,7 +412,7 @@ export function OnboardingPage() {
                   </div>
                 </div>
 
-                <div className="family-roster" aria-label="Wer gehoert zum Familienkonto">
+                <div className="family-roster" aria-label="Wer gehört zum Familienkonto">
                   {familyRoster.map((member) => (
                     <article key={member.id} className="family-roster-card">
                       <div>
@@ -540,8 +540,8 @@ export function OnboardingPage() {
                   />
                 </label>
                 <p className="profile-inline-note two-column-note">
-                  Hinweis: Auch bei klaren Regeln und Ausschluessen prueft Mealplanner Rezepte nicht als rechtssicheren
-                  Allergie-Check. Kritische Zutaten muessen vor dem Einkauf und Kochen manuell bestaetigt werden.
+                  Hinweis: Auch bei klaren Regeln und Ausschlüssen prüft Mealplanner Rezepte nicht als rechtssicheren
+                  Allergie-Check. Kritische Zutaten müssen vor dem Einkauf und Kochen manuell bestätigt werden.
                 </p>
               </div>
             </section>
@@ -600,7 +600,7 @@ export function OnboardingPage() {
               <div className="profile-section-copy">
                 <span className="section-index">05</span>
                 <h2 id="favorites-section">Favoriten</h2>
-                <p>Gespeicherte Gerichte liegen hier gesammelt und koennen direkt bereinigt werden.</p>
+                <p>Gespeicherte Gerichte liegen hier gesammelt und können direkt bereinigt werden.</p>
               </div>
               <div className="profile-section-fields">
                 <div className="family-overview" aria-label="Favoriten Übersicht">

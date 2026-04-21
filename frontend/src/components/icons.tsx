@@ -48,3 +48,30 @@ export function ShieldIcon(props: IconProps) {
     </svg>
   );
 }
+
+export function ChevronLeftIcon(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>
+      <path d="m15 18-6-6 6-6" />
+    </svg>
+  );
+}
+
+export function ChevronRightIcon(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>
+      <path d="m9 6 6 6-6 6" />
+    </svg>
+  );
+}
+
+export function BringIcon(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>
+      <path d="M7 9.5V8a5 5 0 0 1 10 0v1.5" />
+      <path d="M5.5 9.5h13l-1 9a2 2 0 0 1-2 1.8h-7a2 2 0 0 1-2-1.8l-1-9Z" />
+      <path d="M10 13h4" />
+      <path d="M10 16h3" />
+    </svg>
+  );
+}

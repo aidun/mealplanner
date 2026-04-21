@@ -33,17 +33,13 @@ export function MealInspector({
   const [note, setNote] = useState('');
   const [showRecipeContext, setShowRecipeContext] = useState(false);
   const [showSelectionReason, setShowSelectionReason] = useState(false);
-  const [activePanel, setActivePanel] = useState<'recipe' | 'servings' | 'adjust' | 'notes'>('recipe');
   const allergens = meal ? detectCriticalAllergens(meal.ingredients) : [];
   const selectionReason = meal ? inferSelectionReason(meal) : '';
-  const hasServings = Boolean(meal?.servings.length);
-  const hasNotes = Boolean(meal?.warnings?.length || allergens.length > 0);
 
   useEffect(() => {
     setNote('');
     setShowRecipeContext(false);
     setShowSelectionReason(false);
-    setActivePanel('recipe');
   }, [meal?.id]);
 
   if (!meal) {
@@ -66,12 +62,27 @@ export function MealInspector({
           <div>
             <h2>{meal.title}</h2>
           <p>
-            {meal.slot ?? 'Mahlzeit'}
-            {dayDate ? ` fuer ${dayDate}` : ''}
+            {slotLabel(meal.slot)}
+            {dayDate ? ` für ${dayDate}` : ''}
             {contextNote ? ` · ${contextNote}` : ''}
           </p>
         </div>
         <div className="surface-actions">
+          <button
+            type="button"
+            className={`button button-secondary compact-action action-pill${showSelectionReason ? ' action-pill-active' : ''}`}
+            onClick={() => setShowSelectionReason((current) => !current)}
+          >
+            <SparkIcon className="pill-icon" />
+            Warum ausgewählt
+          </button>
+          <BringLink
+            planId={planId}
+            scope={{ day: dayDate, meal: meal.id }}
+            label="Rezept zu Bring"
+            className="button button-secondary bring-export-button compact-action icon-button"
+            disabled={!canActOnMeal}
+          />
           <button
             type="button"
             className={`icon-button${favoriteId ? ' icon-button-active' : ''}`}
@@ -93,27 +104,10 @@ export function MealInspector({
           >
             <InfoIcon className="action-icon" />
           </button>
-          <BringLink
-            planId={planId}
-            scope={{ day: dayDate, meal: meal.id }}
-            label="Rezept zu Bring"
-            className="button button-secondary bring-export-button compact-action"
-            disabled={!canActOnMeal}
-          />
         </div>
       </div>
 
       {meal.description ? <p className="inspector-copy">{meal.description}</p> : null}
-      <div className="inspector-inline-actions">
-        <button
-          type="button"
-          className={`button button-secondary compact-action action-pill${showSelectionReason ? ' action-pill-active' : ''}`}
-          onClick={() => setShowSelectionReason((current) => !current)}
-        >
-          <SparkIcon className="pill-icon" />
-          Warum gewaehlt?
-        </button>
-      </div>
       {showRecipeContext ? (
         <div className="inspector-info-panel" role="note">
           <p>
@@ -127,7 +121,7 @@ export function MealInspector({
               {meal.meta.favoriteTitle ? ` Bezug: ${meal.meta.favoriteTitle}.` : ''}
             </p>
           ) : null}
-          {meal.regenerationNote ? <p>Beruecksichtigt: {meal.regenerationNote}</p> : null}
+          {meal.regenerationNote ? <p>Berücksichtigt: {meal.regenerationNote}</p> : null}
           {!canActOnMeal ? <p>Dieses Rezept liegt gerade in eurer Sammlung. Aktionen greifen wieder im aktiven Wochenplan.</p> : null}
         </div>
       ) : null}
@@ -141,98 +135,47 @@ export function MealInspector({
         <div className="inspector-summary-card">
           <strong>{formatNutritionPerPortion(meal.nutrition) || 'Keine Angaben'}</strong>
           <span>
-            {hasUnevenServings(meal) ? 'Basisportion' : 'Naehrwerte pro Portion'}
+            {hasUnevenServings(meal) ? 'Basisportion' : 'Nährwerte pro Portion'}
             {meal.meta?.nutritionSource === 'ingredients' ? ' · aus Zutaten' : ''}
           </span>
         </div>
-        <div className="inspector-summary-card">
-          <strong>{meal.ingredients.length}</strong>
-          <span>Zutaten</span>
-        </div>
-        <div className="inspector-summary-card">
-          <strong>{meal.instructions.length}</strong>
-          <span>Schritte</span>
-        </div>
-      </div>
-
-      <div className="inspector-panel-nav" aria-label="Rezeptbereiche">
-        <button
-          type="button"
-          className={`tag-button${activePanel === 'recipe' ? ' tag-button-active' : ''}`}
-          onClick={() => setActivePanel('recipe')}
-        >
-          Rezept
-        </button>
-        {hasServings ? (
-          <button
-            type="button"
-            className={`tag-button${activePanel === 'servings' ? ' tag-button-active' : ''}`}
-            onClick={() => setActivePanel('servings')}
-          >
-            Portionen
-          </button>
-        ) : null}
-        <button
-          type="button"
-          className={`tag-button${activePanel === 'adjust' ? ' tag-button-active' : ''}`}
-          onClick={() => setActivePanel('adjust')}
-        >
-          Anpassen
-        </button>
-        {hasNotes ? (
-          <button
-            type="button"
-            className={`tag-button${activePanel === 'notes' ? ' tag-button-active' : ''}`}
-            onClick={() => setActivePanel('notes')}
-          >
-            Hinweise
-          </button>
-        ) : null}
       </div>
 
       <div className="stack inspector-stack">
-        {activePanel === 'recipe' ? (
-          <section className="inspector-section inspector-section-recipe">
-            <div className="inspector-recipe-grid">
-              <section className="inspector-subsection">
-                <div className="inspector-section-head">
-                  <h3>Zutaten</h3>
-                  <span>{meal.ingredients.length}</span>
-                </div>
-                <ul className="list ingredient-list">
-                  {meal.ingredients.map((ingredient, index) => (
-                    <li key={`${ingredient.name}-${index}`} className="ingredient-row">
-                      <span className="ingredient-amount">
-                        {ingredient.amount ? `${ingredient.amount}${ingredient.unit ? ` ${ingredient.unit}` : ''}` : 'nach Bedarf'}
-                      </span>
-                      <div className="ingredient-copy">
-                        <strong>{ingredient.name}</strong>
-                        {ingredient.note ? <span>{ingredient.note}</span> : null}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </section>
+        <section className="inspector-section inspector-section-recipe">
+          <div className="inspector-recipe-grid">
+            <section className="inspector-subsection">
+              <h3>Zutaten</h3>
+              <ul className="list ingredient-list">
+                {meal.ingredients.map((ingredient, index) => (
+                  <li key={`${ingredient.name}-${index}`} className="ingredient-row">
+                    <span className="ingredient-amount">
+                      {ingredient.amount ? `${ingredient.amount}${ingredient.unit ? ` ${ingredient.unit}` : ''}` : 'nach Bedarf'}
+                    </span>
+                    <div className="ingredient-copy">
+                      <strong>{ingredient.name}</strong>
+                      {ingredient.note ? <span>{ingredient.note}</span> : null}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </section>
 
-              <section className="inspector-subsection">
-                <div className="inspector-section-head">
-                  <h3>Schritte</h3>
-                  <span>{meal.instructions.length}</span>
-                </div>
-                <ol className="list ordered-list step-list">
-                  {meal.instructions.map((step, index) => (
-                    <li key={`${meal.id}-step-${index}`} className="step-row">
-                      <span className="step-index">{index + 1}</span>
-                      <span>{step}</span>
-                    </li>
-                  ))}
-                </ol>
-              </section>
-            </div>
-          </section>
-        ) : null}
+            <section className="inspector-subsection">
+              <h3>Schritte</h3>
+              <ol className="list ordered-list step-list">
+                {meal.instructions.map((step, index) => (
+                  <li key={`${meal.id}-step-${index}`} className="step-row">
+                    <span className="step-index">{index + 1}</span>
+                    <span>{step}</span>
+                  </li>
+                ))}
+              </ol>
+            </section>
+          </div>
+        </section>
 
-        {activePanel === 'servings' && meal.servings.length > 0 ? (
+        {meal.servings.length > 0 ? (
           <section className="inspector-section">
             <h3>Portionen</h3>
             {hasUnevenServings(meal) ? (
@@ -253,34 +196,7 @@ export function MealInspector({
           </section>
         ) : null}
 
-        {activePanel === 'adjust' ? (
-          <section className="inspector-section">
-            <label className="field-label" htmlFor="regenerate-note">
-              Wunsch zur Änderung
-            </label>
-            <textarea
-              id="regenerate-note"
-              className="input textarea"
-              rows={4}
-              placeholder="Zum Beispiel: weniger Chili, mehr Gemüse, kindgerechter."
-              value={note}
-              onChange={(event) => setNote(event.target.value)}
-              onInput={(event) => setNote((event.target as HTMLTextAreaElement).value)}
-              disabled={!canActOnMeal}
-            />
-            <button
-              type="button"
-              className="button button-primary full-width regenerate-button"
-              onClick={() => onRegenerate(note)}
-              disabled={isRegenerating || !canActOnMeal}
-              aria-label="Gericht austauschen"
-            >
-              <RefreshIcon className="pill-icon" />
-              {isRegenerating ? 'Wir suchen ein anderes Gericht' : 'Neu generieren'}
-            </button>
-          </section>
-        ) : null}
-        {activePanel === 'notes' && (meal.warnings?.length || allergens.length > 0) ? (
+        {meal.warnings?.length || allergens.length > 0 ? (
           <section className="inspector-section">
             <h3>Hinweise</h3>
             {meal.warnings?.map((warning, index) => (
@@ -295,13 +211,39 @@ export function MealInspector({
                   <strong>Kritische Produkte erkannt</strong>
                 </div>
                 <p>
-                  Moeglicherweise enthalten: {allergens.join(', ')}. Dieser Hinweis wird automatisch aus den Zutaten
-                  abgeleitet und ersetzt keine manuelle Allergiepruefung.
+                  Möglicherweise enthalten: {allergens.join(', ')}. Dieser Hinweis wird automatisch aus den Zutaten
+                  abgeleitet und ersetzt keine manuelle Allergieprüfung.
                 </p>
               </div>
             ) : null}
           </section>
         ) : null}
+
+        <section className="inspector-section">
+          <label className="field-label" htmlFor="regenerate-note">
+            Wunsch zur Änderung
+          </label>
+          <textarea
+            id="regenerate-note"
+            className="input textarea"
+            rows={4}
+            placeholder="Zum Beispiel: weniger Chili, mehr Gemüse, kindgerechter."
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
+            onInput={(event) => setNote((event.target as HTMLTextAreaElement).value)}
+            disabled={!canActOnMeal}
+          />
+          <button
+            type="button"
+            className="button button-primary full-width regenerate-button"
+            onClick={() => onRegenerate(note)}
+            disabled={isRegenerating || !canActOnMeal}
+            aria-label="Gericht austauschen"
+          >
+            <RefreshIcon className="pill-icon" />
+            {isRegenerating ? 'Wir suchen ein anderes Gericht' : 'Neu generieren'}
+          </button>
+        </section>
       </div>
 
       {meal.tags.length > 0 ? (
@@ -339,5 +281,20 @@ function mealOriginLabel(meal: Meal) {
   if (meal.meta?.favoriteReuse === 'direct') {
     return 'Direkt aus eurer Sammlung';
   }
-  return 'Neu fuer diese Woche geplant';
+  return 'Neu für diese Woche geplant';
+}
+
+function slotLabel(slot?: string) {
+  switch (slot) {
+    case 'breakfast':
+      return 'Frühstück';
+    case 'lunch':
+      return 'Mittagessen';
+    case 'dinner':
+      return 'Abendessen';
+    case 'snack':
+      return 'Snack';
+    default:
+      return slot || 'Mahlzeit';
+  }
 }

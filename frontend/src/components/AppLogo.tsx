@@ -23,7 +23,7 @@ export function AppLogo({ compact = false, className = '', ...props }: AppLogoPr
       </svg>
       {!compact ? (
         <span className="app-logo-type">
-          <strong>Familienkueche</strong>
+          <strong>Familienküche</strong>
           <small>Mealplanner</small>
         </span>
       ) : null}

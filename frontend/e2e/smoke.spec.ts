@@ -85,7 +85,6 @@ test('planner smoke path', async ({ page, context }) => {
   await page.getByRole('button', { name: 'Zum Wochenplan' }).click();
 
   await page.getByRole('button', { name: /Pasta mit Gemüse/ }).click();
-  await page.getByRole('button', { name: 'Anpassen' }).click();
   await page.getByLabel('Wunsch zur Änderung').fill('Bitte schneller und mit mehr Gemüse.');
   await page.getByRole('button', { name: 'Gericht austauschen' }).click();
   await expect(page.getByRole('heading', { name: 'Cremige Gemüsepasta' })).toBeVisible();

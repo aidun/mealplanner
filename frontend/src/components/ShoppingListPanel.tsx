@@ -10,7 +10,6 @@ interface ShoppingListPanelProps {
 }
 
 export function ShoppingListPanel({ planId, shoppingList, loading }: ShoppingListPanelProps) {
-  const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
   const [expanded, setExpanded] = useState(false);
   const items = useMemo(() => flattenShoppingList(shoppingList), [shoppingList]);
   const categories = useMemo(() => uniqueCategories(items), [items]);
@@ -18,16 +17,6 @@ export function ShoppingListPanel({ planId, shoppingList, loading }: ShoppingLis
   const prominentCategories = categories.slice(0, 3);
   const summary = !Array.isArray(shoppingList) ? shoppingList?.summary : undefined;
   const canExport = Boolean(planId && items.length > 0);
-
-  const copyList = async () => {
-    if (items.length === 0) return;
-    try {
-      await writeClipboard(items.map(formatLine).join('\n'));
-      setCopyState('copied');
-    } catch {
-      setCopyState('failed');
-    }
-  };
 
   return (
     <section className="surface shopping-list-panel">
@@ -42,18 +31,10 @@ export function ShoppingListPanel({ planId, shoppingList, loading }: ShoppingLis
         </div>
         {canExport ? (
           <div className="surface-actions">
-            <button type="button" className="button button-secondary bring-export-button" onClick={copyList}>
-              {copyState === 'copied' ? 'Kopiert' : 'Liste kopieren'}
-            </button>
             <BringLink planId={planId} label="Woche zu Bring" />
           </div>
         ) : null}
       </div>
-      {copyState === 'failed' ? (
-        <p className="panel-feedback" role="alert">
-          Kopieren nicht möglich. Markiere die Liste manuell.
-        </p>
-      ) : null}
 
       {loading ? <p className="muted">Lädt ...</p> : null}
 
@@ -122,11 +103,11 @@ export function ShoppingListPanel({ planId, shoppingList, loading }: ShoppingLis
               <div className="allergy-warning shopping-list-warning" role="note">
                 <div className="allergy-warning-title">
                   <ShieldIcon className="pill-icon" />
-                  <strong>Vor dem Einkauf pruefen</strong>
+                  <strong>Vor dem Einkauf prüfen</strong>
                 </div>
                 <p>
-                  Mengen und Zutaten stammen aus dem Wochenplan. Bei Allergien, Unvertraeglichkeiten und Markenprodukten
-                  bitte jede Position noch einmal manuell bestaetigen.
+                  Mengen und Zutaten stammen aus dem Wochenplan. Bei Allergien, Unverträglichkeiten und Markenprodukten
+                  bitte jede Position noch einmal manuell bestätigen.
                 </p>
               </div>
             </>
@@ -135,15 +116,6 @@ export function ShoppingListPanel({ planId, shoppingList, loading }: ShoppingLis
       ) : null}
     </section>
   );
-}
-
-function formatAmount(item: ShoppingListItem) {
-  if (!item.amount) return '';
-  return ` · ${item.amount}${item.unit ? ` ${item.unit}` : ''}`;
-}
-
-function formatLine(item: ShoppingListItem) {
-  return `${item.name}${formatAmount(item).replace(' · ', ' ')}`.trim();
 }
 
 function flattenShoppingList(shoppingList?: ShoppingList | null): ShoppingListItem[] {
@@ -166,24 +138,4 @@ function groupByCategory(items: ShoppingListItem[]) {
     groups.set(title, [...(groups.get(title) ?? []), item]);
   }
   return Array.from(groups.entries()).map(([title, groupItems]) => ({ title, items: groupItems }));
-}
-
-async function writeClipboard(text: string) {
-  if (navigator.clipboard?.writeText) {
-    await navigator.clipboard.writeText(text);
-    return;
-  }
-
-  const textarea = document.createElement('textarea');
-  textarea.value = text;
-  textarea.setAttribute('readonly', '');
-  textarea.style.position = 'fixed';
-  textarea.style.left = '-9999px';
-  document.body.append(textarea);
-  textarea.select();
-  const copied = document.execCommand('copy');
-  textarea.remove();
-  if (!copied) {
-    throw new Error('copy failed');
-  }
 }

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import type { Day, Meal } from '../types';
 import { formatDate, formatNutritionPerPortion } from '../lib/format';
 import { BringLink } from './BringLink';
-import { HeartIcon } from './icons';
+import { ChevronLeftIcon, ChevronRightIcon, HeartIcon } from './icons';
 
 interface MealBoardProps {
   planId?: string;
@@ -41,15 +41,15 @@ export function MealBoard({ planId, days = [], selectedMealId, favoriteMealIDs, 
       <div className="surface-header">
         <div>
           <h2>Diese Woche auf dem Tisch</h2>
-          <p>Ein Tag nach dem anderen. Erst waehlen, dann darunter weiterlesen.</p>
+          <p>Ein Tag nach dem anderen. Erst wählen, dann darunter weiterlesen.</p>
         </div>
         {days.length > 0 ? (
           <div className="carousel-actions" aria-label="Tage wechseln">
-            <button type="button" className="button button-secondary carousel-button" onClick={() => moveDay(-1)}>
-              Zurück
+            <button type="button" className="button button-secondary carousel-button icon-button" onClick={() => moveDay(-1)} aria-label="Zurück" title="Zurück">
+              <ChevronLeftIcon className="action-icon" />
             </button>
-            <button type="button" className="button button-secondary carousel-button" onClick={() => moveDay(1)}>
-              Weiter
+            <button type="button" className="button button-secondary carousel-button icon-button" onClick={() => moveDay(1)} aria-label="Weiter" title="Weiter">
+              <ChevronRightIcon className="action-icon" />
             </button>
           </div>
         ) : null}
@@ -109,7 +109,7 @@ export function MealBoard({ planId, days = [], selectedMealId, favoriteMealIDs, 
                     >
                       <div className="meal-row-topline">
                         <div className="meal-row-heading">
-                          <span className="slot-label">{meal.slot ?? 'Mahlzeit'}</span>
+                          <span className="slot-label">{slotLabel(meal.slot)}</span>
                           {favoriteMealIDs?.has(meal.id) ? (
                             <span className="meal-favorite-mark" aria-label="Favorit">
                               <HeartIcon className="meal-favorite-icon" />
@@ -121,7 +121,7 @@ export function MealBoard({ planId, days = [], selectedMealId, favoriteMealIDs, 
                       <div className="meal-row-meta">
                         <div className="nutrition-line">
                           {formatNutritionPerPortion(meal.nutrition)}
-                          {meal.estimatedNutrition ? ' · geschaetzt' : ''}
+                          {meal.estimatedNutrition ? ' · geschätzt' : ''}
                         </div>
                       </div>
                     </button>
@@ -134,4 +134,19 @@ export function MealBoard({ planId, days = [], selectedMealId, favoriteMealIDs, 
       </div>
     </section>
   );
+}
+
+function slotLabel(slot?: string) {
+  switch (slot) {
+    case 'breakfast':
+      return 'Frühstück';
+    case 'lunch':
+      return 'Mittagessen';
+    case 'dinner':
+      return 'Abendessen';
+    case 'snack':
+      return 'Snack';
+    default:
+      return slot || 'Mahlzeit';
+  }
 }

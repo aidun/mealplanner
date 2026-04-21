@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { getBringExportUrl, type BringExportScope } from '../api';
+import { BringIcon } from './icons';
 
 interface BringLinkProps {
   planId?: string;
@@ -40,7 +41,6 @@ export function BringLink({ planId, scope = {}, label, className, disabled }: Br
   }, [active, planId, scopeKey]);
 
   const classes = className ?? 'button button-primary bring-export-button';
-  const text = state === 'loading' ? 'Bring wird vorbereitet' : label;
 
   return (
     <a
@@ -53,8 +53,11 @@ export function BringLink({ planId, scope = {}, label, className, disabled }: Br
       onClick={(event) => {
         if (state !== 'ready') event.preventDefault();
       }}
+      aria-label={state === 'failed' ? 'Bring nicht verfügbar' : label}
+      title={state === 'failed' ? 'Bring nicht verfügbar' : label}
     >
-      {state === 'failed' ? 'Bring nicht verfügbar' : text}
+      <BringIcon className="action-icon" />
+      <span className="sr-only">{state === 'failed' ? 'Bring nicht verfügbar' : label}</span>
     </a>
   );
 }

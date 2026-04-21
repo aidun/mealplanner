@@ -369,7 +369,7 @@ describe('Mealplanner app', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Rezeptkontext anzeigen' }));
     expect(screen.getByText(/wurde aus eurer Favoriten-Sammlung wieder aufgegriffen/i)).toBeInTheDocument();
     expect(screen.getByText(/Herkunft:/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Warum gewaehlt?' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Warum ausgewählt' }));
     expect(screen.getByText(/Es wurde aus eurer gespeicherten Sammlung wieder aufgenommen./)).toBeInTheDocument();
     expect(await screen.findByText('Einkaufsliste')).toBeInTheDocument();
     expect(await screen.findByRole('link', { name: 'Woche zu Bring' })).toBeInTheDocument();
@@ -382,15 +382,13 @@ describe('Mealplanner app', () => {
       expect.stringContaining('/api/plans/plan-1/bring-export?day=2026-04-13&meal=meal-1')
     );
     expect(screen.getAllByText(/pro Portion/).length).toBeGreaterThan(0);
-    fireEvent.click(screen.getByRole('button', { name: 'Portionen' }));
     expect(screen.getByText('Die Aufteilung ist nicht gleichmäßig. Nährwerte beziehen sich auf die angegebene Portion.')).toBeInTheDocument();
     expect(screen.getByText(/392 kcal/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Liste kopieren' })).toBeInTheDocument();
     expect(screen.getByText('1 Artikel · 1 Bereiche')).toBeInTheDocument();
     expect(screen.getByText('Zucchini')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Liste aufklappen' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Liste aufklappen' }));
-    expect(screen.getByText(/Vor dem Einkauf pruefen/)).toBeInTheDocument();
+    expect(screen.getByText(/Vor dem Einkauf prüfen/)).toBeInTheDocument();
   });
 
   it('renders the Bring export as a direct link without opening a popup', async () => {
@@ -490,7 +488,6 @@ describe('Mealplanner app', () => {
   it('shows the updated meal after regeneration', async () => {
     renderApp('/');
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Anpassen' }));
     fireEvent.change(await screen.findByLabelText('Wunsch zur Änderung'), {
       target: { value: 'mehr Gemüse' },
     });
@@ -500,17 +497,6 @@ describe('Mealplanner app', () => {
       expect(screen.getAllByText('Cremige Gemüsepasta').length).toBeGreaterThan(0);
     });
     expect(screen.getByText('Das Gericht wurde ausgetauscht.')).toBeInTheDocument();
-  });
-
-  it('copies the shopping list as Bring fallback', async () => {
-    renderApp('/');
-
-    fireEvent.click(await screen.findByRole('button', { name: 'Liste kopieren' }));
-
-    await waitFor(() => {
-      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('Zucchini 2 Stk');
-    });
-    expect(screen.getByRole('button', { name: 'Kopiert' })).toBeInTheDocument();
   });
 
   it('keeps the Bring export button mobile friendly', () => {
@@ -577,7 +563,7 @@ describe('Mealplanner app', () => {
   it('shows merged family members with visible login mails', async () => {
     renderApp('/onboarding');
 
-    expect(await screen.findByLabelText('Wer gehoert zum Familienkonto')).toBeInTheDocument();
+    expect(await screen.findByLabelText('Wer gehört zum Familienkonto')).toBeInTheDocument();
     expect(await screen.findAllByText('anna@example.test')).not.toHaveLength(0);
     expect(screen.getAllByText('ben@example.test').length).toBeGreaterThan(0);
   });
@@ -672,7 +658,6 @@ describe('Mealplanner app', () => {
 
     const user = userEvent.setup();
     await screen.findByRole('button', { name: /Pasta mit Gemüse/ });
-    await user.click(screen.getByRole('button', { name: 'Anpassen' }));
     const noteField = screen.getByLabelText('Wunsch zur Änderung');
     await user.click(noteField);
     await user.type(noteField, 'Weniger Salz, mehr Gemüse.');
@@ -697,7 +682,6 @@ describe('Mealplanner app', () => {
     await screen.findByRole('button', { name: /Pasta mit Gemüse/ });
 
     fireEvent.click(screen.getByRole('button', { name: /Pasta mit Gemüse/ }));
-    fireEvent.click(screen.getByRole('button', { name: 'Anpassen' }));
     fireEvent.change(screen.getByLabelText('Wunsch zur Änderung'), {
       target: { value: 'Bitte schneller und mit mehr Gemüse.' },
     });
@@ -802,7 +786,7 @@ describe('Mealplanner app', () => {
   it('shows allergy guidance in the profile settings', async () => {
     renderApp('/onboarding');
 
-    expect(await screen.findByText(/Allergien und Unvertraeglichkeiten werden in Rezepten nicht verbindlich geprueft/)).toBeInTheDocument();
+    expect(await screen.findByText(/Allergien und Unverträglichkeiten werden in Rezepten nicht verbindlich geprüft/)).toBeInTheDocument();
     expect(screen.getByText(/Mealplanner Rezepte nicht als rechtssicheren Allergie-Check/)).toBeInTheDocument();
   });
 });

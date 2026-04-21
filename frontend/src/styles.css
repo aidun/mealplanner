@@ -938,6 +938,18 @@ a:focus-visible {
   white-space: nowrap;
 }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .compact-action {
   min-height: 40px;
   padding-inline: 12px;
@@ -1500,7 +1512,7 @@ a:focus-visible {
 
 .inspector-summary-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 10px;
   padding: 0 18px 18px;
 }
@@ -1545,31 +1557,6 @@ a:focus-visible {
   gap: 10px;
 }
 
-.inspector-section-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.inspector-section-head h3 {
-  margin: 0;
-}
-
-.inspector-section-head span {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 28px;
-  min-height: 28px;
-  padding: 0 10px;
-  border-radius: 999px;
-  background: rgba(240, 246, 242, 0.88);
-  color: var(--accent-strong);
-  font-size: 0.8rem;
-  font-weight: 700;
-}
-
 .inspector-section:last-child {
   padding-bottom: 0;
   border-bottom: 0;
@@ -1581,19 +1568,6 @@ a:focus-visible {
   color: var(--accent-strong);
   font-size: 0.9rem;
   font-weight: 600;
-}
-
-.inspector-inline-actions {
-  display: flex;
-  gap: 10px;
-  padding: 0 18px 18px;
-}
-
-.inspector-panel-nav {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 0 18px 18px;
 }
 
 .inspector-info-panel {
@@ -1655,6 +1629,11 @@ a:focus-visible {
   font-size: 0.8rem;
   font-weight: 700;
   white-space: nowrap;
+}
+
+.step-index {
+  justify-content: center;
+  min-width: 44px;
 }
 
 .ingredient-copy {
@@ -2443,13 +2422,6 @@ a:focus-visible {
   .prompt-debug-op,
   .prompt-debug-metrics {
     grid-template-columns: 1fr;
-  }
-
-  .favorites-band-toolbar,
-  .inspector-inline-actions,
-  .inspector-panel-nav {
-    flex-direction: column;
-    align-items: stretch;
   }
 
   .favorite-pill {
