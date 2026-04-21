@@ -2087,6 +2087,73 @@ a:focus-visible {
   justify-content: flex-start;
 }
 
+.meal-plan-settings {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid rgba(18, 33, 29, 0.08);
+  border-radius: 8px;
+  background: rgba(248, 251, 248, 0.9);
+}
+
+.meal-plan-settings-copy p {
+  margin: 4px 0 0;
+  color: var(--muted);
+}
+
+.meal-plan-slot-list {
+  display: grid;
+  gap: 12px;
+}
+
+.meal-plan-slot-card {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid rgba(18, 33, 29, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.meal-plan-slot-card-active {
+  border-color: rgba(13, 138, 99, 0.18);
+  background: rgba(245, 250, 247, 0.95);
+}
+
+.meal-plan-slot-head {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+}
+
+.meal-plan-members {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.meal-plan-member-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid rgba(18, 33, 29, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.meal-plan-member-chip-active {
+  border-color: rgba(13, 138, 99, 0.18);
+  background: rgba(219, 242, 232, 0.7);
+}
+
+.meal-plan-member-chip input,
+.meal-plan-slot-head input {
+  margin: 0;
+}
+
 .profile-save-bar {
   position: sticky;
   bottom: 12px;

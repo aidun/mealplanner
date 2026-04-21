@@ -15,6 +15,7 @@ type promptProfile struct {
 	Defaults  domain.MealDefaults `json:"defaults"`
 	Presets   []string            `json:"presets,omitempty"`
 	Notes     string              `json:"notes,omitempty"`
+	MealPlan  []promptSlotRule    `json:"mealPlan,omitempty"`
 }
 
 type promptFavorite struct {
@@ -34,6 +35,11 @@ type promptMember struct {
 	Likes          string   `json:"likes,omitempty"`
 	Dislikes       string   `json:"dislikes,omitempty"`
 	Restrictions   string   `json:"restrictions,omitempty"`
+}
+
+type promptSlotRule struct {
+	Slot         string   `json:"slot"`
+	Participants []string `json:"participants,omitempty"`
 }
 
 type promptPlanContext struct {
@@ -65,15 +71,18 @@ type promptMealSummary struct {
 func WeekPrompt(profile domain.Profile, weekStart time.Time, favorites []domain.FavoriteRecipe) string {
 	body, _ := json.MarshalIndent(minimizeProfile(profile), "", "  ")
 	favoriteBody, _ := json.MarshalIndent(minimizeFavorites(favorites), "", "  ")
+	enabled := enabledSlots(profile)
+	slotRuleText := strings.Join(humanSlotLabels(enabled), ", ")
 	return fmt.Sprintf(`Erstelle einen Wochen-Essensplan fuer eine Familie.
 
 Woche startet am %s.
 
 Regeln:
 - Plane 7 Tage.
-- Pro Tag Fruehstueck, Mittagessen und Abendessen.
-- Snacks nur wenn Profile, Kalorienziel oder Alltagssinn dafuer sprechen.
+- Pro Tag genau diese Mahlzeiten, wenn sie aktiviert sind: %s.
+- Generiere keine deaktivierten Mahlzeiten.
 - Ein gemeinsames Gericht pro Mahlzeit, Portionen pro Person skalieren.
+- Pro Mahlzeit nur fuer die hinterlegten Teilnehmenden planen und Portionen nur fuer diese Personen ausgeben.
 - Jede Mahlzeit braucht Beschreibung, Zutaten, Anleitung und geschaetzte Naehrwerte pro Portion.
 - Beachte alle Vorlieben, Abneigungen und Einschraenkungen pro Person.
 - Nutze Favoriten als Inspiration. Wiederhole passende Favoriten oder Varianten davon, aber mache die Woche nicht monoton.
@@ -84,7 +93,7 @@ Familienprofil:
 %s
 
 Favoriten:
-%s`, weekStart.Format("2006-01-02"), string(body), string(favoriteBody))
+%s`, weekStart.Format("2006-01-02"), slotRuleText, string(body), string(favoriteBody))
 }
 
 func RegeneratePrompt(profile domain.Profile, plan domain.Plan, mealID string, note string, favorites []domain.FavoriteRecipe) string {
@@ -147,13 +156,52 @@ func minimizeProfile(profile domain.Profile) promptProfile {
 			Restrictions:   trimPromptText(member.Restrictions, 300),
 		})
 	}
+	slotRules := make([]promptSlotRule, 0, len(mealSlotConfig))
+	for _, rule := range planningRules(profile) {
+		if !rule.Enabled {
+			continue
+		}
+		participants := participantsForSlot(profile, rule.Slot)
+		labels := make([]string, 0, len(participants))
+		for _, member := range participants {
+			label := preferredAlias(member)
+			if label != "" {
+				labels = append(labels, label)
+			}
+		}
+		slotRules = append(slotRules, promptSlotRule{
+			Slot:         rule.Slot,
+			Participants: labels,
+		})
+	}
 	return promptProfile{
 		Household: "privater Haushalt",
 		Members:   members,
 		Defaults:  profile.Defaults,
 		Presets:   profile.Presets,
 		Notes:     trimPromptText(profile.Notes, 500),
+		MealPlan:  slotRules,
 	}
+}
+
+func humanSlotLabels(slots []string) []string {
+	if len(slots) == 0 {
+		return []string{"Frühstück", "Mittagessen", "Abendessen"}
+	}
+	out := make([]string, 0, len(slots))
+	for _, slot := range slots {
+		switch slot {
+		case "breakfast":
+			out = append(out, "Frühstück")
+		case "lunch":
+			out = append(out, "Mittagessen")
+		case "dinner":
+			out = append(out, "Abendessen")
+		case "snack":
+			out = append(out, "Snack")
+		}
+	}
+	return out
 }
 
 func preferredAlias(member domain.Member) string {

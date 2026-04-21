@@ -362,6 +362,7 @@ describe('Mealplanner app', () => {
     renderApp('/');
 
     expect(await screen.findByText('Diese Woche auf dem Tisch')).toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: 'Profil' })).toHaveLength(1);
     expect(screen.getAllByRole('button', { name: 'Wochenplan erstellen' })).toHaveLength(1);
     const mealButton = await screen.findByRole('button', { name: /Pasta mit Gemüse/ });
     expect(mealButton).toBeInTheDocument();
@@ -518,6 +519,8 @@ describe('Mealplanner app', () => {
     fireEvent.change(screen.getByLabelText('Haushaltsname'), { target: { value: 'Familie Weber' } });
     fireEvent.change(screen.getAllByLabelText('Alias')[0]!, { target: { value: 'Mama' } });
     fireEvent.change(screen.getByLabelText('Standard-Portionen'), { target: { value: '4' } });
+    fireEvent.click(screen.getByLabelText('Snack'));
+    fireEvent.click(screen.getAllByLabelText('Ben')[0]!);
 
     fireEvent.click(screen.getByRole('button', { name: 'Profil speichern' }));
 
@@ -527,6 +530,7 @@ describe('Mealplanner app', () => {
         expect.objectContaining({
           method: 'PUT',
           headers: expect.objectContaining({ 'X-CSRF-Token': 'csrf-token-1' }),
+          body: expect.stringContaining('Aktive Mahlzeiten'),
         })
       );
     });

@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { formToProfile, profileToForm } from '../lib/profile-form';
+import type { ProfileFormState } from '../types';
 
 describe('profile form mapping', () => {
   it('keeps form-only planning fields separated in profile notes', () => {
-    const form = {
+    const form: ProfileFormState = {
       householdName: 'Familie Weber',
       members: [
         {
@@ -27,6 +28,12 @@ describe('profile form mapping', () => {
           restrictions: '',
         },
       ],
+      mealPlanSlots: [
+        { slot: 'breakfast', label: 'Frühstück', enabled: true, memberIds: ['anna'] },
+        { slot: 'lunch', label: 'Mittagessen', enabled: false, memberIds: ['anna', 'ben'] },
+        { slot: 'dinner', label: 'Abendessen', enabled: true, memberIds: ['anna', 'ben'] },
+        { slot: 'snack', label: 'Snack', enabled: false, memberIds: ['ben'] },
+      ],
       servingsPerMeal: '4',
       preferredCuisines: 'Mediterran\nAsiatisch',
       excludedIngredients: 'Koriander\nSellerie',
@@ -47,5 +54,7 @@ describe('profile form mapping', () => {
     expect(roundtrip.excludedIngredients).toBe('Koriander\nSellerie');
     expect(roundtrip.cookingStyle).not.toContain('Wochentags unter 30 Minuten');
     expect(roundtrip.members[0]?.alias).toBe('Mama');
+    expect(roundtrip.mealPlanSlots.find((slot) => slot.slot === 'lunch')?.enabled).toBe(false);
+    expect(roundtrip.mealPlanSlots.find((slot) => slot.slot === 'breakfast')?.memberIds).toEqual(['anna']);
   });
 });

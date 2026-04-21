@@ -213,9 +213,17 @@ export interface MemberFormState {
   restrictions: string;
 }
 
+export interface MealPlanSlotFormState {
+  slot: 'breakfast' | 'lunch' | 'dinner' | 'snack';
+  label: string;
+  enabled: boolean;
+  memberIds: string[];
+}
+
 export interface ProfileFormState {
   householdName: string;
   members: MemberFormState[];
+  mealPlanSlots: MealPlanSlotFormState[];
   servingsPerMeal: string;
   preferredCuisines: string;
   excludedIngredients: string;

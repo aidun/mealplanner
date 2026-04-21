@@ -1,4 +1,11 @@
-import type { Member, MemberFormState, Profile, ProfileFormState } from '../types';
+import type { MealPlanSlotFormState, Member, MemberFormState, Profile, ProfileFormState } from '../types';
+
+const SLOT_CONFIG: Array<{ slot: MealPlanSlotFormState['slot']; label: string; section: string }> = [
+  { slot: 'breakfast', label: 'Frühstück', section: 'Teilnehmende Frühstück' },
+  { slot: 'lunch', label: 'Mittagessen', section: 'Teilnehmende Mittagessen' },
+  { slot: 'dinner', label: 'Abendessen', section: 'Teilnehmende Abendessen' },
+  { slot: 'snack', label: 'Snack', section: 'Teilnehmende Snack' },
+];
 
 function splitLines(value: string) {
   return value
@@ -39,11 +46,29 @@ export function emptyMember(index: number): MemberFormState {
   };
 }
 
+export function defaultMealPlanSlots(memberIds: string[] = []): MealPlanSlotFormState[] {
+  return SLOT_CONFIG.map(({ slot, label }) => ({
+    slot,
+    label,
+    enabled: slot !== 'snack',
+    memberIds: [...memberIds],
+  }));
+}
+
 export function profileToForm(profile?: Profile | null): ProfileFormState {
   const noteSections = parseNoteSections(profile?.notes ?? '');
+  const members = profile?.members?.length ? profile.members.map(memberToForm) : [emptyMember(0)];
+  const memberIds = members.map((member) => member.id);
+  const activeSlots = parseLines(noteSections['Aktive Mahlzeiten']).map(normalizeSlotLabel);
   return {
     householdName: profile?.householdName ?? '',
-    members: profile?.members?.length ? profile.members.map(memberToForm) : [emptyMember(0)],
+    members,
+    mealPlanSlots: SLOT_CONFIG.map(({ slot, label, section }) => ({
+      slot,
+      label,
+      enabled: activeSlots.length === 0 ? slot !== 'snack' : activeSlots.includes(slot),
+      memberIds: parseParticipantIds(noteSections[section], members, memberIds),
+    })),
     servingsPerMeal: noteSections['Standard-Portionen'] ?? '',
     preferredCuisines: joinLines(profile?.presets),
     excludedIngredients: noteSections['Ausgeschlossene Zutaten'] ?? '',
@@ -57,6 +82,7 @@ export function profileToForm(profile?: Profile | null): ProfileFormState {
 }
 
 export function formToProfile(state: ProfileFormState): Profile {
+  const mealPlanSlots = state.mealPlanSlots ?? defaultMealPlanSlots(state.members.map((member) => member.id));
   const members = state.members
     .map((member, index) => formToMember(member, index))
     .filter((member) => member.name !== '');
@@ -72,6 +98,11 @@ export function formToProfile(state: ProfileFormState): Profile {
     },
     presets: splitLines(state.preferredCuisines),
     notes: formatNoteSections({
+      'Aktive Mahlzeiten': mealPlanSlots.filter((slot) => slot.enabled).map((slot) => slot.label).join('\n'),
+      'Teilnehmende Frühstück': stringifyParticipants(mealPlanSlots, 'breakfast', members),
+      'Teilnehmende Mittagessen': stringifyParticipants(mealPlanSlots, 'lunch', members),
+      'Teilnehmende Abendessen': stringifyParticipants(mealPlanSlots, 'dinner', members),
+      'Teilnehmende Snack': stringifyParticipants(mealPlanSlots, 'snack', members),
       'Standard-Portionen': state.servingsPerMeal,
       Kochstil: state.cookingStyle,
       Planungsregeln: state.mealPlanningRules,
@@ -125,7 +156,17 @@ function formatNoteSections(sections: Record<string, string>) {
 
 function parseNoteSections(notes: string) {
   const sections: Record<string, string> = {};
-  const knownTitles = ['Standard-Portionen', 'Kochstil', 'Planungsregeln', 'Ausgeschlossene Zutaten'];
+  const knownTitles = [
+    'Aktive Mahlzeiten',
+    'Teilnehmende Frühstück',
+    'Teilnehmende Mittagessen',
+    'Teilnehmende Abendessen',
+    'Teilnehmende Snack',
+    'Standard-Portionen',
+    'Kochstil',
+    'Planungsregeln',
+    'Ausgeschlossene Zutaten',
+  ];
   let currentTitle = '';
   let currentLines: string[] = [];
 
@@ -150,4 +191,78 @@ function parseNoteSections(notes: string) {
   }
   flush();
   return sections;
+}
+
+function parseLines(value?: string) {
+  return (value ?? '')
+    .split(/\r?\n|,/)
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+}
+
+function normalizeSlotLabel(value: string) {
+  const key = value.trim().toLowerCase();
+  switch (key) {
+    case 'frühstück':
+    case 'fruehstueck':
+    case 'breakfast':
+      return 'breakfast';
+    case 'mittagessen':
+    case 'lunch':
+      return 'lunch';
+    case 'abendessen':
+    case 'dinner':
+      return 'dinner';
+    case 'snack':
+    case 'snacks':
+      return 'snack';
+    default:
+      return key as MealPlanSlotFormState['slot'];
+  }
+}
+
+function parseParticipantIds(value: string | undefined, members: MemberFormState[], fallback: string[]) {
+  const entries = parseLines(value);
+  if (entries.length === 0) {
+    return [...fallback];
+  }
+  const out: string[] = [];
+  for (const entry of entries) {
+    const normalized = entry.trim().toLowerCase();
+    const matched = members.find((member) => {
+      return (
+        member.id.toLowerCase() === normalized ||
+        member.alias.trim().toLowerCase() === normalized ||
+        member.name.trim().toLowerCase() === normalized
+      );
+    });
+    if (matched && !out.includes(matched.id)) {
+      out.push(matched.id);
+    }
+  }
+  return out.length > 0 ? out : [...fallback];
+}
+
+function stringifyParticipants(slots: MealPlanSlotFormState[], slotName: MealPlanSlotFormState['slot'], members: Member[]) {
+  const slot = slots.find((entry) => entry.slot === slotName);
+  if (!slot) return '';
+  const labels = slot.memberIds
+    .map((memberId) => members.find((member) => member.id === memberId))
+    .filter((member): member is Member => Boolean(member))
+    .map((member) => member.alias || member.name);
+  return labels.join('\n');
+}
+
+export function syncMealPlanSlots(slots: MealPlanSlotFormState[], members: MemberFormState[]) {
+  const memberIds = members.map((member) => member.id);
+  if (slots.length === 0) {
+    return defaultMealPlanSlots(memberIds);
+  }
+  return slots.map((slot) => ({
+    ...slot,
+    memberIds: (() => {
+      const filtered = slot.memberIds.filter((memberId) => memberIds.includes(memberId));
+      return filtered.length > 0 ? filtered : [...memberIds];
+    })(),
+  }));
 }

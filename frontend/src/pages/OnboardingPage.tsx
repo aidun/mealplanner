@@ -13,12 +13,13 @@ import {
   updateFamilyMemberLink,
 } from '../api';
 import { readableApiError } from '../lib/api-error';
-import { emptyMember, formToProfile, profileToForm } from '../lib/profile-form';
+import { defaultMealPlanSlots, emptyMember, formToProfile, profileToForm, syncMealPlanSlots } from '../lib/profile-form';
 import type { MemberFormState, ProfileFormState } from '../types';
 
 const EMPTY_FORM: ProfileFormState = {
   householdName: '',
   members: [emptyMember(0)],
+  mealPlanSlots: defaultMealPlanSlots(['person-1']),
   servingsPerMeal: '',
   preferredCuisines: '',
   excludedIngredients: '',
@@ -108,10 +109,19 @@ export function OnboardingPage() {
     setHasEdited(true);
   };
 
+  const updateMealSlot = (slotName: ProfileFormState['mealPlanSlots'][number]['slot'], updater: (slot: ProfileFormState['mealPlanSlots'][number]) => ProfileFormState['mealPlanSlots'][number]) => {
+    setForm((current) => ({
+      ...current,
+      mealPlanSlots: current.mealPlanSlots.map((slot) => (slot.slot === slotName ? updater(slot) : slot)),
+    }));
+    setHasEdited(true);
+  };
+
   const addMember = () => {
     setForm((current) => ({
       ...current,
       members: [...current.members, emptyMember(current.members.length)],
+      mealPlanSlots: syncMealPlanSlots(current.mealPlanSlots, [...current.members, emptyMember(current.members.length)]),
     }));
     setHasEdited(true);
   };
@@ -120,6 +130,10 @@ export function OnboardingPage() {
     setForm((current) => ({
       ...current,
       members: current.members.length > 1 ? current.members.filter((_, memberIndex) => memberIndex !== index) : current.members,
+      mealPlanSlots: syncMealPlanSlots(
+        current.mealPlanSlots,
+        current.members.length > 1 ? current.members.filter((_, memberIndex) => memberIndex !== index) : current.members
+      ),
     }));
     setHasEdited(true);
   };
@@ -503,6 +517,54 @@ export function OnboardingPage() {
                 <p>Küchen, Kochstil und Zutaten, die draußen bleiben.</p>
               </div>
               <div className="profile-section-fields two-column">
+                <div className="meal-plan-settings member-grid-wide">
+                  <div className="meal-plan-settings-copy">
+                    <strong>Mahlzeiten pro Tag</strong>
+                    <p>Lege fest, welche Mahlzeiten täglich erzeugt werden und wer jeweils mitessen soll.</p>
+                  </div>
+                  <div className="meal-plan-slot-list">
+                    {form.mealPlanSlots.map((slot) => (
+                      <article key={slot.slot} className={`meal-plan-slot-card${slot.enabled ? ' meal-plan-slot-card-active' : ''}`}>
+                        <label className="meal-plan-slot-head">
+                          <input
+                            type="checkbox"
+                            checked={slot.enabled}
+                            onChange={(event) =>
+                              updateMealSlot(slot.slot, (current) => ({
+                                ...current,
+                                enabled: event.target.checked,
+                              }))
+                            }
+                          />
+                          <span>{slot.label}</span>
+                        </label>
+                        <div className="meal-plan-members" aria-label={`${slot.label} Teilnehmende`}>
+                          {form.members.map((member, index) => {
+                            const memberLabel = member.alias.trim() || member.name.trim() || `Mitglied ${index + 1}`;
+                            return (
+                              <label key={`${slot.slot}-${member.id}-${index}`} className={`meal-plan-member-chip${slot.memberIds.includes(member.id) ? ' meal-plan-member-chip-active' : ''}`}>
+                                <input
+                                  type="checkbox"
+                                  checked={slot.memberIds.includes(member.id)}
+                                  disabled={!slot.enabled}
+                                  onChange={(event) =>
+                                    updateMealSlot(slot.slot, (current) => ({
+                                      ...current,
+                                      memberIds: event.target.checked
+                                        ? [...current.memberIds, member.id].filter((value, memberIndex, values) => values.indexOf(value) === memberIndex)
+                                        : current.memberIds.filter((memberId) => memberId !== member.id),
+                                    }))
+                                  }
+                                />
+                                <span>{memberLabel}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                </div>
                 <label className="field">
                   <span className="field-label">Bevorzugte Küchen & Themen</span>
                   <textarea

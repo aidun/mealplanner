@@ -45,10 +45,17 @@ func (p Planner) GenerateWeek(ctx context.Context, profile domain.Profile, weekS
 	plan.WeekStart = start.Format("2006-01-02")
 	plan.Status = "planned"
 	plan.Days = normalizeDays(plan.Days, start)
+	allowedSlots := normalizeSlotSet(enabledSlots(profile))
 	for dayIndex := range plan.Days {
+		filteredMeals := make([]domain.Meal, 0, len(plan.Days[dayIndex].Meals))
 		for mealIndex := range plan.Days[dayIndex].Meals {
-			plan.Days[dayIndex].Meals[mealIndex] = normalizeGeneratedMeal(plan.Days[dayIndex].Meals[mealIndex], profile, plan.Days[dayIndex].Date)
+			meal := plan.Days[dayIndex].Meals[mealIndex]
+			if len(allowedSlots) > 0 && !allowedSlots[strings.ToLower(strings.TrimSpace(meal.Slot))] {
+				continue
+			}
+			filteredMeals = append(filteredMeals, normalizeGeneratedMeal(meal, profile, plan.Days[dayIndex].Date))
 		}
+		plan.Days[dayIndex].Meals = filteredMeals
 	}
 	annotateFavoriteReusePlan(&plan, favorites)
 	plan.ShoppingList = domain.ConsolidateShoppingList(plan)
@@ -288,7 +295,7 @@ func normalizeGeneratedMeal(meal domain.Meal, profile domain.Profile, dayDate st
 	meal.Instructions = normalizeInstructions(meal.Instructions)
 	meal.Tags = normalizeStrings(meal.Tags)
 	meal.Warnings = normalizeStrings(meal.Warnings)
-	meal.Servings = normalizeServings(meal.Servings, profile)
+	meal.Servings = normalizeServings(meal.Servings, profile, meal.Slot)
 	nutrition, warnings, nutritionSource := normalizeNutrition(meal, meal.Warnings)
 	meal.Nutrition = nutrition
 	meal.Warnings = warnings
@@ -351,10 +358,11 @@ func normalizeStrings(values []string) []string {
 	return out
 }
 
-func normalizeServings(servings []domain.Serving, profile domain.Profile) []domain.Serving {
+func normalizeServings(servings []domain.Serving, profile domain.Profile, slot string) []domain.Serving {
+	selectedMembers := participantsForSlot(profile, slot)
 	if len(servings) == 0 {
-		out := make([]domain.Serving, 0, len(profile.Members))
-		for _, member := range profile.Members {
+		out := make([]domain.Serving, 0, len(selectedMembers))
+		for _, member := range selectedMembers {
 			out = append(out, domain.Serving{
 				MemberID: member.ID,
 				Name:     preferredAlias(member),
@@ -363,6 +371,10 @@ func normalizeServings(servings []domain.Serving, profile domain.Profile) []doma
 			})
 		}
 		return out
+	}
+	allowed := map[string]domain.Member{}
+	for _, member := range selectedMembers {
+		allowed[strings.ToLower(strings.TrimSpace(member.ID))] = member
 	}
 	out := make([]domain.Serving, 0, len(servings))
 	for _, serving := range servings {
@@ -378,7 +390,33 @@ func normalizeServings(servings []domain.Serving, profile domain.Profile) []doma
 		if serving.MemberID == "" && serving.Name != "" {
 			serving.MemberID = strings.ToLower(strings.ReplaceAll(serving.Name, " ", "-"))
 		}
+		if len(allowed) > 0 {
+			member, ok := allowed[strings.ToLower(serving.MemberID)]
+			if !ok {
+				continue
+			}
+			if serving.Name == "" {
+				serving.Name = preferredAlias(member)
+			}
+		}
 		out = append(out, serving)
+	}
+	if len(out) == 0 {
+		return normalizeServings(nil, profile, slot)
+	}
+	return out
+}
+
+func normalizeSlotSet(slots []string) map[string]bool {
+	if len(slots) == 0 {
+		return nil
+	}
+	out := map[string]bool{}
+	for _, slot := range slots {
+		slot = strings.ToLower(strings.TrimSpace(slot))
+		if slot != "" {
+			out[slot] = true
+		}
 	}
 	return out
 }

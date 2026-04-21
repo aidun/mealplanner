@@ -206,6 +206,40 @@ func TestWeekPromptIncludesMinimizedProfile(t *testing.T) {
 	}
 }
 
+func TestGenerateWeekFiltersDisabledSlotsAndParticipants(t *testing.T) {
+	profile := domain.DefaultProfile()
+	profile.Members = []domain.Member{
+		{ID: "markus", Name: "Markus", Alias: "Markus"},
+		{ID: "alex", Name: "Alex", Alias: "Alex"},
+	}
+	profile.Notes = "Aktive Mahlzeiten:\nFrühstück\nAbendessen\n\nTeilnehmende Frühstück:\nMarkus\n\nTeilnehmende Abendessen:\nMarkus\nAlex"
+	p := New(fakeGenerator{
+	})
+	plan, err := p.GenerateWeek(context.Background(), profile, "2026-04-20", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(plan.Days[0].Meals) != 1 {
+		t.Fatalf("expected only enabled slot to remain in fake output, got %#v", plan.Days[0].Meals)
+	}
+	if got := len(plan.Days[0].Meals[0].Servings); got != 1 {
+		t.Fatalf("expected servings to be limited to selected participants, got %#v", plan.Days[0].Meals[0].Servings)
+	}
+}
+
+func TestWeekPromptIncludesMealPlanRules(t *testing.T) {
+	profile := domain.DefaultProfile()
+	profile.Members = []domain.Member{
+		{ID: "markus", Name: "Markus", Alias: "Markus"},
+		{ID: "alex", Name: "Alex", Alias: "Alex"},
+	}
+	profile.Notes = "Aktive Mahlzeiten:\nFrühstück\nAbendessen\n\nTeilnehmende Frühstück:\nMarkus\n\nTeilnehmende Abendessen:\nMarkus\nAlex"
+	prompt := WeekPrompt(profile, time.Date(2026, 4, 19, 0, 0, 0, 0, time.UTC), nil)
+	if !strings.Contains(prompt, "Frühstück, Abendessen") || !strings.Contains(prompt, "\"participants\": [") {
+		t.Fatalf("expected meal plan rules in prompt, got %s", prompt)
+	}
+}
+
 func TestNormalizeDaysKeepsExactlySevenDays(t *testing.T) {
 	start := time.Date(2026, 4, 19, 0, 0, 0, 0, time.UTC)
 	days := []domain.DayPlan{

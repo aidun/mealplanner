@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
 import { Header } from '../components/Header';
-import { RefreshIcon, SparkIcon, UserIcon } from '../components/icons';
+import { RefreshIcon, SparkIcon } from '../components/icons';
 import { MealBoard } from '../components/MealBoard';
 import { MealInspector } from '../components/MealInspector';
 import { PlanBackdrop } from '../components/PlanBackdrop';
@@ -211,12 +210,6 @@ export function DashboardPage() {
             <span className="eyebrow">Diese Woche</span>
             <h1 id="home-title">Planen, auswählen, kochen.</h1>
             <p>Euer Plan für entspannte Familienküche.</p>
-          </div>
-          <div className="plan-stage-actions">
-            <Link to="/onboarding" className="button button-secondary">
-              <UserIcon className="action-icon" />
-              Profil
-            </Link>
           </div>
           <div className="plan-stage-meta" aria-label="Planstatus">
             <div className="stage-stat">
