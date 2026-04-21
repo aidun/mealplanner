@@ -226,25 +226,6 @@ a {
   letter-spacing: 0;
 }
 
-.header-plate {
-  display: grid;
-  place-items: center;
-  width: 66px;
-  height: 52px;
-  border-radius: 8px;
-  background:
-    radial-gradient(circle at 52% 48%, #fff 0 28%, transparent 29%),
-    conic-gradient(from 35deg, var(--tomato), var(--lemon), #56b68b, var(--tomato));
-  box-shadow: 0 14px 36px rgba(223, 106, 70, 0.16);
-}
-
-.header-plate span {
-  width: 22px;
-  height: 22px;
-  border-radius: 999px;
-  background: var(--accent);
-}
-
 .header-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -2267,8 +2248,7 @@ a:focus-visible {
     gap: 8px;
   }
 
-  .brand-subtitle,
-  .header-plate {
+  .brand-subtitle {
     display: none;
   }
 

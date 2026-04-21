@@ -31,10 +31,6 @@ export function Header({
           <span className="week-chip-label">Woche</span>
           <strong>{formatWeekRange(weekStart)}</strong>
         </div>
-
-        <div className="header-plate" aria-hidden="true">
-          <span />
-        </div>
       </div>
 
       <nav className="header-actions" aria-label="Primäre Aktionen">
