@@ -6,6 +6,8 @@ namespace: mealplanner
 resources:
   - ../base
   - entrypoint.yaml
+  - api-pdb.yaml
+  - frontend-pdb.yaml
 
 images:
   - name: ghcr.io/aidun/mealplanner/api
@@ -20,6 +22,19 @@ patches:
       - op: replace
         path: /spec/replicas
         value: 2
+    target:
+      kind: Deployment
+      name: api
+  - patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/env/0/value
+        value: "production"
+      - op: replace
+        path: /spec/template/spec/containers/0/env/16/value
+        value: "live"
+      - op: replace
+        path: /spec/template/spec/containers/0/env/18/value
+        value: "40"
     target:
       kind: Deployment
       name: api

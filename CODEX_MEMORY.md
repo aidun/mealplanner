@@ -14,6 +14,10 @@ Last updated: 2026-04-21
 - Seit `666bd9f` schaetzt der Planner Nährwerte zusaetzlich aus Zutaten und Portionsgroessen mit einer kleinen lokalen Heuristik und markiert die Herkunft ueber `meal.meta.nutritionSource`.
 - Die API hat jetzt Request-ID-Header, Recover- und Rate-Limit-Middleware fuer sensible Pfade; Frontend-Fehler koennen `requestId` freundlich anzeigen.
 - Das Dashboard hat eine staerkere Favoritenflaeche mit Slot-Filter und kompakter Sammlung; die Legal-Seiten beschreiben den aktuellen technischen Stand klarer, bleiben aber keine Rechtsberatung.
+- Seit dem Production-Readiness-Block trennt `APP_ENV` die Betriebsarten: Prompt-Debug ist nur aktiv, wenn `APP_ENV=test` und `PROMPT_DEBUG=true`; Production validiert beim API-Start HTTPS-Auth-Base-URL, Session-Secret, Allowlist, Google-Credentials, CORS und Live-OpenAI-Key.
+- `deploy/base/api-deployment.yaml` ist jetzt konservativ (`APP_ENV=development`, `PROVIDER_MODE=mock`, `startupProbe`, Standard-Rate-Limit); Test/Production setzen `APP_ENV` und `PROVIDER_MODE` explizit im Overlay.
+- `deploy/production` enthaelt PodDisruptionBudgets fuer `api` und `frontend`, und `docs/PRODUCTION_READINESS.md` sammelt die letzte Produktions-Checkliste inklusive der optionalen Legal-Build-Variablen `VITE_LEGAL_*`.
+- Frontend-Prompt-Debug kann im Produktions-Build nicht mehr per `localStorage` erzwungen werden; Test-Builds aktivieren es ueber `VITE_PROMPT_DEBUG=true`.
 
 ## Wichtige Arbeitsregeln
 

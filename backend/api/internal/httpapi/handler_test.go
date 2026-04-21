@@ -761,7 +761,18 @@ func TestPromptDebugEndpointOnlyWhenEnabled(t *testing.T) {
 		t.Fatalf("expected disabled debug 404, got %d", rec.Code)
 	}
 
+	t.Setenv("APP_ENV", "production")
 	t.Setenv("PROMPT_DEBUG", "true")
+	handler = New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil)
+	req = httptest.NewRequest(http.MethodGet, "/api/debug/prompts/latest", nil)
+	setAuth(repo, req, "user-1")
+	rec = httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("expected production debug 404, got %d", rec.Code)
+	}
+
+	t.Setenv("APP_ENV", "test")
 	handler = New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil)
 	req = httptest.NewRequest(http.MethodPost, "/api/plans", bytes.NewBufferString(`{"weekStart":"2026-04-20"}`))
 	setAuth(repo, req, "user-1")

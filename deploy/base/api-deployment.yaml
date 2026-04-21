@@ -43,6 +43,8 @@ spec:
           ports:
             - containerPort: 3001
           env:
+            - name: APP_ENV
+              value: "development"
             - name: PORT
               value: "3001"
             - name: DATABASE_URL
@@ -128,10 +130,18 @@ spec:
                   name: api-secrets
                   key: APPLE_PRIVATE_KEY
                   optional: true
+            - name: PROVIDER_MODE
+              value: "mock"
             - name: OPENAI_MEAL_MODEL
               value: "gpt-5.4-mini"
-            - name: PROVIDER_MODE
-              value: "live"
+            - name: RATE_LIMIT_REQUESTS_PER_MINUTE
+              value: "20"
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 3001
+            failureThreshold: 30
+            periodSeconds: 2
           readinessProbe:
             httpGet:
               path: /health

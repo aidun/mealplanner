@@ -24,6 +24,12 @@ patches:
       kind: Namespace
       name: mealplanner-test
   - patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/env/0/value
+        value: "test"
+      - op: replace
+        path: /spec/template/spec/containers/0/env/16/value
+        value: "live"
       - op: add
         path: /spec/template/spec/containers/0/env/-
         value:

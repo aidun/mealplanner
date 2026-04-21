@@ -104,6 +104,63 @@ test('planner smoke path', async ({ page, context }) => {
   expect(newPage.url()).toContain('/api/plans/plan-1/bring-export?token=test-token');
 });
 
+test('login and invite acceptance stay on guarded production paths', async ({ page }) => {
+  let authenticated = false;
+  let inviteAccepted = false;
+
+  await page.route('**/api/**', async (route) => {
+    const request = route.request();
+    const url = new URL(request.url());
+    const path = url.pathname;
+    const method = request.method();
+
+    if (path === '/api/session') {
+      return route.fulfill(
+        json(
+          authenticated || inviteAccepted
+            ? { authenticated: true, csrfToken: 'csrf-token-2' }
+            : { authenticated: false }
+        )
+      );
+    }
+    if (path === '/api/auth/providers') {
+      return route.fulfill(json({ providers: [{ id: 'google', name: 'Google', enabled: true, startUrl: '/api/auth/google/start' }] }));
+    }
+    if (path === '/api/family/invites/accept' && method === 'POST') {
+      inviteAccepted = true;
+      return route.fulfill(json({ id: 'family-1', name: 'Familie Weber', memberCount: 2, members: [] }));
+    }
+    if (path === '/api/profile' && method === 'GET') {
+      return route.fulfill(json(createState().profile));
+    }
+    if (path === '/api/family' && method === 'GET') {
+      return route.fulfill(json(createState().family));
+    }
+    if (path === '/api/plans/current' && method === 'GET') {
+      return route.fulfill(json(createState().plan));
+    }
+    if (path === '/api/favorites' && method === 'GET') {
+      return route.fulfill(json(createState().favorites));
+    }
+    if (path === '/api/plans/plan-1/shopping-list' && method === 'GET') {
+      return route.fulfill(json(createState().shoppingList));
+    }
+
+    return route.fulfill({ status: 404, body: '' });
+  });
+
+  await page.goto('/');
+  await expect(page.getByRole('link', { name: 'Mit Google anmelden' })).toBeVisible();
+  await expect(page.getByText('Mealplanner')).toBeVisible();
+
+  authenticated = true;
+  await page.goto('/family/invites/accept?token=invite-token');
+  await page.getByRole('button', { name: 'Einladung annehmen' }).click();
+  await expect(page).toHaveURL(/\/onboarding\?family=joined$/);
+  await expect(page.getByText('Familienkonto pflegen')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Prompt prüfen' })).toHaveCount(0);
+});
+
 function json(body: unknown, status = 200) {
   return {
     status,

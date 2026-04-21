@@ -168,6 +168,10 @@ func New(repo Repository, planner planner.Planner, authService auth.Service, api
 	if logger == nil {
 		logger = slog.Default()
 	}
+	appEnv := strings.ToLower(strings.TrimSpace(getenv("APP_ENV")))
+	if appEnv == "" {
+		appEnv = "development"
+	}
 	h := &Handler{
 		repo:        repo,
 		planner:     planner,
@@ -176,7 +180,7 @@ func New(repo Repository, planner planner.Planner, authService auth.Service, api
 		apiSecret:   strings.TrimSpace(apiSecret),
 		corsOrigins: corsOrigins,
 		logger:      logger,
-		promptDebug: strings.EqualFold(strings.TrimSpace(getenv("PROMPT_DEBUG")), "true"),
+		promptDebug: appEnv == "test" && strings.EqualFold(strings.TrimSpace(getenv("PROMPT_DEBUG")), "true"),
 		rateLimiter: newRateLimiter(rateLimitFromEnv(), time.Minute),
 	}
 	mux := http.NewServeMux()

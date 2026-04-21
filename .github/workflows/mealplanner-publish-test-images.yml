@@ -67,8 +67,10 @@ jobs:
         working-directory: frontend
         run: |
           npm ci
+          npx playwright install --with-deps chromium
           npm run test -- --run
           npm run build
+          npm run test:e2e
 
   verify-manifests:
     name: Verify manifests
@@ -123,6 +125,8 @@ jobs:
           context: frontend
           file: frontend/Dockerfile
           push: true
+          build-args: |
+            VITE_PROMPT_DEBUG=true
           tags: |
             ghcr.io/aidun/mealplanner/frontend:master
             ghcr.io/aidun/mealplanner/frontend:master-${{ steps.meta.outputs.short_sha }}

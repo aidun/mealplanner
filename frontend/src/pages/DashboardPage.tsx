@@ -22,7 +22,10 @@ import {
 import type { FavoriteRecipe, Meal, PromptDebugSnapshot } from '../types';
 
 function promptDebugEnabled() {
-  return import.meta.env.VITE_PROMPT_DEBUG === 'true' || window.localStorage.getItem('mealplanner.promptDebug') === 'true';
+  if (import.meta.env.VITE_PROMPT_DEBUG !== 'true') {
+    return false;
+  }
+  return window.localStorage.getItem('mealplanner.promptDebug') !== 'false';
 }
 
 export function DashboardPage() {

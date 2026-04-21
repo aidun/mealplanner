@@ -132,6 +132,7 @@ function renderApp(initialEntry = '/') {
 
 beforeEach(() => {
   vi.restoreAllMocks();
+  vi.unstubAllEnvs();
   window.localStorage.clear();
   vi.spyOn(window, 'open').mockImplementation(() => null);
   Object.defineProperty(navigator, 'clipboard', {
@@ -265,6 +266,7 @@ function createFetchMock(options: { authenticated?: boolean; familyOverride?: ty
 
 describe('Mealplanner app', () => {
   it('shows the prompt debug overlay in the test environment', async () => {
+    vi.stubEnv('VITE_PROMPT_DEBUG', 'true');
     window.localStorage.setItem('mealplanner.promptDebug', 'true');
     renderApp('/');
 
@@ -769,10 +771,20 @@ describe('Mealplanner app', () => {
     expect(await screen.findByRole('heading', { name: 'Datenschutz' })).toBeInTheDocument();
     expect(screen.getByText('Rechtliches')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Verantwortlicher' })).toBeInTheDocument();
+    expect(screen.getAllByText('Noch nicht hinterlegt').length).toBeGreaterThan(0);
 
     renderApp('/impressum');
 
     expect(await screen.findByRole('heading', { name: 'Impressum' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Anbieterkennzeichnung' })).toBeInTheDocument();
+  });
+
+  it('does not expose prompt debug from local storage in production builds', async () => {
+    vi.stubEnv('VITE_PROMPT_DEBUG', 'false');
+    window.localStorage.setItem('mealplanner.promptDebug', 'true');
+    renderApp('/');
+
+    expect(await screen.findByText('Planen, auswählen, kochen.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Prompt prüfen' })).not.toBeInTheDocument();
   });
 });
