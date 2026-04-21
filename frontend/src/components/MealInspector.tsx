@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { Meal } from '../types';
-import { formatNutritionPerPortion } from '../lib/format';
+import { formatNutrition, formatNutritionPerPortion, scaleNutrition } from '../lib/format';
 import { BringLink } from './BringLink';
 
 interface MealInspectorProps {
@@ -100,7 +100,7 @@ export function MealInspector({
       <div className="inspector-summary-grid">
         <div className="inspector-summary-card">
           <strong>{formatNutritionPerPortion(meal.nutrition) || 'Keine Angaben'}</strong>
-          <span>Nährwerte pro Portion</span>
+          <span>{hasUnevenServings(meal) ? 'Basisportion' : 'Naehrwerte pro Portion'}</span>
         </div>
         <div className="inspector-summary-card">
           <strong>{meal.ingredients.length}</strong>
@@ -156,6 +156,7 @@ export function MealInspector({
                   <strong>{serving.name || serving.memberId}</strong>
                   {serving.portion ? ` · ${serving.portion}` : ''}
                   {serving.factor && serving.factor !== 1 ? ` · Faktor ${serving.factor}` : ''}
+                  {scaledNutritionLabel(meal, serving.factor) ? ` · ${scaledNutritionLabel(meal, serving.factor)}` : ''}
                 </li>
               ))}
             </ul>
@@ -204,4 +205,13 @@ function hasUnevenServings(meal: Meal) {
   if (meal.servings.length < 2) return false;
   const first = meal.servings[0]?.factor ?? 1;
   return meal.servings.some((serving) => Math.abs((serving.factor ?? 1) - first) > 0.001);
+}
+
+function scaledNutritionLabel(meal: Meal, factor?: number) {
+  const safeFactor = factor && factor > 0 ? factor : 1;
+  if (Math.abs(safeFactor - 1) < 0.001) {
+    return '';
+  }
+  const scaled = scaleNutrition(meal.nutrition, safeFactor);
+  return formatNutrition(scaled);
 }

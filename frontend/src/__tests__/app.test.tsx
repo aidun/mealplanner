@@ -362,6 +362,7 @@ describe('Mealplanner app', () => {
     );
     expect(screen.getAllByText(/pro Portion/).length).toBeGreaterThan(0);
     expect(screen.getByText('Die Aufteilung ist nicht gleichmäßig. Nährwerte beziehen sich auf die angegebene Portion.')).toBeInTheDocument();
+    expect(screen.getByText(/392 kcal/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Liste kopieren' })).toBeInTheDocument();
     expect(screen.getByText('1 Artikel · 1 Bereiche')).toBeInTheDocument();
     expect(screen.getByText('Zucchini')).toBeInTheDocument();

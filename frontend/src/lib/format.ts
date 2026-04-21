@@ -36,3 +36,15 @@ export function formatNutritionPerPortion(nutrition?: Nutrition) {
   const value = formatNutrition(nutrition);
   return value ? `${value} pro Portion` : '';
 }
+
+export function scaleNutrition(nutrition: Nutrition | undefined, factor = 1): Nutrition | undefined {
+  if (!nutrition) return undefined;
+  const safeFactor = Number.isFinite(factor) && factor > 0 ? factor : 1;
+  return {
+    calories: Math.round((nutrition.calories ?? 0) * safeFactor),
+    proteinG: Math.round((nutrition.proteinG ?? 0) * safeFactor),
+    carbsG: Math.round((nutrition.carbsG ?? 0) * safeFactor),
+    fatG: Math.round((nutrition.fatG ?? 0) * safeFactor),
+    fiberG: Math.round((nutrition.fiberG ?? 0) * safeFactor),
+  };
+}
