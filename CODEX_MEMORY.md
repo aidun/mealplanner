@@ -6,6 +6,8 @@ Last updated: 2026-04-21
 
 - Familien-Webapp fuer Wochen-Essensplaene mit Go-API, React/Vite-Frontend und Cluster-Deployments unter `deploy/`.
 - Produktiver Zugang laeuft ueber `https://mealplanner.markushartmann.dev`.
+- `AGENTS.md` definiert seit 2026-04-21 ein festes Agententeam fuer nicht-triviale Arbeit: Lead Engineer, Product & UX Designer, Frontend Engineer, Backend & AI Engineer, Platform & Release Engineer, Security & Privacy Engineer, QA & E2E Engineer, Review Gate, Docs & Ops Writer sowie Data & Admin Insights.
+- Default-Orchestrierung fuer dieses Repo: nicht-triviale Arbeit laeuft standardmaessig ueber das feste Team; kleine Aenderungen duerfen beim Lead bleiben, aber QA und Review Gate bleiben Pflicht vor Test-Rollout.
 - Das Frontend hat seit 2026-04-21 ein gestrafftes UI-System fuer Dashboard/Meal-Workspace: ruhigeres Header-Layout, staerkere Wochenflaeche, dichteres MealBoard, klarere Inspector-Zusammenfassung, sichtbare Bring-Labels und 44px-Touch-Ziele fuer zentrale Aktionen; Desktop- und Mobile-Viewport wurden zusaetzlich per Playwright-Mockfluss auf Overflow und Pane-Wechsel geprueft.
 - Test/LAN-Zugang nutzt aktuell `192.168.2.204` plus Cloudflare Tunnel.
 - Testumgebung aktiviert `PROMPT_DEBUG=true` und liefert unter `/api/debug/prompts/latest` den letzten Prompt, eine kurze Historie sowie aggregierte OpenAI-Request-/Token-Metriken fuer das Overlay.
