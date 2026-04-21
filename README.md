@@ -38,6 +38,10 @@ Der Test-Overlay nutzt weiterhin `192.168.2.204` im LAN und zusaetzlich Cloudfla
 `api-secrets.OPENAI_API_KEY` auf einen echten Wert gesetzt ist. Platzhalter wie
 `__set_openai_api_key__` werden vom Backend abgelehnt.
 
+Fuer Segmentierung, SealedSecrets, Secret-Monitoring und die zugehoerigen Cluster-Konventionen
+ist `/Users/markus/repo/clustermanager/docs/security/README.md` die verbindliche Einstiegsstelle.
+Dieses Repo beschreibt die App, nicht die clusterweite Security-Baseline.
+
 ## Qualitaets-Gates
 
 ```sh
