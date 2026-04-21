@@ -28,7 +28,8 @@ Breaking Changes muessen vorab angekuendigt werden.
 - Der Namespace wird auf `security.aidun.dev/segmentation=planned` gehalten.
 - Workloads tragen `security.aidun.dev/owner=mealplanner`.
 - Baseline-NetworkPolicies tragen `security.aidun.dev/baseline=true`.
-- Aktuell sind nur explizite Ingress-Flows abgesichert. Namespace-weites Default-Deny und Egress-Allowlisting folgen in einem separaten Change, damit DNS, OpenAI, Google OIDC, Resend, Bring, Cloudflare Tunnel und Monitoring nicht unbeabsichtigt brechen.
+- Phase 2 fuehrt Namespace-weites Default-Deny fuer Ingress und Egress ein.
+- Erlaubt bleiben nur die expliziten Flows fuer `entrypoint`, `api`, `frontend`, `postgres`, `cloudflared`, `weekly-plan`, `database-bootstrap`, DNS, Monitoring und benoetigte Internet-Egress-Pfade.
 
 ### Secret-Klassifizierung
 
@@ -76,6 +77,22 @@ Aktueller Zielzustand fuer `mealplanner-test` und spaeter `mealplanner`:
 
 - Phase 1 schafft Sichtbarkeit und Klassifizierung, aber noch keine vollstaendige erzwungene Segmentierung.
 - Solange `security.aidun.dev/segmentation=planned` gilt, ist der Namespace gehaertet, aber nicht im Zielbild der Cluster-Baseline angekommen.
+
+## Erlaubte Netzwerkfluesse ab Phase 2
+
+- Ingress von beliebigen Quellen nur auf `entrypoint` Ports `8000` und `8443`
+- `entrypoint` -> `api:3001`
+- `entrypoint` -> `frontend:80`
+- `weekly-plan` -> `api:3001`
+- `api` -> `postgres:5432`
+- `monitoring` -> `api:3001`
+- `monitoring` -> `cloudflared:2000`
+- `api`, `entrypoint`, `cloudflared`, `weekly-plan`, `database-bootstrap` -> DNS (`kube-dns:53`)
+- `api` -> Internet `443/tcp` fuer OpenAI, Google OIDC, Resend und spaetere Apple-Flows
+- `entrypoint` -> Internet `443/tcp` fuer ACME/DNS-Challenge
+- `cloudflared` -> `entrypoint:8443`
+- `cloudflared` -> Internet `443/tcp`, `7844/tcp`, `7844/udp`
+- `database-bootstrap` -> Kubernetes API ueber `443/tcp` und `6443/tcp`
 
 ## Security Checks
 

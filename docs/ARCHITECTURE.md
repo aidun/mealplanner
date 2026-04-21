@@ -226,6 +226,7 @@ flowchart LR
 - Namespace-Segmentierung aktuell auf `security.aidun.dev/segmentation=planned`
 - Workloads tragen `security.aidun.dev/owner=mealplanner`
 - Baseline-NetworkPolicies sind mit `security.aidun.dev/baseline=true` markiert
+- Default-Deny fuer Ingress und Egress wird ueber Namespace-weite NetworkPolicies umgesetzt; erlaubte Flows sind in [security.md](/Users/markus/repo/mealplanner/docs/security.md) dokumentiert
 - Laufzeit-Secrets werden aktuell als `live-only` klassifiziert; `SealedSecret`-Migration ist vorbereitet, aber noch nicht umgesetzt
 - NetworkPolicies:
   - [deploy/base/network-policy.yaml](/Users/markus/repo/mealplanner/deploy/base/network-policy.yaml)

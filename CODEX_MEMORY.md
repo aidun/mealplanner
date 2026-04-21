@@ -29,6 +29,7 @@ Last updated: 2026-04-21
 - Test-Deployments aktivieren Mail jetzt standardmaessig ueber `EMAIL_ENABLED=true` und `EMAIL_PROVIDER=resend`; fuer echte Zustellung werden weiterhin ein gueltiger `RESEND_API_KEY` und eine bei Resend verifizierte Sender-Domain fuer `markushartmann.dev` benoetigt.
 - Seit 2026-04-21 gibt es eine zentrale Architekturseite unter `docs/ARCHITECTURE.md`, die Frontend, API, Postgres, Traefik/Entrypoint, Cloudflare Tunnel, OpenAI, Google OIDC, Resend, Bring, Monitoring, GitOps und Umgebungen zusammenfasst.
 - Seit 2026-04-21 ist Phase 1 der Cluster-Security-Anpassung im Repo verankert: Namespace-Segmentierung bleibt `planned`, Workloads tragen `security.aidun.dev/owner=mealplanner`, Baseline-NetworkPolicies sind markiert und App-Secrets werden als `live-only` klassifiziert und im Bootstrap nachgelabelt.
+- Seit 2026-04-21 ist Phase 2 der Namespace-Segmentierung im Repo umgesetzt: Default-Deny fuer Ingress und Egress plus explizite Allow-Policies fuer `entrypoint`, `api`, `frontend`, `postgres`, `cloudflared`, `weekly-plan`, `database-bootstrap`, Monitoring, DNS und benoetigte Internet-Egress-Flows.
 
 ## Wichtige Arbeitsregeln
 
