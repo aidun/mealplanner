@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { Header } from '../components/Header';
+import { RefreshIcon, SparkIcon, UserIcon, CheckIcon } from '../components/icons';
 import { MealBoard } from '../components/MealBoard';
 import { MealInspector } from '../components/MealInspector';
 import { PlanBackdrop } from '../components/PlanBackdrop';
@@ -218,9 +219,11 @@ export function DashboardPage() {
               onClick={() => createPlanMutation.mutate()}
               disabled={createPlanMutation.isPending}
             >
-              {createPlanMutation.isPending ? 'Woche entsteht' : 'Woche planen'}
+              <CheckIcon className="action-icon" />
+              {createPlanMutation.isPending ? 'Wochenplan wird erstellt' : 'Wochenplan erstellen'}
             </button>
             <Link to="/onboarding" className="button button-secondary">
+              <UserIcon className="action-icon" />
               Profil
             </Link>
           </div>
@@ -347,6 +350,7 @@ function PromptDebugOverlay({
   return (
     <div className="prompt-debug">
       <button type="button" className="button button-secondary" onClick={() => setOpen((value) => !value)}>
+        <SparkIcon className="action-icon" />
         Prompt prüfen
       </button>
       {open ? (
@@ -356,8 +360,8 @@ function PromptDebugOverlay({
               <span className="eyebrow">Testmodus</span>
               <h2>{latest?.operation ?? 'Prompt'}</h2>
             </div>
-            <button type="button" className="button button-secondary compact-action" onClick={onRefresh}>
-              Aktualisieren
+            <button type="button" className="icon-button" onClick={onRefresh} aria-label="Prompt-Daten aktualisieren" title="Prompt-Daten aktualisieren">
+              <RefreshIcon className="action-icon" />
             </button>
           </div>
           {latest ? (

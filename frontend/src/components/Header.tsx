@@ -1,5 +1,6 @@
 import { Link, NavLink } from 'react-router-dom';
 import { AppLogo } from './AppLogo';
+import { LogoutIcon, PlusIcon, UserIcon } from './icons';
 import { formatWeekRange } from '../lib/format';
 
 interface HeaderProps {
@@ -35,13 +36,16 @@ export function Header({
 
       <nav className="header-actions" aria-label="Primäre Aktionen">
         <NavLink to="/onboarding" className="button button-secondary">
+          <UserIcon className="action-icon" />
           Profil
         </NavLink>
         <button type="button" className="button button-primary" onClick={onCreatePlan} disabled={creatingPlan}>
-          {creatingPlan ? 'Wird gekocht' : 'Neue Woche'}
+          <PlusIcon className="action-icon" />
+          {creatingPlan ? 'Wochenplan wird erstellt' : 'Wochenplan erstellen'}
         </button>
         <button type="button" className="button button-secondary" onClick={onLogout} disabled={loggingOut}>
-          {loggingOut ? 'Logout läuft' : 'Logout'}
+          <LogoutIcon className="action-icon" />
+          {loggingOut ? 'Abmeldung läuft' : 'Abmelden'}
         </button>
       </nav>
     </header>

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AppLogo } from '../components/AppLogo';
-import { HeartIcon } from '../components/icons';
+import { CheckIcon, CopyIcon, HeartIcon, MailIcon, PlusIcon, SaveIcon, TrashIcon } from '../components/icons';
 import {
   createFamilyInvite,
   deleteFavorite,
@@ -155,6 +155,7 @@ export function OnboardingPage() {
   const linkedAccountsCount = linkedMembers.filter((account) => account.linkedMemberId).length;
   const unassignedAccountsCount = linkedMembers.filter((account) => account.unassigned).length;
   const favorites = favoritesQuery.data ?? [];
+  const inviteSentByEmail = Boolean((inviteMutation.data as { emailSent?: boolean } | undefined)?.emailSent);
 
   const statusMessage = useMemo(() => {
     if (saveMutation.isPending) return 'Profil wird gespeichert.';
@@ -291,10 +292,12 @@ export function OnboardingPage() {
                         {form.members.length > 1 ? (
                           <button
                             type="button"
-                            className="button button-secondary compact-action"
+                            className="icon-button"
                             onClick={() => removeMember(index)}
+                            aria-label={`${member.alias.trim() || member.name.trim() || `Mitglied ${index + 1}`} entfernen`}
+                            title="Mitglied entfernen"
                           >
-                            Entfernen
+                            <TrashIcon className="action-icon" />
                           </button>
                         ) : null}
                       </div>
@@ -378,6 +381,7 @@ export function OnboardingPage() {
 
                 <div className="member-editor-actions">
                   <button type="button" className="button button-secondary" onClick={addMember}>
+                    <PlusIcon className="action-icon" />
                     Mitglied hinzufügen
                   </button>
                 </div>
@@ -399,7 +403,7 @@ export function OnboardingPage() {
               <div className="profile-section-copy">
                 <span className="section-index">02</span>
                 <h2 id="family-section">Familienkonto</h2>
-                <p>Login-Mails sichtbar halten, Accounts zuordnen und Einladungen teilen.</p>
+                <p>Login-Mails sichtbar halten, Accounts zuordnen und Einladungen versenden.</p>
               </div>
               <div className="profile-section-fields">
                 <div className="family-overview" aria-label="Familienkonto Übersicht">
@@ -625,11 +629,13 @@ export function OnboardingPage() {
                         </div>
                         <button
                           type="button"
-                          className="button button-secondary compact-action"
+                          className="icon-button"
                           onClick={() => deleteFavoriteMutation.mutate(favorite.id)}
                           disabled={deleteFavoriteMutation.isPending}
+                          aria-label={`${favorite.meal.title} aus Favoriten entfernen`}
+                          title="Favorit entfernen"
                         >
-                          Entfernen
+                          <TrashIcon className="action-icon" />
                         </button>
                       </article>
                     ))}
@@ -667,7 +673,8 @@ export function OnboardingPage() {
                   onClick={() => inviteMutation.mutate(inviteEmail)}
                   disabled={inviteMutation.isPending || inviteEmail.trim() === ''}
                 >
-                  {inviteMutation.isPending ? 'Einladung entsteht' : 'Einladungslink erstellen'}
+                  <MailIcon className="action-icon" />
+                  {inviteMutation.isPending ? 'Einladung wird per E-Mail versendet' : 'Einladung per E-Mail senden'}
                 </button>
                 {inviteMutation.data?.inviteLink ? (
                   <div className="invite-result">
@@ -675,7 +682,7 @@ export function OnboardingPage() {
                     <a href={inviteMutation.data.inviteLink}>{inviteMutation.data.inviteLink}</a>
                     <button
                       type="button"
-                      className="button button-secondary compact-action"
+                      className={`icon-button${inviteCopyState === 'copied' ? ' icon-button-active' : ''}`}
                       onClick={async () => {
                         try {
                           await navigator.clipboard.writeText(inviteMutation.data!.inviteLink);
@@ -684,9 +691,16 @@ export function OnboardingPage() {
                           setInviteCopyState('failed');
                         }
                       }}
+                      aria-label={inviteCopyState === 'copied' ? 'Einladungslink kopiert' : 'Einladungslink kopieren'}
+                      title={inviteCopyState === 'copied' ? 'Einladungslink kopiert' : 'Einladungslink kopieren'}
                     >
-                      {inviteCopyState === 'copied' ? 'Link kopiert' : 'Link kopieren'}
+                      {inviteCopyState === 'copied' ? <CheckIcon className="action-icon" /> : <CopyIcon className="action-icon" />}
                     </button>
+                    <p>
+                      {inviteSentByEmail
+                        ? 'Die Einladung wurde per E-Mail verschickt und kann bei Bedarf auch direkt geteilt werden.'
+                        : 'Der Link ist bereit. Die E-Mail konnte gerade nicht verschickt werden.'}
+                    </p>
                     <p>{inviteMutation.data.warningText}</p>
                     {inviteCopyState === 'failed' ? <p className="error-copy">Link konnte nicht kopiert werden.</p> : null}
                   </div>
@@ -701,6 +715,7 @@ export function OnboardingPage() {
                 <p>Aliase und Profilzuordnungen werden in zukünftigen Prompts wiederverwendet.</p>
               </div>
               <button type="submit" className="button button-primary" disabled={saveMutation.isPending}>
+                <SaveIcon className="action-icon" />
                 {saveMutation.isPending ? 'Profil wird gespeichert' : 'Profil speichern'}
               </button>
             </div>

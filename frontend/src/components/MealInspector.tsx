@@ -70,11 +70,13 @@ export function MealInspector({
         <div className="surface-actions">
           <button
             type="button"
-            className={`button button-secondary compact-action action-pill${showSelectionReason ? ' action-pill-active' : ''}`}
+            className={`icon-button${showSelectionReason ? ' icon-button-active' : ''}`}
             onClick={() => setShowSelectionReason((current) => !current)}
+            aria-pressed={showSelectionReason}
+            aria-label="Warum ausgewählt anzeigen"
+            title="Warum ausgewählt anzeigen"
           >
-            <SparkIcon className="pill-icon" />
-            Warum ausgewählt
+            <SparkIcon className="action-icon" />
           </button>
           <BringLink
             planId={planId}
@@ -241,7 +243,7 @@ export function MealInspector({
             aria-label="Gericht austauschen"
           >
             <RefreshIcon className="pill-icon" />
-            {isRegenerating ? 'Wir suchen ein anderes Gericht' : 'Neu generieren'}
+            {isRegenerating ? 'Gericht wird neu generiert' : 'Gericht neu generieren'}
           </button>
         </section>
       </div>

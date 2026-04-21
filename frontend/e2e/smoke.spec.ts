@@ -157,7 +157,7 @@ test('login and invite acceptance stay on guarded production paths', async ({ pa
 
   authenticated = true;
   await page.goto('/family/invites/accept?token=invite-token');
-  await page.getByRole('button', { name: 'Einladung annehmen' }).click();
+  await page.getByRole('button', { name: 'Familienkonto beitreten' }).click();
   await expect(page).toHaveURL(/\/onboarding\?family=joined$/);
   await expect(page.getByText('Familienkonto pflegen')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Prompt prüfen' })).toHaveCount(0);

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { BringLink } from './BringLink';
 import type { ShoppingList, ShoppingListItem } from '../types';
-import { ShieldIcon } from './icons';
+import { ChevronDownIcon, ChevronUpIcon, ShieldIcon } from './icons';
 
 interface ShoppingListPanelProps {
   planId?: string;
@@ -76,7 +76,9 @@ export function ShoppingListPanel({ planId, shoppingList, loading }: ShoppingLis
               type="button"
               className="button button-secondary shopping-toggle"
               onClick={() => setExpanded((current) => !current)}
+              aria-expanded={expanded}
             >
+              {expanded ? <ChevronUpIcon className="action-icon" /> : <ChevronDownIcon className="action-icon" />}
               {expanded ? 'Liste einklappen' : 'Liste aufklappen'}
             </button>
           </div>
