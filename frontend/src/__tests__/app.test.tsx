@@ -197,6 +197,7 @@ function createFetchMock(options: { authenticated?: boolean; familyOverride?: ty
         JSON.stringify({
           id: 'invite-1',
           inviteLink: 'https://mealplanner.test/family/invites/accept?token=invite-token',
+          emailSent: true,
           expiresAt: '2026-04-28T00:00:00Z',
           warningText: 'Der persönliche Account geht im Familienkonto auf.',
         }),
@@ -369,7 +370,7 @@ describe('Mealplanner app', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Rezeptkontext anzeigen' }));
     expect(screen.getByText(/wurde aus eurer Favoriten-Sammlung wieder aufgegriffen/i)).toBeInTheDocument();
     expect(screen.getByText(/Herkunft:/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Warum ausgewählt' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Warum ausgewählt anzeigen' }));
     expect(screen.getByText(/Es wurde aus eurer gespeicherten Sammlung wieder aufgenommen./)).toBeInTheDocument();
     expect(await screen.findByText('Einkaufsliste')).toBeInTheDocument();
     expect(await screen.findByRole('link', { name: 'Woche zu Bring' })).toBeInTheDocument();
@@ -435,7 +436,7 @@ describe('Mealplanner app', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Favoriten' }));
     expect(await screen.findByText(/1 gespeicherte Rezepte|gespeicherte Rezepte/)).toBeInTheDocument();
     expect(screen.getByText('Beeren-Porridge')).toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: 'Entfernen' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('button', { name: /entfernen/i }).length).toBeGreaterThan(0);
   });
 
   it('keeps the weekly Bring link stable when shopping list contents change', async () => {
@@ -541,7 +542,7 @@ describe('Mealplanner app', () => {
     fireEvent.change(screen.getByLabelText('E-Mail-Adresse für Einladung'), {
       target: { value: 'person@example.test' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Einladungslink erstellen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Einladung per E-Mail senden' }));
 
     await waitFor(() => {
       expect(fetch).toHaveBeenCalledWith(
@@ -554,6 +555,7 @@ describe('Mealplanner app', () => {
       );
     });
     expect(await screen.findByText('https://mealplanner.test/family/invites/accept?token=invite-token')).toBeInTheDocument();
+    expect(screen.getByText(/Die Einladung wurde per E-Mail verschickt/i)).toBeInTheDocument();
     expect(screen.getByText(/persönliche Account geht im Familienkonto auf/i)).toBeInTheDocument();
     expect(screen.getAllByText('anna@example.test').length).toBeGreaterThan(0);
     expect(screen.getAllByDisplayValue('Mama').length).toBeGreaterThan(0);
@@ -601,21 +603,21 @@ describe('Mealplanner app', () => {
     fireEvent.change(await screen.findByLabelText('E-Mail-Adresse für Einladung'), {
       target: { value: 'person@example.test' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Einladungslink erstellen' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Link kopieren' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Einladung per E-Mail senden' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Einladungslink kopieren' }));
 
     await waitFor(() => {
       expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
         'https://mealplanner.test/family/invites/accept?token=invite-token'
       );
     });
-    expect(screen.getByRole('button', { name: 'Link kopiert' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Einladungslink kopiert' })).toBeInTheDocument();
   });
 
   it('accepts an invite and lands on the merged family profile', async () => {
     renderApp('/family/invites/accept?token=invite-token');
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Einladung annehmen' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Familienkonto beitreten' }));
 
     expect(await screen.findByText(/Familienkonto aktiv\./)).toBeInTheDocument();
     expect(await screen.findByText('Familienkonto pflegen')).toBeInTheDocument();
@@ -646,7 +648,7 @@ describe('Mealplanner app', () => {
 
     renderApp('/');
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Woche planen' }));
+    fireEvent.click((await screen.findAllByRole('button', { name: 'Wochenplan erstellen' }))[0]!);
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Das hat gerade nicht geklappt. Bitte versuche es erneut. Fehler-ID: req-123'
@@ -678,7 +680,7 @@ describe('Mealplanner app', () => {
   it('covers the main planner smoke path', async () => {
     renderApp('/');
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Woche planen' }));
+    fireEvent.click((await screen.findAllByRole('button', { name: 'Wochenplan erstellen' }))[0]!);
     await screen.findByRole('button', { name: /Pasta mit Gemüse/ });
 
     fireEvent.click(screen.getByRole('button', { name: /Pasta mit Gemüse/ }));
@@ -705,7 +707,7 @@ describe('Mealplanner app', () => {
   it('logs out and returns to the login page', async () => {
     renderApp('/');
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Logout' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Abmelden' }));
 
     await waitFor(() => {
       expect(fetch).toHaveBeenCalledWith(
@@ -750,7 +752,7 @@ describe('Mealplanner app', () => {
 
     renderApp('/');
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Logout' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Abmelden' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Logout gerade nicht möglich');
     expect(screen.getByText('Planen, auswählen, kochen.')).toBeInTheDocument();

@@ -63,6 +63,11 @@ data:
       kubectl create secret generic api-secrets \
         --from-literal=API_SECRET="${api_secret}" \
         --from-literal=OPENAI_API_KEY="${openai_api_key}" \
+        --from-literal=EMAIL_ENABLED="${EMAIL_ENABLED_PLACEHOLDER:-false}" \
+        --from-literal=EMAIL_PROVIDER="${EMAIL_PROVIDER_PLACEHOLDER:-noop}" \
+        --from-literal=EMAIL_FROM="${EMAIL_FROM_PLACEHOLDER:-info@markushartmann.dev}" \
+        --from-literal=EMAIL_REPLY_TO="${EMAIL_REPLY_TO_PLACEHOLDER:-info@markushartmann.dev}" \
+        --from-literal=RESEND_API_KEY="${RESEND_API_KEY_PLACEHOLDER:-}" \
         --from-literal=AUTH_BASE_URL="${AUTH_BASE_URL_PLACEHOLDER:-__set_https_auth_base_url__}" \
         --from-literal=SESSION_SECRET="${SESSION_SECRET_PLACEHOLDER:-__set_random_session_secret_min_32_bytes__}" \
         --from-literal=AUTH_ALLOWED_SUBJECT_HASHES="${AUTH_ALLOWED_SUBJECT_HASHES_PLACEHOLDER:-__set_allowed_subject_hashes__}" \
@@ -78,6 +83,11 @@ data:
     ensure_api_secret_key AUTH_BASE_URL "${AUTH_BASE_URL_PLACEHOLDER:-__set_https_auth_base_url__}"
     ensure_api_secret_key API_SECRET "${API_SECRET_PLACEHOLDER:-__set_api_secret__}"
     ensure_api_secret_key OPENAI_API_KEY "${OPENAI_API_KEY_PLACEHOLDER:-__set_openai_api_key__}"
+    ensure_api_secret_key EMAIL_ENABLED "${EMAIL_ENABLED_PLACEHOLDER:-false}"
+    ensure_api_secret_key EMAIL_PROVIDER "${EMAIL_PROVIDER_PLACEHOLDER:-noop}"
+    ensure_api_secret_key EMAIL_FROM "${EMAIL_FROM_PLACEHOLDER:-info@markushartmann.dev}"
+    ensure_api_secret_key EMAIL_REPLY_TO "${EMAIL_REPLY_TO_PLACEHOLDER:-info@markushartmann.dev}"
+    ensure_api_secret_key RESEND_API_KEY "${RESEND_API_KEY_PLACEHOLDER:-}"
     ensure_api_secret_key SESSION_SECRET "${SESSION_SECRET_PLACEHOLDER:-__set_random_session_secret_min_32_bytes__}"
     ensure_api_secret_key AUTH_ALLOWED_SUBJECT_HASHES "${AUTH_ALLOWED_SUBJECT_HASHES_PLACEHOLDER:-__set_allowed_subject_hashes__}"
     ensure_api_secret_key AUTH_ALLOWED_EMAIL_HASHES "${AUTH_ALLOWED_EMAIL_HASHES_PLACEHOLDER:-}"

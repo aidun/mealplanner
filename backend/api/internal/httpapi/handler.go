@@ -18,6 +18,7 @@ import (
 
 	"github.com/aidun/mealplanner/backend/api/internal/auth"
 	"github.com/aidun/mealplanner/backend/api/internal/domain"
+	"github.com/aidun/mealplanner/backend/api/internal/mailer"
 	"github.com/aidun/mealplanner/backend/api/internal/planner"
 	"github.com/aidun/mealplanner/backend/api/internal/provider"
 	"github.com/aidun/mealplanner/backend/api/internal/store"
@@ -158,15 +159,19 @@ type Handler struct {
 	apiSecret   string
 	corsOrigins []string
 	logger      *slog.Logger
+	mailer      mailer.Mailer
 	promptDebug bool
 	rateLimiter *rateLimiter
 }
 
 const maxJSONBodyBytes = 1 << 20
 
-func New(repo Repository, planner planner.Planner, authService auth.Service, apiSecret string, corsOrigins []string, logger *slog.Logger) http.Handler {
+func New(repo Repository, planner planner.Planner, authService auth.Service, apiSecret string, corsOrigins []string, logger *slog.Logger, appMailer mailer.Mailer) http.Handler {
 	if logger == nil {
 		logger = slog.Default()
+	}
+	if appMailer == nil {
+		appMailer = mailer.Noop{}
 	}
 	appEnv := strings.ToLower(strings.TrimSpace(getenv("APP_ENV")))
 	if appEnv == "" {
@@ -180,6 +185,7 @@ func New(repo Repository, planner planner.Planner, authService auth.Service, api
 		apiSecret:   strings.TrimSpace(apiSecret),
 		corsOrigins: corsOrigins,
 		logger:      logger,
+		mailer:      appMailer,
 		promptDebug: appEnv == "test" && strings.EqualFold(strings.TrimSpace(getenv("PROMPT_DEBUG")), "true"),
 		rateLimiter: newRateLimiter(rateLimitFromEnv(), time.Minute),
 	}
@@ -269,12 +275,28 @@ func (h *Handler) createFamilyInvite(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "Bitte gib eine E-Mail-Adresse an.")
 		return
 	}
+	family, err := h.repo.GetFamily(r)
+	if err != nil {
+		h.serverError(w, r, err)
+		return
+	}
 	invite, token, err := h.repo.CreateFamilyInvite(r, emailHash, 7*24*time.Hour)
 	if err != nil {
 		h.serverError(w, r, err)
 		return
 	}
 	invite.InviteLink = h.absoluteRequestURL(r, "/family/invites/accept").String() + "?token=" + token
+	if err := h.mailer.SendInviteEmail(r.Context(), mailer.InviteEmail{
+		To:           strings.TrimSpace(req.Email),
+		FamilyName:   family.Name,
+		InviteLink:   invite.InviteLink,
+		WarningText:  invite.WarningText,
+		SupportEmail: "info@markushartmann.dev",
+	}); err != nil {
+		h.logger.Error("invite email failed", "family_id", family.ID, "email", strings.TrimSpace(req.Email), "error", err)
+	} else {
+		invite.EmailSent = true
+	}
 	writeJSON(w, http.StatusCreated, invite)
 }
 
@@ -511,8 +533,15 @@ func (h *Handler) createPlansForAllUsers(w http.ResponseWriter, r *http.Request)
 	}
 	var created []string
 	var failures []map[string]string
+	var emailFailures []map[string]string
+	emailsSent := 0
 	for _, userID := range userIDs {
 		req := withUserID(r, userID)
+		family, err := h.repo.GetFamily(req)
+		if err != nil {
+			failures = append(failures, map[string]string{"userID": userID, "error": err.Error()})
+			continue
+		}
 		profile, err := h.repo.GetProfile(req)
 		if err != nil {
 			failures = append(failures, map[string]string{"userID": userID, "error": err.Error()})
@@ -534,15 +563,47 @@ func (h *Handler) createPlansForAllUsers(w http.ResponseWriter, r *http.Request)
 			continue
 		}
 		created = append(created, saved.ID)
+		planURL := h.absoluteRequestURL(req, "/").String()
+		seenEmails := map[string]struct{}{}
+		for _, account := range family.Accounts {
+			email := strings.TrimSpace(account.Email)
+			if email == "" {
+				continue
+			}
+			normalized := strings.ToLower(email)
+			if _, ok := seenEmails[normalized]; ok {
+				continue
+			}
+			seenEmails[normalized] = struct{}{}
+			if err := h.mailer.SendWeeklyPlanReadyEmail(req.Context(), mailer.WeeklyPlanReadyEmail{
+				To:           email,
+				FamilyName:   family.Name,
+				WeekStart:    saved.WeekStart,
+				PlanURL:      planURL,
+				SupportEmail: "info@markushartmann.dev",
+			}); err != nil {
+				h.logger.Error("weekly plan email failed", "family_id", family.ID, "user_id", userID, "email", email, "error", err)
+				emailFailures = append(emailFailures, map[string]string{
+					"userID":   userID,
+					"familyID": family.ID,
+					"email":    email,
+					"error":    err.Error(),
+				})
+				continue
+			}
+			emailsSent++
+		}
 	}
 	status := http.StatusCreated
-	if len(failures) > 0 {
+	if len(failures) > 0 || len(emailFailures) > 0 {
 		status = http.StatusMultiStatus
 	}
 	writeJSON(w, status, map[string]any{
-		"created":  created,
-		"failures": failures,
-		"users":    len(userIDs),
+		"created":       created,
+		"failures":      failures,
+		"users":         len(userIDs),
+		"emailsSent":    emailsSent,
+		"emailFailures": emailFailures,
 	})
 }
 

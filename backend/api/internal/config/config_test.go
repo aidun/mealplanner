@@ -34,6 +34,9 @@ func TestLoadTrimsAndDefaults(t *testing.T) {
 	if !reflect.DeepEqual(cfg.AuthAllowedEmailHashes, []string{"hash-1", "hash-2"}) {
 		t.Fatalf("unexpected email hashes: %#v", cfg.AuthAllowedEmailHashes)
 	}
+	if cfg.EmailEnabled || cfg.EmailProvider != "noop" {
+		t.Fatalf("unexpected email defaults: enabled=%v provider=%q", cfg.EmailEnabled, cfg.EmailProvider)
+	}
 }
 
 func TestLoadRequiresDatabaseURL(t *testing.T) {
@@ -67,5 +70,32 @@ func TestLoadRejectsPromptlyWhenProductionConfigIsIncomplete(t *testing.T) {
 
 	if _, err := Load(); err == nil {
 		t.Fatal("expected production validation error")
+	}
+}
+
+func TestLoadRequiresEmailConfigWhenEnabled(t *testing.T) {
+	t.Setenv("DATABASE_URL", "postgres://example")
+	t.Setenv("EMAIL_ENABLED", "true")
+	t.Setenv("EMAIL_PROVIDER", "resend")
+
+	if _, err := Load(); err == nil {
+		t.Fatal("expected email validation error")
+	}
+}
+
+func TestLoadAcceptsConfiguredResendMailer(t *testing.T) {
+	t.Setenv("DATABASE_URL", "postgres://example")
+	t.Setenv("EMAIL_ENABLED", "true")
+	t.Setenv("EMAIL_PROVIDER", "resend")
+	t.Setenv("EMAIL_FROM", "info@markushartmann.dev")
+	t.Setenv("EMAIL_REPLY_TO", "info@markushartmann.dev")
+	t.Setenv("RESEND_API_KEY", "re_test_key")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.EmailEnabled || cfg.EmailProvider != "resend" {
+		t.Fatalf("unexpected email config: %+v", cfg)
 	}
 }

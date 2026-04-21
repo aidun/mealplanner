@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"bytes"
+	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/aidun/mealplanner/backend/api/internal/auth"
 	"github.com/aidun/mealplanner/backend/api/internal/domain"
+	"github.com/aidun/mealplanner/backend/api/internal/mailer"
 	"github.com/aidun/mealplanner/backend/api/internal/planner"
 	"github.com/aidun/mealplanner/backend/api/internal/provider"
 	"github.com/aidun/mealplanner/backend/api/internal/store"
@@ -49,6 +51,22 @@ type memoryInvite struct {
 type memoryFamilyMember struct {
 	role           string
 	linkedMemberID string
+}
+
+type spyMailer struct {
+	invites []mailer.InviteEmail
+	weekly  []mailer.WeeklyPlanReadyEmail
+	err     error
+}
+
+func (m *spyMailer) SendInviteEmail(_ context.Context, payload mailer.InviteEmail) error {
+	m.invites = append(m.invites, payload)
+	return m.err
+}
+
+func (m *spyMailer) SendWeeklyPlanReadyEmail(_ context.Context, payload mailer.WeeklyPlanReadyEmail) error {
+	m.weekly = append(m.weekly, payload)
+	return m.err
 }
 
 func newMemoryRepo() *memoryRepo {
@@ -99,15 +117,20 @@ func (m *memoryRepo) DeleteSession(_ *http.Request, sessionID string) error {
 }
 
 func (m *memoryRepo) ListUserIDs(_ *http.Request) ([]string, error) {
-	seen := map[string]bool{}
+	seenFamilies := map[string]bool{}
 	var ids []string
-	for userID := range m.profiles {
-		seen[userID] = true
-		ids = append(ids, userID)
-	}
 	for _, session := range m.sessions {
-		if !seen[session.userID] {
+		familyID := m.familyID(session.userID)
+		if !seenFamilies[familyID] {
+			seenFamilies[familyID] = true
 			ids = append(ids, session.userID)
+		}
+	}
+	for userID := range m.activeFamilies {
+		familyID := m.familyID(userID)
+		if !seenFamilies[familyID] {
+			seenFamilies[familyID] = true
+			ids = append(ids, userID)
 		}
 	}
 	return ids, nil
@@ -324,7 +347,7 @@ func (m *memoryRepo) GetPlanByID(_ *http.Request, id string) (domain.Plan, error
 func TestCreatePlanAndShoppingList(t *testing.T) {
 	repo := newMemoryRepo()
 	repo.profiles["user-1"] = domain.DefaultProfile()
-	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "test-secret", nil, nil)
+	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "test-secret", nil, nil, nil)
 
 	body := bytes.NewBufferString(`{"weekStart":"2026-04-20"}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/plans", body)
@@ -352,7 +375,7 @@ func TestCreatePlanAndShoppingList(t *testing.T) {
 }
 
 func TestSessionRequired(t *testing.T) {
-	handler := New(newMemoryRepo(), planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil)
+	handler := New(newMemoryRepo(), planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil, nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/profile", nil)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
@@ -379,7 +402,7 @@ func TestBringExport(t *testing.T) {
 			}},
 		}},
 	}
-	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "test-secret", nil, nil)
+	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "test-secret", nil, nil, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/plans/plan-1/bring-export", nil)
 	setAuth(repo, req, "user-1")
@@ -440,7 +463,7 @@ func TestBringExportPrefersStoredShoppingListForWeek(t *testing.T) {
 		},
 		Days: []domain.DayPlan{{Date: "2026-04-20", Meals: []domain.Meal{{ID: "meal-1", Title: "Pasta", Ingredients: []domain.Ingredient{{Name: "Nicht nutzen", Amount: 1}}}}}},
 	}
-	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "test-secret", nil, nil)
+	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "test-secret", nil, nil, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/plans/plan-1/bring-export", nil)
 	setAuth(repo, req, "user-1")
@@ -476,7 +499,7 @@ func TestBringExportCanScopeWeekDayAndMeal(t *testing.T) {
 			},
 		},
 	}
-	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "test-secret", nil, nil)
+	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "test-secret", nil, nil, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/plans/plan-1/bring-export-url?day=2026-04-20&meal=meal-1", nil)
 	setAuth(repo, req, "user-1")
@@ -540,7 +563,7 @@ func TestBringExportCanScopeWeekDayAndMeal(t *testing.T) {
 func TestBringExportKeepsExistingWeekTokensValid(t *testing.T) {
 	repo := newMemoryRepo()
 	repo.plans["user-1|plan-1"] = domain.Plan{ID: "plan-1", WeekStart: "2026-04-20"}
-	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "test-secret", nil, nil)
+	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "test-secret", nil, nil, nil)
 
 	mac := hmac.New(sha256.New, []byte("test-secret"))
 	mac.Write([]byte("bring-export:"))
@@ -558,7 +581,7 @@ func TestBringExportKeepsExistingWeekTokensValid(t *testing.T) {
 
 func TestBringExportPlanNotFound(t *testing.T) {
 	repo := newMemoryRepo()
-	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "test-secret", nil, nil)
+	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "test-secret", nil, nil, nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/plans/missing/bring-export", nil)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
@@ -569,7 +592,7 @@ func TestBringExportPlanNotFound(t *testing.T) {
 }
 
 func TestMetricsEndpoint(t *testing.T) {
-	handler := New(newMemoryRepo(), planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil)
+	handler := New(newMemoryRepo(), planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil, nil)
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
@@ -587,7 +610,7 @@ func TestMetricsEndpoint(t *testing.T) {
 
 func TestMutatingRequestRequiresCSRF(t *testing.T) {
 	repo := newMemoryRepo()
-	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil)
+	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil, nil)
 	req := httptest.NewRequest(http.MethodPost, "/api/plans", bytes.NewBufferString(`{}`))
 	repo.sessions["session-user-1"] = memorySession{userID: "user-1", csrf: "csrf-user-1", expiresAt: time.Now().Add(time.Hour)}
 	req.AddCookie(&http.Cookie{Name: auth.SessionCookieName, Value: "session-user-1"})
@@ -599,7 +622,7 @@ func TestMutatingRequestRequiresCSRF(t *testing.T) {
 }
 
 func TestCORSAllowsCSRFCredentials(t *testing.T) {
-	handler := New(newMemoryRepo(), planner.New(provider.NewMockGenerator()), testAuth(), "", []string{"http://localhost:4173"}, nil)
+	handler := New(newMemoryRepo(), planner.New(provider.NewMockGenerator()), testAuth(), "", []string{"http://localhost:4173"}, nil, nil)
 	req := httptest.NewRequest(http.MethodOptions, "/api/profile", nil)
 	req.Header.Set("Origin", "http://localhost:4173")
 	req.Header.Set("Access-Control-Request-Method", "PUT")
@@ -619,7 +642,7 @@ func TestCORSAllowsCSRFCredentials(t *testing.T) {
 }
 
 func TestCORSRejectsWildcardForCredentialedRequests(t *testing.T) {
-	handler := New(newMemoryRepo(), planner.New(provider.NewMockGenerator()), testAuth(), "", []string{"*"}, nil)
+	handler := New(newMemoryRepo(), planner.New(provider.NewMockGenerator()), testAuth(), "", []string{"*"}, nil, nil)
 	req := httptest.NewRequest(http.MethodOptions, "/api/profile", nil)
 	req.Header.Set("Origin", "https://evil.example")
 	rec := httptest.NewRecorder()
@@ -632,7 +655,7 @@ func TestCORSRejectsWildcardForCredentialedRequests(t *testing.T) {
 
 func TestSecurityHeadersAndJSONBodyLimit(t *testing.T) {
 	repo := newMemoryRepo()
-	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil)
+	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil, nil)
 	req := httptest.NewRequest(http.MethodPut, "/api/profile", strings.NewReader(strings.Repeat("x", maxJSONBodyBytes+1)))
 	setAuth(repo, req, "user-1")
 	rec := httptest.NewRecorder()
@@ -649,7 +672,10 @@ func TestSecurityHeadersAndJSONBodyLimit(t *testing.T) {
 func TestInternalWeeklyPlanUsesAPISecret(t *testing.T) {
 	repo := newMemoryRepo()
 	repo.profiles["user-1"] = domain.DefaultProfile()
-	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "internal-secret", nil, nil)
+	repo.activeFamilies["user-1"] = "family-user-1"
+	repo.emails["user-1"] = "anna@example.test"
+	mailerSpy := &spyMailer{}
+	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "internal-secret", nil, nil, mailerSpy)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/internal/plans/weekly", nil)
 	rec := httptest.NewRecorder()
@@ -665,14 +691,17 @@ func TestInternalWeeklyPlanUsesAPISecret(t *testing.T) {
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("expected 201 with internal secret, got %d: %s", rec.Code, rec.Body.String())
 	}
-	if !strings.Contains(rec.Body.String(), `"users":1`) {
+	if !strings.Contains(rec.Body.String(), `"users":1`) || !strings.Contains(rec.Body.String(), `"emailsSent":1`) {
 		t.Fatalf("unexpected weekly response: %s", rec.Body.String())
+	}
+	if len(mailerSpy.weekly) != 1 || mailerSpy.weekly[0].To != "anna@example.test" {
+		t.Fatalf("expected weekly email to be sent once, got %+v", mailerSpy.weekly)
 	}
 }
 
 func TestFavoritesAPIStoresAndDeletesPerFamily(t *testing.T) {
 	repo := newMemoryRepo()
-	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil)
+	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil, nil)
 	meal := domain.Meal{ID: "meal-1", Slot: "dinner", Title: "Lieblingspasta", Description: "Schnell"}
 	raw, _ := json.Marshal(domain.CreateFavoriteRequest{Meal: meal})
 
@@ -714,7 +743,8 @@ func TestFamilyInviteMergesProfileOnlyWithMatchingEmailHash(t *testing.T) {
 	repo.profiles["family-user-1"] = domain.Profile{HouseholdName: "Familie A", Members: []domain.Member{{ID: "a", Name: "A"}}, Defaults: domain.MealDefaults{}, Presets: []string{"schnell"}}
 	repo.profiles["family-user-2"] = domain.Profile{HouseholdName: "Familie B", Members: []domain.Member{{ID: "b", Name: "B"}}, Defaults: domain.MealDefaults{}, Presets: []string{"gemuese"}}
 	authService := testAuth()
-	handler := New(repo, planner.New(provider.NewMockGenerator()), authService, "", nil, nil)
+	mailerSpy := &spyMailer{}
+	handler := New(repo, planner.New(provider.NewMockGenerator()), authService, "", nil, nil, mailerSpy)
 	email := "person@example.test"
 	emailHash := authService.Hash("email:" + email)
 	repo.emailHashes["user-2"] = emailHash
@@ -728,6 +758,12 @@ func TestFamilyInviteMergesProfileOnlyWithMatchingEmailHash(t *testing.T) {
 	}
 	if strings.Contains(rec.Body.String(), email) || !strings.Contains(rec.Body.String(), "persoenlicher Account") {
 		t.Fatalf("invite should not echo raw email and should include warning: %s", rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"emailSent":true`) {
+		t.Fatalf("expected emailSent in invite response, got %s", rec.Body.String())
+	}
+	if len(mailerSpy.invites) != 1 || mailerSpy.invites[0].To != email {
+		t.Fatalf("expected invite email to be sent, got %+v", mailerSpy.invites)
 	}
 
 	req = httptest.NewRequest(http.MethodPost, "/api/family/invites/accept", bytes.NewBufferString(`{"token":"invite-token"}`))
@@ -750,9 +786,41 @@ func TestFamilyInviteMergesProfileOnlyWithMatchingEmailHash(t *testing.T) {
 	}
 }
 
+func TestWeeklyPlanSendsToAllFamilyAccountsWithEmail(t *testing.T) {
+	repo := newMemoryRepo()
+	repo.profiles["family-user-1"] = domain.DefaultProfile()
+	repo.activeFamilies["user-1"] = "family-user-1"
+	repo.activeFamilies["user-2"] = "family-user-1"
+	repo.familyMembers["family-user-1"] = map[string]memoryFamilyMember{
+		"user-1": {role: "owner"},
+		"user-2": {role: "member"},
+	}
+	repo.emails["user-1"] = "anna@example.test"
+	repo.emails["user-2"] = "ben@example.test"
+	repo.sessions["session-user-1"] = memorySession{userID: "user-1", csrf: "csrf-user-1", expiresAt: time.Now().Add(time.Hour)}
+	repo.sessions["session-user-2"] = memorySession{userID: "user-2", csrf: "csrf-user-2", expiresAt: time.Now().Add(time.Hour)}
+	mailerSpy := &spyMailer{}
+	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "internal-secret", nil, nil, mailerSpy)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/internal/plans/weekly", nil)
+	req.Header.Set("X-API-Secret", "internal-secret")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d: %s", rec.Code, rec.Body.String())
+	}
+	if len(mailerSpy.weekly) != 2 {
+		t.Fatalf("expected two weekly emails, got %+v", mailerSpy.weekly)
+	}
+	if !strings.Contains(rec.Body.String(), `"emailsSent":2`) {
+		t.Fatalf("expected email metrics in response, got %s", rec.Body.String())
+	}
+}
+
 func TestPromptDebugEndpointOnlyWhenEnabled(t *testing.T) {
 	repo := newMemoryRepo()
-	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil)
+	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil, nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/debug/prompts/latest", nil)
 	setAuth(repo, req, "user-1")
 	rec := httptest.NewRecorder()
@@ -763,7 +831,7 @@ func TestPromptDebugEndpointOnlyWhenEnabled(t *testing.T) {
 
 	t.Setenv("APP_ENV", "production")
 	t.Setenv("PROMPT_DEBUG", "true")
-	handler = New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil)
+	handler = New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil, nil)
 	req = httptest.NewRequest(http.MethodGet, "/api/debug/prompts/latest", nil)
 	setAuth(repo, req, "user-1")
 	rec = httptest.NewRecorder()
@@ -773,7 +841,7 @@ func TestPromptDebugEndpointOnlyWhenEnabled(t *testing.T) {
 	}
 
 	t.Setenv("APP_ENV", "test")
-	handler = New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil)
+	handler = New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil, nil)
 	req = httptest.NewRequest(http.MethodPost, "/api/plans", bytes.NewBufferString(`{"weekStart":"2026-04-20"}`))
 	setAuth(repo, req, "user-1")
 	rec = httptest.NewRecorder()
@@ -793,7 +861,7 @@ func TestPromptDebugEndpointOnlyWhenEnabled(t *testing.T) {
 
 func TestAuthProvidersAreRateLimitedWhenConfigured(t *testing.T) {
 	t.Setenv("RATE_LIMIT_REQUESTS_PER_MINUTE", "1")
-	handler := New(newMemoryRepo(), planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil)
+	handler := New(newMemoryRepo(), planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/auth/providers", nil)
 	req.RemoteAddr = "203.0.113.10:4321"
@@ -814,7 +882,7 @@ func TestAuthProvidersAreRateLimitedWhenConfigured(t *testing.T) {
 
 func TestServerErrorIncludesRequestIDHeader(t *testing.T) {
 	repo := newMemoryRepo()
-	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil)
+	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil, nil)
 
 	req := httptest.NewRequest(http.MethodPut, "/api/profile", bytes.NewBufferString(`{"householdName":"`))
 	setAuth(repo, req, "user-1")
@@ -828,7 +896,7 @@ func TestServerErrorIncludesRequestIDHeader(t *testing.T) {
 
 func TestSessionEndpoint(t *testing.T) {
 	repo := newMemoryRepo()
-	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil)
+	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil, nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/session", nil)
 	setAuth(repo, req, "user-1")
 	rec := httptest.NewRecorder()
@@ -842,7 +910,7 @@ func TestSessionEndpoint(t *testing.T) {
 }
 
 func TestAuthProvidersEndpoint(t *testing.T) {
-	handler := New(newMemoryRepo(), planner.New(provider.NewMockGenerator()), configuredTestAuth(), "", nil, nil)
+	handler := New(newMemoryRepo(), planner.New(provider.NewMockGenerator()), configuredTestAuth(), "", nil, nil, nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/auth/providers", nil)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
@@ -856,7 +924,7 @@ func TestAuthProvidersEndpoint(t *testing.T) {
 }
 
 func TestGoogleStartSetsSecureStateCookie(t *testing.T) {
-	handler := New(newMemoryRepo(), planner.New(provider.NewMockGenerator()), configuredTestAuth(), "", nil, nil)
+	handler := New(newMemoryRepo(), planner.New(provider.NewMockGenerator()), configuredTestAuth(), "", nil, nil, nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/auth/google/start", nil)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
@@ -884,7 +952,7 @@ func TestGoogleStartSetsSecureStateCookie(t *testing.T) {
 
 func TestLogoutDeletesSessionAndClearsSecureCookie(t *testing.T) {
 	repo := newMemoryRepo()
-	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil)
+	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil, nil)
 	req := httptest.NewRequest(http.MethodPost, "/api/auth/logout", nil)
 	setAuth(repo, req, "user-1")
 	rec := httptest.NewRecorder()
@@ -914,7 +982,7 @@ func TestLogoutDeletesSessionAndClearsSecureCookie(t *testing.T) {
 func TestBringExportURLUsesConfiguredBaseURL(t *testing.T) {
 	repo := newMemoryRepo()
 	repo.plans["user-1|plan-1"] = domain.Plan{ID: "plan-1", WeekStart: "2026-04-20"}
-	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "test-secret", nil, nil)
+	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "test-secret", nil, nil, nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/plans/plan-1/bring-export-url", nil)
 	req.Host = "attacker.example"
 	req.Header.Set("X-Forwarded-Host", "attacker.example")

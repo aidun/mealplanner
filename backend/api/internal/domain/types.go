@@ -47,6 +47,7 @@ type FamilyInvite struct {
 	ID          string    `json:"id"`
 	InviteLink  string    `json:"inviteLink,omitempty"`
 	EmailHash   string    `json:"emailHash,omitempty"`
+	EmailSent   bool      `json:"emailSent"`
 	ExpiresAt   time.Time `json:"expiresAt"`
 	CreatedAt   time.Time `json:"createdAt,omitempty"`
 	AcceptedAt  time.Time `json:"acceptedAt,omitempty"`

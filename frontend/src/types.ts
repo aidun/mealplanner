@@ -76,6 +76,7 @@ export interface FamilySummary {
 export interface FamilyInvite {
   id: string;
   inviteLink: string;
+  emailSent: boolean;
   expiresAt: string;
   warningText?: string;
 }

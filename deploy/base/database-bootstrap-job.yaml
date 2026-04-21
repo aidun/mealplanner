@@ -30,6 +30,16 @@ spec:
               value: __set_api_secret__
             - name: OPENAI_API_KEY_PLACEHOLDER
               value: __set_openai_api_key__
+            - name: EMAIL_ENABLED_PLACEHOLDER
+              value: "false"
+            - name: EMAIL_PROVIDER_PLACEHOLDER
+              value: resend
+            - name: EMAIL_FROM_PLACEHOLDER
+              value: info@markushartmann.dev
+            - name: EMAIL_REPLY_TO_PLACEHOLDER
+              value: info@markushartmann.dev
+            - name: RESEND_API_KEY_PLACEHOLDER
+              value: ""
             - name: AUTH_BASE_URL_PLACEHOLDER
               value: https://mealplanner.markushartmann.dev
             - name: SESSION_SECRET_PLACEHOLDER

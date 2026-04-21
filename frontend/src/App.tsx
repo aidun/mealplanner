@@ -55,7 +55,7 @@ function AcceptInvitePage() {
             onClick={() => mutation.mutate()}
             disabled={mutation.isPending || token === ''}
           >
-            {mutation.isPending ? 'Wird zusammengeführt' : 'Einladung annehmen'}
+            {mutation.isPending ? 'Einladung wird angenommen' : 'Familienkonto beitreten'}
           </button>
           {mutation.isError ? <p className="error-copy">{readableApiError(mutation.error, 'Einladung konnte nicht angenommen werden.')}</p> : null}
         </section>

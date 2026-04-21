@@ -12,6 +12,11 @@ type Config struct {
 	DatabaseURL              string
 	APISecret                string
 	CORSOrigins              []string
+	EmailEnabled             bool
+	EmailProvider            string
+	EmailFrom                string
+	EmailReplyTo             string
+	ResendAPIKey             string
 	OpenAIAPIKey             string
 	OpenAIModel              string
 	ProviderMode             string
@@ -34,6 +39,11 @@ func Load() (Config, error) {
 		DatabaseURL:              strings.TrimSpace(os.Getenv("DATABASE_URL")),
 		APISecret:                strings.TrimSpace(os.Getenv("API_SECRET")),
 		CORSOrigins:              parseList(os.Getenv("CORS_ORIGINS")),
+		EmailEnabled:             parseBoolDefault("EMAIL_ENABLED", false),
+		EmailProvider:            strings.ToLower(strings.TrimSpace(getenvDefault("EMAIL_PROVIDER", "noop"))),
+		EmailFrom:                strings.TrimSpace(os.Getenv("EMAIL_FROM")),
+		EmailReplyTo:             strings.TrimSpace(os.Getenv("EMAIL_REPLY_TO")),
+		ResendAPIKey:             strings.TrimSpace(os.Getenv("RESEND_API_KEY")),
 		OpenAIAPIKey:             strings.TrimSpace(os.Getenv("OPENAI_API_KEY")),
 		OpenAIModel:              getenvDefault("OPENAI_MEAL_MODEL", "gpt-5.4-mini"),
 		ProviderMode:             getenvDefault("PROVIDER_MODE", "mock"),
@@ -69,6 +79,25 @@ func (c Config) Validate() error {
 	}
 	if c.ProviderMode != "" && !strings.EqualFold(c.ProviderMode, "mock") && !strings.EqualFold(c.ProviderMode, "live") {
 		return errors.New("PROVIDER_MODE must be mock or live")
+	}
+	if c.EmailProvider == "" {
+		c.EmailProvider = "noop"
+	}
+	switch strings.ToLower(c.EmailProvider) {
+	case "noop", "resend":
+	default:
+		return errors.New("EMAIL_PROVIDER must be noop or resend")
+	}
+	if c.EmailEnabled {
+		if !configuredValue(c.EmailFrom) {
+			return errors.New("EMAIL_FROM must be configured when EMAIL_ENABLED=true")
+		}
+		if !configuredValue(c.EmailReplyTo) {
+			return errors.New("EMAIL_REPLY_TO must be configured when EMAIL_ENABLED=true")
+		}
+		if strings.EqualFold(c.EmailProvider, "resend") && !configuredValue(c.ResendAPIKey) {
+			return errors.New("RESEND_API_KEY must be configured when EMAIL_ENABLED=true and EMAIL_PROVIDER=resend")
+		}
 	}
 	if c.AppEnv != "production" {
 		return nil
@@ -124,4 +153,19 @@ func parseList(v string) []string {
 func configuredValue(value string) bool {
 	value = strings.TrimSpace(value)
 	return value != "" && !strings.HasPrefix(value, "__set_")
+}
+
+func parseBoolDefault(key string, fallback bool) bool {
+	value := strings.TrimSpace(os.Getenv(key))
+	if value == "" {
+		return fallback
+	}
+	switch strings.ToLower(value) {
+	case "1", "true", "yes", "on":
+		return true
+	case "0", "false", "no", "off":
+		return false
+	default:
+		return fallback
+	}
 }

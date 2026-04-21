@@ -31,6 +31,24 @@ npm run dev
 Social Login benoetigt eine HTTPS-`AUTH_BASE_URL`, Google OAuth Credentials und Allowlist-Hashes.
 Klartext-E-Mail-Adressen gehoeren nicht in Repo oder Datenbank.
 
+## E-Mail-Versand
+
+Transaktionale E-Mails fuer Familien-Einladungen und automatische Wochenplaene laufen ueber das
+Backend. Lokal ist standardmaessig `EMAIL_ENABLED=false`; in Produktion ist `Resend` mit
+`info@markushartmann.dev` als Absender vorgesehen.
+
+Noetige API-Variablen:
+
+- `EMAIL_ENABLED`
+- `EMAIL_PROVIDER` (`noop` oder `resend`)
+- `EMAIL_FROM`
+- `EMAIL_REPLY_TO`
+- `RESEND_API_KEY`
+
+Produktive Werte gehoeren in ein `SealedSecret` oder ein anderes Git-freies Secret-Management,
+nicht als Klartext in dieses Repo. Fuer Cloudflare-DNS muessen die von Resend gelieferten
+SPF-/DKIM-Records gesetzt werden; DMARC sollte mindestens im Monitoring-Modus dokumentiert sein.
+
 ## Cluster
 
 Der Test-Overlay nutzt weiterhin `192.168.2.204` im LAN und zusaetzlich Cloudflare Tunnel fuer

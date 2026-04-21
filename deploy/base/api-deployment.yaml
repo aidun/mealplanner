@@ -70,6 +70,36 @@ spec:
                   name: api-secrets
                   key: OPENAI_API_KEY
                   optional: true
+            - name: EMAIL_ENABLED
+              valueFrom:
+                secretKeyRef:
+                  name: api-secrets
+                  key: EMAIL_ENABLED
+                  optional: true
+            - name: EMAIL_PROVIDER
+              valueFrom:
+                secretKeyRef:
+                  name: api-secrets
+                  key: EMAIL_PROVIDER
+                  optional: true
+            - name: EMAIL_FROM
+              valueFrom:
+                secretKeyRef:
+                  name: api-secrets
+                  key: EMAIL_FROM
+                  optional: true
+            - name: EMAIL_REPLY_TO
+              valueFrom:
+                secretKeyRef:
+                  name: api-secrets
+                  key: EMAIL_REPLY_TO
+                  optional: true
+            - name: RESEND_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: api-secrets
+                  key: RESEND_API_KEY
+                  optional: true
             - name: AUTH_BASE_URL
               valueFrom:
                 secretKeyRef:
