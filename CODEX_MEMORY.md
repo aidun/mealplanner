@@ -37,6 +37,7 @@ Last updated: 2026-04-21
 - `/Users/markus/repo/clustermanager` bleibt die GitOps-Quelle fuer clusterweite Labels, Baseline-NetworkPolicies, Kyverno-Regeln und Security-Monitoring.
 - Git-verwaltete Secrets sollen als `SealedSecret` gepflegt werden. Echte `Secret`-Manifeste gehoeren nicht ins Repo, ausser `*.secret.example.yaml`.
 - Live-only/generated Secrets muessen ausserhalb von Git bleiben und bei Bedarf mit `security.aidun.dev/management=live-only|generated` dokumentiert werden.
+- Der naechste Secret-Auftrag fuer dieses Repo ist die echte SealedSecrets-Migration fuer `mealplanner-api-internal`, `mealplanner-auth-core`, `mealplanner-openai`, `mealplanner-email-provider`, `mealplanner-oidc-google` und `mealplanner-oidc-apple`; `mealplanner-database` darf vorerst generated bleiben.
 
 ## Offene Hinweise
 
