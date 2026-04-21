@@ -4,6 +4,13 @@ interface LegalPageProps {
   kind: 'privacy' | 'imprint';
 }
 
+const LEGAL_DEFAULTS = {
+  operatorName: 'Markus Hartmann',
+  operatorAddress: '56323 Waldesch, Deutschland',
+  contactEmail: 'info@markushartmann.dev',
+  hosting: 'Cloudflare Tunnel, Kubernetes Cluster',
+} as const;
+
 export function LegalPage({ kind }: LegalPageProps) {
   const isPrivacy = kind === 'privacy';
 
@@ -40,9 +47,9 @@ export function LegalPage({ kind }: LegalPageProps) {
 }
 
 function PrivacyContent() {
-  const contactEmail = import.meta.env.VITE_LEGAL_CONTACT_EMAIL?.trim() || 'Noch nicht hinterlegt';
-  const operatorName = import.meta.env.VITE_LEGAL_OPERATOR_NAME?.trim() || 'Noch nicht hinterlegt';
-  const operatorAddress = import.meta.env.VITE_LEGAL_OPERATOR_ADDRESS?.trim() || 'Noch nicht hinterlegt';
+  const contactEmail = import.meta.env.VITE_LEGAL_CONTACT_EMAIL?.trim() || LEGAL_DEFAULTS.contactEmail;
+  const operatorName = import.meta.env.VITE_LEGAL_OPERATOR_NAME?.trim() || LEGAL_DEFAULTS.operatorName;
+  const operatorAddress = import.meta.env.VITE_LEGAL_OPERATOR_ADDRESS?.trim() || LEGAL_DEFAULTS.operatorAddress;
 
   return (
     <div className="legal-content">
@@ -53,8 +60,9 @@ function PrivacyContent() {
 
       <h2>Login-Daten</h2>
       <p>
-        Die App nutzt Social Login nur für den Zugang. Aus dem Login werden dauerhaft nur die technisch nötigen
-        Zuordnungen gespeichert; Namen, Profilbilder und ähnliche Profildaten sind nicht Teil der Planungslogik.
+        Mealplanner nutzt Social Login nur für den Zugang zum privaten Familienkonto. Dauerhaft gespeichert werden
+        nur die technisch nötigen Zuordnungen der freigegebenen Accounts; Namen, Profilbilder und ähnliche
+        Provider-Profildaten werden nicht für die Rezeptplanung verwendet.
       </p>
 
       <h2>Profil- und Planungsdaten</h2>
@@ -65,24 +73,33 @@ function PrivacyContent() {
 
       <h2>OpenAI-Verarbeitung</h2>
       <p>
-        Für die Generierung werden Profil- und Planungsdaten an den konfigurierten OpenAI-Dienst übermittelt. Nährwerte
-        bleiben Alltagsschätzungen und sind nicht medizinisch verbindlich.
+        Für die Generierung von Wochenplänen, Rezeptvarianten und Profilzusammenführungen werden relevante Profil- und
+        Planungsdaten an den konfigurierten OpenAI-Dienst übermittelt. Nährwerte bleiben Alltagsschätzungen und sind
+        nicht medizinisch oder diätetisch verbindlich.
+      </p>
+
+      <h2>Hosting und Protokolle</h2>
+      <p>
+        Die App wird unter `mealplanner.markushartmann.dev` über Cloudflare und einen Kubernetes-Cluster betrieben.
+        Beim Zugriff können technisch notwendige Verbindungs- und Fehlerprotokolle anfallen, um den sicheren Betrieb
+        und die Fehleranalyse zu ermöglichen.
       </p>
 
       <h2>Speicherdauer und Zugriff</h2>
       <p>
         Sitzungen, Profile, Familienzuordnungen, Favoriten und Pläne bleiben gespeichert, bis sie im Familienkonto
-        ersetzt oder entfernt werden. Zugriff erhalten nur freigegebene Accounts innerhalb des Familienkontos.
+        ersetzt oder entfernt werden. Zugriff erhalten nur freigegebene Accounts innerhalb des jeweiligen
+        Familienkontos.
       </p>
     </div>
   );
 }
 
 function ImprintContent() {
-  const operatorName = import.meta.env.VITE_LEGAL_OPERATOR_NAME?.trim() || 'Noch nicht hinterlegt';
-  const operatorAddress = import.meta.env.VITE_LEGAL_OPERATOR_ADDRESS?.trim() || 'Noch nicht hinterlegt';
-  const contactEmail = import.meta.env.VITE_LEGAL_CONTACT_EMAIL?.trim() || 'Noch nicht hinterlegt';
-  const hosting = import.meta.env.VITE_LEGAL_HOSTING?.trim() || 'Cloudflare Tunnel, Kubernetes Cluster';
+  const operatorName = import.meta.env.VITE_LEGAL_OPERATOR_NAME?.trim() || LEGAL_DEFAULTS.operatorName;
+  const operatorAddress = import.meta.env.VITE_LEGAL_OPERATOR_ADDRESS?.trim() || LEGAL_DEFAULTS.operatorAddress;
+  const contactEmail = import.meta.env.VITE_LEGAL_CONTACT_EMAIL?.trim() || LEGAL_DEFAULTS.contactEmail;
+  const hosting = import.meta.env.VITE_LEGAL_HOSTING?.trim() || LEGAL_DEFAULTS.hosting;
 
   return (
     <div className="legal-content">
@@ -97,8 +114,8 @@ function ImprintContent() {
 
       <h2>Hinweis</h2>
       <p>
-        Diese Angaben muessen vor einem dauerhaften öffentlichen Betrieb vollständig und rechtlich geprüft hinterlegt
-        sein. Fehlen Betreiberdaten, ist die Veröffentlichung noch nicht abnahmebereit.
+        Mealplanner ist ein privates Planungsangebot. Die technische Betriebsform und die Kontaktangaben sind hier
+        abgebildet; weitergehende rechtliche Pflichtangaben werden bei Bedarf ergänzt.
       </p>
     </div>
   );

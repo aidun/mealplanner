@@ -771,12 +771,15 @@ describe('Mealplanner app', () => {
     expect(await screen.findByRole('heading', { name: 'Datenschutz' })).toBeInTheDocument();
     expect(screen.getByText('Rechtliches')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Verantwortlicher' })).toBeInTheDocument();
-    expect(screen.getAllByText('Noch nicht hinterlegt').length).toBeGreaterThan(0);
+    expect(screen.getByText('Markus Hartmann')).toBeInTheDocument();
+    expect(screen.getByText('56323 Waldesch, Deutschland')).toBeInTheDocument();
+    expect(screen.getByText('Kontakt: info@markushartmann.dev')).toBeInTheDocument();
 
     renderApp('/impressum');
 
     expect(await screen.findByRole('heading', { name: 'Impressum' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Anbieterkennzeichnung' })).toBeInTheDocument();
+    expect(screen.getByText('E-Mail: info@markushartmann.dev')).toBeInTheDocument();
   });
 
   it('does not expose prompt debug from local storage in production builds', async () => {
