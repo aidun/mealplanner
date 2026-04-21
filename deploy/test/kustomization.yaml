@@ -13,7 +13,7 @@ images:
     newTag: master-248aa8f-amd64 # replaced by local pipeline: master-<git-sha>
   - name: ghcr.io/aidun/mealplanner/frontend
     newName: ghcr.io/aidun/mealplanner/frontend
-    newTag: master-b0b6458-amd64 # replaced by local pipeline: master-<git-sha>
+    newTag: master-a28ce43-amd64 # replaced by local pipeline: master-<git-sha>
 
 patches:
   - patch: |-
