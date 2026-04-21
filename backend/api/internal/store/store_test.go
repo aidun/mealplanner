@@ -16,8 +16,8 @@ func TestLoadMigrations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(migrations) != 4 {
-		t.Fatalf("expected four migrations, got %d", len(migrations))
+	if len(migrations) != 5 {
+		t.Fatalf("expected five migrations, got %d", len(migrations))
 	}
 }
 
@@ -57,6 +57,21 @@ func TestStoreRoundtrip(t *testing.T) {
 	}
 	if !strings.HasSuffix(got.ID, "-plan-test") {
 		t.Fatalf("expected scoped plan-test id, got %s", got.ID)
+	}
+	if err := s.SavePromptDebug(ctx, userID, domain.PromptDebugEntry{
+		Operation: "generate_week",
+		Model:     "mealplanner",
+		Prompt:    "Familienprofil",
+		Meta:      map[string]string{"members": "2"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	debugEntry, err := s.LatestPromptDebug(ctx, userID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if debugEntry.Meta["members"] != "2" {
+		t.Fatalf("expected prompt debug meta roundtrip, got %+v", debugEntry.Meta)
 	}
 }
 

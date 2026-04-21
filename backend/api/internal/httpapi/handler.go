@@ -285,7 +285,15 @@ func (h *Handler) acceptFamilyInvite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if h.promptDebug {
-		_ = h.repo.SavePromptDebug(r, domain.PromptDebugEntry{Operation: "merge_profile", Model: "mealplanner", Prompt: h.planner.PreviewMergePrompt(targetProfile, incomingProfile)})
+		_ = h.repo.SavePromptDebug(r, domain.PromptDebugEntry{
+			Operation: "merge_profile",
+			Model:     "mealplanner",
+			Prompt:    h.planner.PreviewMergePrompt(targetProfile, incomingProfile),
+			Meta: map[string]string{
+				"targetMembers":   fmt.Sprintf("%d", len(targetProfile.Members)),
+				"incomingMembers": fmt.Sprintf("%d", len(incomingProfile.Members)),
+			},
+		})
 	}
 	merged, err := h.planner.MergeProfiles(r.Context(), targetProfile, incomingProfile)
 	if err != nil {
@@ -444,7 +452,16 @@ func (h *Handler) createPlan(w http.ResponseWriter, r *http.Request) {
 	}
 	if h.promptDebug {
 		if prompt, err := h.planner.PreviewWeekPrompt(profile, req.WeekStart, favorites); err == nil {
-			_ = h.repo.SavePromptDebug(r, domain.PromptDebugEntry{Operation: "generate_week", Model: "mealplanner", Prompt: prompt})
+			_ = h.repo.SavePromptDebug(r, domain.PromptDebugEntry{
+				Operation: "generate_week",
+				Model:     "mealplanner",
+				Prompt:    prompt,
+				Meta: map[string]string{
+					"requestedWeekStart": strings.TrimSpace(req.WeekStart),
+					"members":            fmt.Sprintf("%d", len(profile.Members)),
+					"favorites":          fmt.Sprintf("%d", len(favorites)),
+				},
+			})
 		}
 	}
 	plan, err := h.planner.GenerateWeek(r.Context(), profile, req.WeekStart, favorites)
@@ -555,7 +572,17 @@ func (h *Handler) regenerateMeal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if h.promptDebug {
-		_ = h.repo.SavePromptDebug(r, domain.PromptDebugEntry{Operation: "regenerate_meal", Model: "mealplanner", Prompt: h.planner.PreviewRegeneratePrompt(profile, plan, r.PathValue("mealID"), req.Note, favorites)})
+		_ = h.repo.SavePromptDebug(r, domain.PromptDebugEntry{
+			Operation: "regenerate_meal",
+			Model:     "mealplanner",
+			Prompt:    h.planner.PreviewRegeneratePrompt(profile, plan, r.PathValue("mealID"), req.Note, favorites),
+			Meta: map[string]string{
+				"mealID":        r.PathValue("mealID"),
+				"noteProvided":  fmt.Sprintf("%t", strings.TrimSpace(req.Note) != ""),
+				"favorites":     fmt.Sprintf("%d", len(favorites)),
+				"existingMeals": fmt.Sprintf("%d", countMeals(plan)),
+			},
+		})
 	}
 	updated, err := h.planner.RegenerateMeal(r.Context(), profile, plan, r.PathValue("mealID"), req.Note, favorites)
 	if err != nil {
@@ -626,6 +653,14 @@ func originAllowed(origin string, allowed []string) bool {
 		}
 	}
 	return false
+}
+
+func countMeals(plan domain.Plan) int {
+	total := 0
+	for _, day := range plan.Days {
+		total += len(day.Meals)
+	}
+	return total
 }
 
 func (h *Handler) serverError(w http.ResponseWriter, err error) {

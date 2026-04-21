@@ -925,6 +925,26 @@ a:focus-visible {
   font-size: 0.82rem;
 }
 
+.prompt-debug-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.prompt-debug-meta-item {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid rgba(18, 33, 29, 0.08);
+  border-radius: 8px;
+  background: rgba(248, 244, 238, 0.9);
+}
+
+.prompt-debug-meta-item span {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
 .panel-feedback {
   margin: 0;
   padding: 0 18px 12px;
@@ -1553,6 +1573,11 @@ a:focus-visible {
   color: #b42318;
   font-size: 0.76rem;
   font-weight: 700;
+}
+
+.meal-inline-badge-muted {
+  background: rgba(241, 244, 242, 0.95);
+  color: var(--muted);
 }
 
 .member-editor-header p,

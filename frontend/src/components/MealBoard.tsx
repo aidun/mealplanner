@@ -113,7 +113,13 @@ export function MealBoard({ planId, days = [], selectedMealId, favoriteMealIDs, 
                       <div className="meal-row-meta">
                         <div className="meal-row-badges">
                           {favoriteMealIDs?.has(meal.id) ? <span className="meal-inline-badge">Favorit</span> : null}
-                          {meal.meta?.favoriteReuse ? <span className="meal-inline-badge meal-inline-badge-accent">Aus Sammlung</span> : null}
+                          {meal.meta?.favoriteReuse ? (
+                            <span className="meal-inline-badge meal-inline-badge-accent">
+                              {meal.meta.favoriteReuse === 'variant' ? 'Variante' : 'Aus Sammlung'}
+                            </span>
+                          ) : (
+                            <span className="meal-inline-badge meal-inline-badge-muted">Neu geplant</span>
+                          )}
                         </div>
                         <div className="nutrition-line">
                           {formatNutritionPerPortion(meal.nutrition)}

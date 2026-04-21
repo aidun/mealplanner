@@ -80,9 +80,14 @@ export function MealInspector({
       </div>
 
       {meal.description ? <p className="inspector-copy">{meal.description}</p> : null}
+      <p className="inspector-note" role="note">
+        Herkunft: {mealOriginLabel(meal)}
+      </p>
       {meal.meta?.favoriteReuse ? (
         <p className="inspector-note" role="note">
-          Dieses Gericht wurde aus eurer Favoriten-Sammlung wieder aufgegriffen.
+          {meal.meta.favoriteReuse === 'variant'
+            ? 'Dieses Gericht lehnt sich an einen vorhandenen Favoriten an.'
+            : 'Dieses Gericht wurde aus eurer Favoriten-Sammlung wieder aufgegriffen.'}
           {meal.meta.favoriteTitle ? ` Bezug: ${meal.meta.favoriteTitle}.` : ''}
         </p>
       ) : null}
@@ -214,4 +219,14 @@ function scaledNutritionLabel(meal: Meal, factor?: number) {
   }
   const scaled = scaleNutrition(meal.nutrition, safeFactor);
   return formatNutrition(scaled);
+}
+
+function mealOriginLabel(meal: Meal) {
+  if (meal.meta?.favoriteReuse === 'variant') {
+    return 'Variante aus eurer Sammlung';
+  }
+  if (meal.meta?.favoriteReuse === 'direct') {
+    return 'Direkt aus eurer Sammlung';
+  }
+  return 'Neu fuer diese Woche geplant';
 }

@@ -3,6 +3,7 @@ package planner
 import (
 	"context"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
@@ -44,6 +45,11 @@ func (p Planner) GenerateWeek(ctx context.Context, profile domain.Profile, weekS
 	plan.WeekStart = start.Format("2006-01-02")
 	plan.Status = "planned"
 	plan.Days = normalizeDays(plan.Days, start)
+	for dayIndex := range plan.Days {
+		for mealIndex := range plan.Days[dayIndex].Meals {
+			plan.Days[dayIndex].Meals[mealIndex] = normalizeGeneratedMeal(plan.Days[dayIndex].Meals[mealIndex], profile, plan.Days[dayIndex].Date)
+		}
+	}
 	annotateFavoriteReusePlan(&plan, favorites)
 	plan.ShoppingList = domain.ConsolidateShoppingList(plan)
 	return plan, nil
@@ -64,6 +70,7 @@ func (p Planner) RegenerateMeal(ctx context.Context, profile domain.Profile, pla
 				original := plan.Days[dayIndex].Meals[mealIndex]
 				meal.ID = mealID
 				meal.Slot = original.Slot
+				meal = normalizeGeneratedMeal(meal, profile, plan.Days[dayIndex].Date)
 				annotateFavoriteReuseMeal(&meal, favorites)
 				plan.Days[dayIndex].Meals[mealIndex] = meal
 				found = true
@@ -180,7 +187,7 @@ func annotateFavoriteReuseMeal(meal *domain.Meal, favorites []domain.FavoriteRec
 	if meal == nil {
 		return
 	}
-	matched := favoriteMatch(*meal, favorites)
+	matched, reuseKind := favoriteMatch(*meal, favorites)
 	if matched == nil {
 		if meal.Meta != nil {
 			delete(meal.Meta, "favoriteReuse")
@@ -194,22 +201,25 @@ func annotateFavoriteReuseMeal(meal *domain.Meal, favorites []domain.FavoriteRec
 	if meal.Meta == nil {
 		meal.Meta = map[string]string{}
 	}
-	meal.Meta["favoriteReuse"] = "direct"
+	meal.Meta["favoriteReuse"] = reuseKind
 	meal.Meta["favoriteTitle"] = matched.Meal.Title
 }
 
-func favoriteMatch(meal domain.Meal, favorites []domain.FavoriteRecipe) *domain.FavoriteRecipe {
+func favoriteMatch(meal domain.Meal, favorites []domain.FavoriteRecipe) (*domain.FavoriteRecipe, string) {
 	title := normalizeMealTitle(meal.Title)
 	if title == "" {
-		return nil
+		return nil, ""
 	}
 	for index := range favorites {
 		favoriteTitle := normalizeMealTitle(favorites[index].Meal.Title)
 		if favoriteTitle != "" && favoriteTitle == title {
-			return &favorites[index]
+			return &favorites[index], "direct"
+		}
+		if isFavoriteVariant(title, favoriteTitle) {
+			return &favorites[index], "variant"
 		}
 	}
-	return nil
+	return nil, ""
 }
 
 func normalizeMealTitle(value string) string {
@@ -237,4 +247,192 @@ func normalizeMealTitle(value string) string {
 		}
 	}, value)
 	return strings.Join(strings.Fields(value), " ")
+}
+
+func isFavoriteVariant(title string, favoriteTitle string) bool {
+	if title == "" || favoriteTitle == "" || title == favoriteTitle {
+		return false
+	}
+	titleTokens := strings.Fields(title)
+	favoriteTokens := strings.Fields(favoriteTitle)
+	if len(titleTokens) == 0 || len(favoriteTokens) == 0 {
+		return false
+	}
+	shared := 0
+	set := map[string]bool{}
+	for _, token := range favoriteTokens {
+		set[token] = true
+	}
+	for _, token := range titleTokens {
+		if set[token] {
+			shared++
+		}
+	}
+	minTokens := len(titleTokens)
+	if len(favoriteTokens) < minTokens {
+		minTokens = len(favoriteTokens)
+	}
+	return shared >= 2 && float64(shared)/float64(minTokens) >= 0.5
+}
+
+func normalizeGeneratedMeal(meal domain.Meal, profile domain.Profile, dayDate string) domain.Meal {
+	meal.Title = strings.TrimSpace(meal.Title)
+	if meal.Title == "" {
+		meal.Title = slotFallbackTitle(meal.Slot)
+	}
+	meal.Description = strings.TrimSpace(meal.Description)
+	if meal.Description == "" {
+		meal.Description = fmt.Sprintf("%s fuer %s.", meal.Title, dayDate)
+	}
+	meal.Ingredients = normalizeIngredients(meal.Ingredients)
+	meal.Instructions = normalizeInstructions(meal.Instructions)
+	meal.Tags = normalizeStrings(meal.Tags)
+	meal.Warnings = normalizeStrings(meal.Warnings)
+	meal.Servings = normalizeServings(meal.Servings, profile)
+	meal.Nutrition, meal.Warnings = normalizeNutrition(meal.Nutrition, meal.Warnings, meal.EstimatedNutrition)
+	if meal.Meta == nil {
+		meal.Meta = map[string]string{}
+	}
+	return meal
+}
+
+func normalizeIngredients(ingredients []domain.Ingredient) []domain.Ingredient {
+	out := make([]domain.Ingredient, 0, len(ingredients))
+	for _, ingredient := range ingredients {
+		ingredient.Name = strings.TrimSpace(ingredient.Name)
+		if ingredient.Name == "" {
+			continue
+		}
+		ingredient.Unit = strings.TrimSpace(ingredient.Unit)
+		ingredient.Category = strings.TrimSpace(ingredient.Category)
+		ingredient.Note = strings.TrimSpace(ingredient.Note)
+		if ingredient.Amount < 0 {
+			ingredient.Amount = 0
+		}
+		out = append(out, ingredient)
+	}
+	return out
+}
+
+func normalizeInstructions(instructions []string) []string {
+	out := normalizeStrings(instructions)
+	if len(out) == 0 {
+		return []string{"Nach Geschmack zubereiten und warm servieren."}
+	}
+	return out
+}
+
+func normalizeStrings(values []string) []string {
+	if len(values) == 0 {
+		return nil
+	}
+	seen := map[string]bool{}
+	out := make([]string, 0, len(values))
+	for _, value := range values {
+		value = strings.Join(strings.Fields(strings.TrimSpace(value)), " ")
+		if value == "" {
+			continue
+		}
+		key := strings.ToLower(value)
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		out = append(out, value)
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
+
+func normalizeServings(servings []domain.Serving, profile domain.Profile) []domain.Serving {
+	if len(servings) == 0 {
+		out := make([]domain.Serving, 0, len(profile.Members))
+		for _, member := range profile.Members {
+			out = append(out, domain.Serving{
+				MemberID: member.ID,
+				Name:     preferredAlias(member),
+				Portion:  "100% Portion",
+				Factor:   1,
+			})
+		}
+		return out
+	}
+	out := make([]domain.Serving, 0, len(servings))
+	for _, serving := range servings {
+		serving.MemberID = strings.TrimSpace(serving.MemberID)
+		serving.Name = strings.TrimSpace(serving.Name)
+		serving.Portion = strings.TrimSpace(serving.Portion)
+		if serving.Factor <= 0 {
+			serving.Factor = 1
+		}
+		if serving.Portion == "" {
+			serving.Portion = portionLabel(serving.Factor)
+		}
+		if serving.MemberID == "" && serving.Name != "" {
+			serving.MemberID = strings.ToLower(strings.ReplaceAll(serving.Name, " ", "-"))
+		}
+		out = append(out, serving)
+	}
+	return out
+}
+
+func portionLabel(factor float64) string {
+	if math.Abs(factor-1) < 0.01 {
+		return "100% Portion"
+	}
+	return fmt.Sprintf("%d%% Portion", int(math.Round(factor*100)))
+}
+
+func normalizeNutrition(nutrition domain.Nutrition, warnings []string, estimated bool) (domain.Nutrition, []string) {
+	nutrition.Calories = maxInt(nutrition.Calories, 0)
+	nutrition.ProteinG = maxInt(nutrition.ProteinG, 0)
+	nutrition.CarbsG = maxInt(nutrition.CarbsG, 0)
+	nutrition.FatG = maxInt(nutrition.FatG, 0)
+	nutrition.FiberG = maxInt(nutrition.FiberG, 0)
+	if nutrition.CarbsG > 0 && nutrition.FiberG > nutrition.CarbsG {
+		nutrition.FiberG = nutrition.CarbsG
+	}
+	macroCalories := nutrition.ProteinG*4 + nutrition.CarbsG*4 + nutrition.FatG*9
+	if macroCalories > 0 {
+		diff := absInt(nutrition.Calories - macroCalories)
+		threshold := maxInt(120, int(math.Round(float64(macroCalories)*0.35)))
+		if nutrition.Calories == 0 || diff > threshold {
+			nutrition.Calories = macroCalories
+			if estimated {
+				warnings = append(warnings, "Naehrwerte wurden aus Makros plausibilisiert.")
+			}
+		}
+	}
+	return nutrition, normalizeStrings(warnings)
+}
+
+func slotFallbackTitle(slot string) string {
+	switch strings.TrimSpace(strings.ToLower(slot)) {
+	case "breakfast":
+		return "Fruehstueck"
+	case "lunch":
+		return "Mittagessen"
+	case "dinner":
+		return "Abendessen"
+	case "snack":
+		return "Snack"
+	default:
+		return "Mahlzeit"
+	}
+}
+
+func absInt(value int) int {
+	if value < 0 {
+		return -value
+	}
+	return value
+}
+
+func maxInt(left int, right int) int {
+	if left > right {
+		return left
+	}
+	return right
 }

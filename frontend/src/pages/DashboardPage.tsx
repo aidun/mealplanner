@@ -461,6 +461,19 @@ function PromptDebugOverlay({
               </div>
             </div>
           ) : null}
+          {latest?.meta && Object.keys(latest.meta).length > 0 ? (
+            <div className="prompt-debug-history">
+              <h3>Kontext</h3>
+              <div className="prompt-debug-meta">
+                {Object.entries(latest.meta).map(([key, value]) => (
+                  <article key={key} className="prompt-debug-meta-item">
+                    <span>{formatPromptMetaKey(key)}</span>
+                    <strong>{value || '—'}</strong>
+                  </article>
+                ))}
+              </div>
+            </div>
+          ) : null}
           <pre>{loading ? 'Prompt wird geladen.' : latest?.prompt ?? 'Noch kein Prompt gespeichert.'}</pre>
           {recent.length > 1 ? (
             <div className="prompt-debug-history">
@@ -562,6 +575,29 @@ function mergePromptOperations(snapshot?: PromptDebugSnapshot) {
     operations.set(key, current);
   }
   return Array.from(operations.values()).sort((left, right) => right.tokens - left.tokens || right.requests - left.requests);
+}
+
+function formatPromptMetaKey(value: string) {
+  switch (value) {
+    case 'requestedWeekStart':
+      return 'Angefragter Start';
+    case 'members':
+      return 'Mitglieder';
+    case 'favorites':
+      return 'Favoriten';
+    case 'mealID':
+      return 'Mahlzeit';
+    case 'noteProvided':
+      return 'Anmerkung';
+    case 'existingMeals':
+      return 'Mahlzeiten im Plan';
+    case 'targetMembers':
+      return 'Profilmitglieder Ziel';
+    case 'incomingMembers':
+      return 'Profilmitglieder Quelle';
+    default:
+      return value;
+  }
 }
 
 function countShoppingItems(shoppingList: unknown) {

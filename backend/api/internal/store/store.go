@@ -496,7 +496,11 @@ func (s Store) SavePromptDebug(ctx context.Context, userID string, entry domain.
 	if err != nil {
 		return err
 	}
-	_, err = s.pool.Exec(ctx, `INSERT INTO prompt_debug_entries(family_id, operation, model, prompt) VALUES ($1, $2, $3, $4)`, familyID, entry.Operation, entry.Model, entry.Prompt)
+	meta, err := json.Marshal(entry.Meta)
+	if err != nil {
+		return err
+	}
+	_, err = s.pool.Exec(ctx, `INSERT INTO prompt_debug_entries(family_id, operation, model, prompt, meta) VALUES ($1, $2, $3, $4, $5)`, familyID, entry.Operation, entry.Model, entry.Prompt, meta)
 	return err
 }
 
@@ -506,9 +510,13 @@ func (s Store) LatestPromptDebug(ctx context.Context, userID string) (domain.Pro
 		return domain.PromptDebugEntry{}, err
 	}
 	var entry domain.PromptDebugEntry
-	err = s.pool.QueryRow(ctx, `SELECT operation, model, prompt, created_at FROM prompt_debug_entries WHERE family_id = $1 ORDER BY created_at DESC LIMIT 1`, familyID).Scan(&entry.Operation, &entry.Model, &entry.Prompt, &entry.CreatedAt)
+	var meta []byte
+	err = s.pool.QueryRow(ctx, `SELECT operation, model, prompt, meta, created_at FROM prompt_debug_entries WHERE family_id = $1 ORDER BY created_at DESC LIMIT 1`, familyID).Scan(&entry.Operation, &entry.Model, &entry.Prompt, &meta, &entry.CreatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return domain.PromptDebugEntry{}, ErrNotFound
+	}
+	if err == nil {
+		entry.Meta = decodePromptMeta(meta)
 	}
 	return entry, err
 }
@@ -521,7 +529,7 @@ func (s Store) ListPromptDebug(ctx context.Context, userID string, limit int) ([
 	if limit <= 0 {
 		limit = 5
 	}
-	rows, err := s.pool.Query(ctx, `SELECT operation, model, prompt, created_at FROM prompt_debug_entries WHERE family_id = $1 ORDER BY created_at DESC LIMIT $2`, familyID, limit)
+	rows, err := s.pool.Query(ctx, `SELECT operation, model, prompt, meta, created_at FROM prompt_debug_entries WHERE family_id = $1 ORDER BY created_at DESC LIMIT $2`, familyID, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -529,9 +537,11 @@ func (s Store) ListPromptDebug(ctx context.Context, userID string, limit int) ([
 	var entries []domain.PromptDebugEntry
 	for rows.Next() {
 		var entry domain.PromptDebugEntry
-		if err := rows.Scan(&entry.Operation, &entry.Model, &entry.Prompt, &entry.CreatedAt); err != nil {
+		var meta []byte
+		if err := rows.Scan(&entry.Operation, &entry.Model, &entry.Prompt, &meta, &entry.CreatedAt); err != nil {
 			return nil, err
 		}
+		entry.Meta = decodePromptMeta(meta)
 		entries = append(entries, entry)
 	}
 	if err := rows.Err(); err != nil {
@@ -541,6 +551,20 @@ func (s Store) ListPromptDebug(ctx context.Context, userID string, limit int) ([
 		return nil, ErrNotFound
 	}
 	return entries, nil
+}
+
+func decodePromptMeta(value []byte) map[string]string {
+	if len(value) == 0 || string(value) == "null" {
+		return nil
+	}
+	var meta map[string]string
+	if err := json.Unmarshal(value, &meta); err != nil {
+		return nil
+	}
+	if len(meta) == 0 {
+		return nil
+	}
+	return meta
 }
 
 func (s Store) activeFamilyID(ctx context.Context, userID string) (string, error) {

@@ -214,10 +214,21 @@ function createFetchMock(options: { authenticated?: boolean; familyOverride?: ty
     if (url.endsWith('/api/debug/prompts/latest')) {
       return new Response(
         JSON.stringify({
-          latest: { operation: 'generate_week', model: 'gpt-5.4-mini', prompt: 'Familienprofil:\\nprivater Haushalt' },
+          latest: {
+            operation: 'generate_week',
+            model: 'gpt-5.4-mini',
+            prompt: 'Familienprofil:\\nprivater Haushalt',
+            meta: { requestedWeekStart: '2026-04-13', members: '2', favorites: '1' },
+          },
           recent: [
-            { operation: 'generate_week', model: 'gpt-5.4-mini', prompt: 'Familienprofil:\\nprivater Haushalt', createdAt: '2026-04-21T09:00:00Z' },
-            { operation: 'regenerate_meal', model: 'gpt-5.4-mini', prompt: 'Regeneration', createdAt: '2026-04-21T08:00:00Z' },
+            {
+              operation: 'generate_week',
+              model: 'gpt-5.4-mini',
+              prompt: 'Familienprofil:\\nprivater Haushalt',
+              meta: { requestedWeekStart: '2026-04-13', members: '2', favorites: '1' },
+              createdAt: '2026-04-21T09:00:00Z',
+            },
+            { operation: 'regenerate_meal', model: 'gpt-5.4-mini', prompt: 'Regeneration', meta: { mealID: 'meal-1' }, createdAt: '2026-04-21T08:00:00Z' },
           ],
           openai: {
             requests: [{ operation: 'generate_week', model: 'gpt-5.4-mini', status: 'success', count: 2, durationSum: 1.4 }],
@@ -264,6 +275,9 @@ describe('Mealplanner app', () => {
     expect(screen.getByText(/Familienprofil/)).toBeInTheDocument();
     expect(screen.getByText('OpenAI Tokens')).toBeInTheDocument();
     expect(screen.getByText('Diagnose')).toBeInTheDocument();
+    expect(screen.getByText('Kontext')).toBeInTheDocument();
+    expect(screen.getByText('Angefragter Start')).toBeInTheDocument();
+    expect(screen.getByText('2026-04-13')).toBeInTheDocument();
     expect(screen.getByText('0.70s')).toBeInTheDocument();
   });
 
@@ -350,6 +364,7 @@ describe('Mealplanner app', () => {
     expect(await screen.findByText('Familienfreundlich und schnell.')).toBeInTheDocument();
     expect(screen.getAllByText('Aus Sammlung').length).toBeGreaterThan(0);
     expect(screen.getByText(/wurde aus eurer Favoriten-Sammlung wieder aufgegriffen/i)).toBeInTheDocument();
+    expect(screen.getByText(/Herkunft: Direkt aus eurer Sammlung/)).toBeInTheDocument();
     expect(await screen.findByText('Einkaufsliste')).toBeInTheDocument();
     expect(await screen.findByRole('link', { name: 'Woche zu Bring' })).toBeInTheDocument();
     expect(await screen.findByRole('link', { name: 'Tag zu Bring' })).toHaveAttribute(
@@ -414,6 +429,7 @@ describe('Mealplanner app', () => {
     expect(screen.getByText('Fruehstueck')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Beeren-Porridge/ }));
     expect(await screen.findByText(/Favorit aus eurer Sammlung/)).toBeInTheDocument();
+    expect(screen.getByText(/Herkunft: Neu fuer diese Woche geplant/)).toBeInTheDocument();
   });
 
   it('keeps the weekly Bring link stable when shopping list contents change', async () => {
@@ -571,6 +587,15 @@ describe('Mealplanner app', () => {
 
     expect(await screen.findByText(/Logins brauchen noch eine Zuordnung/i)).toBeInTheDocument();
     expect(screen.getByText('Zuordnung offen')).toBeInTheDocument();
+  });
+
+  it('shows specific feedback after linking a family account', async () => {
+    renderApp('/onboarding');
+
+    const selects = await screen.findAllByLabelText('Zugeordnetes Profilmitglied');
+    fireEvent.change(selects[1]!, { target: { value: 'anna' } });
+
+    expect(await screen.findByText('ben@example.test wurde aktualisiert.')).toBeInTheDocument();
   });
 
   it('copies the invite link from onboarding', async () => {

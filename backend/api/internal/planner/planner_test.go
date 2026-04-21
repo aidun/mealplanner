@@ -39,6 +39,45 @@ func (fakeGeneratorWithFavoriteMatch) MergeProfiles(_ context.Context, target do
 	return target, nil
 }
 
+type fakeGeneratorWithNutritionDrift struct{}
+
+func (fakeGeneratorWithNutritionDrift) GenerateWeek(context.Context, domain.Profile, time.Time, []domain.FavoriteRecipe) (domain.Plan, error) {
+	return domain.Plan{ID: "plan-1", Days: []domain.DayPlan{{Date: "2026-04-20", Meals: []domain.Meal{{
+		ID:                 "meal-1",
+		Slot:               "dinner",
+		Title:              "Pasta",
+		Description:        "",
+		Ingredients:        []domain.Ingredient{{Name: "Pasta", Amount: 400, Unit: "g"}, {Name: " ", Amount: 10, Unit: "g"}},
+		Instructions:       []string{" ", "Kochen"},
+		Nutrition:          domain.Nutrition{Calories: 100, ProteinG: 20, CarbsG: 50, FatG: 10, FiberG: 80},
+		EstimatedNutrition: true,
+	}}}}}, nil
+}
+
+func (fakeGeneratorWithNutritionDrift) RegenerateMeal(context.Context, domain.Profile, domain.Plan, string, string, []domain.FavoriteRecipe) (domain.Meal, error) {
+	return domain.Meal{}, nil
+}
+
+func (fakeGeneratorWithNutritionDrift) MergeProfiles(_ context.Context, target domain.Profile, incoming domain.Profile) (domain.Profile, error) {
+	target.Members = append(target.Members, incoming.Members...)
+	return target, nil
+}
+
+type fakeGeneratorWithVariantMatch struct{}
+
+func (fakeGeneratorWithVariantMatch) GenerateWeek(context.Context, domain.Profile, time.Time, []domain.FavoriteRecipe) (domain.Plan, error) {
+	return domain.Plan{}, nil
+}
+
+func (fakeGeneratorWithVariantMatch) RegenerateMeal(_ context.Context, _ domain.Profile, _ domain.Plan, mealID string, note string, _ []domain.FavoriteRecipe) (domain.Meal, error) {
+	return domain.Meal{ID: mealID, Slot: "dinner", Title: "Cremige Pasta", RegenerationNote: note, Ingredients: []domain.Ingredient{{Name: "Pasta", Amount: 500, Unit: "g"}}}, nil
+}
+
+func (fakeGeneratorWithVariantMatch) MergeProfiles(_ context.Context, target domain.Profile, incoming domain.Profile) (domain.Profile, error) {
+	target.Members = append(target.Members, incoming.Members...)
+	return target, nil
+}
+
 func TestGenerateWeekUsesExplicitWeekMonday(t *testing.T) {
 	p := New(fakeGenerator{})
 	plan, err := p.GenerateWeek(context.Background(), domain.DefaultProfile(), "2026-04-22", nil)
@@ -92,6 +131,44 @@ func TestRegenerateMealMarksFavoriteReuseOnMatch(t *testing.T) {
 	}
 	if updated.Days[0].Meals[0].Meta["favoriteReuse"] != "direct" {
 		t.Fatalf("expected favorite marker on regenerated meal, got %#v", updated.Days[0].Meals[0].Meta)
+	}
+}
+
+func TestGenerateWeekNormalizesNutritionAndMealPayload(t *testing.T) {
+	p := New(fakeGeneratorWithNutritionDrift{})
+	plan, err := p.GenerateWeek(context.Background(), domain.DefaultProfile(), "2026-04-20", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	meal := plan.Days[0].Meals[0]
+	if meal.Nutrition.Calories != 370 {
+		t.Fatalf("expected calories to be plausibilized from macros, got %d", meal.Nutrition.Calories)
+	}
+	if meal.Nutrition.FiberG != 50 {
+		t.Fatalf("expected fiber to be clamped to carbs, got %d", meal.Nutrition.FiberG)
+	}
+	if len(meal.Ingredients) != 1 {
+		t.Fatalf("expected empty ingredient rows to be removed, got %d", len(meal.Ingredients))
+	}
+	if len(meal.Instructions) != 1 || meal.Instructions[0] != "Kochen" {
+		t.Fatalf("expected instructions to be normalized, got %#v", meal.Instructions)
+	}
+	if !strings.Contains(strings.Join(meal.Warnings, " "), "plausibilisiert") {
+		t.Fatalf("expected nutrition plausibility warning, got %#v", meal.Warnings)
+	}
+}
+
+func TestFavoriteMatchMarksVariants(t *testing.T) {
+	p := New(fakeGeneratorWithVariantMatch{})
+	plan := domain.Plan{ID: "plan-1", Days: []domain.DayPlan{{Meals: []domain.Meal{{ID: "meal-1", Slot: "dinner"}}}}}
+	updated, err := p.RegenerateMeal(context.Background(), domain.DefaultProfile(), plan, "meal-1", "familientauglich", []domain.FavoriteRecipe{{
+		Meal: domain.Meal{Title: "Cremige Pasta Auflauf"},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if updated.Days[0].Meals[0].Meta["favoriteReuse"] != "variant" {
+		t.Fatalf("expected favorite variant marker, got %#v", updated.Days[0].Meals[0].Meta)
 	}
 }
 

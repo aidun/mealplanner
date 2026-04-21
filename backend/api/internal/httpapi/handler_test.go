@@ -775,7 +775,7 @@ func TestPromptDebugEndpointOnlyWhenEnabled(t *testing.T) {
 	setAuth(repo, req, "user-1")
 	rec = httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
-	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"latest"`) || !strings.Contains(rec.Body.String(), `"recent"`) || !strings.Contains(rec.Body.String(), "generate_week") || !strings.Contains(rec.Body.String(), "Familienprofil") {
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"latest"`) || !strings.Contains(rec.Body.String(), `"recent"`) || !strings.Contains(rec.Body.String(), "generate_week") || !strings.Contains(rec.Body.String(), "Familienprofil") || !strings.Contains(rec.Body.String(), `"members":"1"`) || !strings.Contains(rec.Body.String(), `"favorites":"0"`) {
 		t.Fatalf("expected prompt debug entry, got %d: %s", rec.Code, rec.Body.String())
 	}
 }

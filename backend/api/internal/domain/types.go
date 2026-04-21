@@ -29,14 +29,14 @@ type FamilyAccount struct {
 }
 
 type FamilySummary struct {
-	ID            string    `json:"id"`
-	Name          string    `json:"name"`
-	MemberCount   int       `json:"memberCount"`
+	ID            string                `json:"id"`
+	Name          string                `json:"name"`
+	MemberCount   int                   `json:"memberCount"`
 	Members       []FamilyMemberSummary `json:"members,omitempty"`
 	Accounts      []FamilyAccount       `json:"accounts,omitempty"`
-	Personal      bool      `json:"personal"`
-	CreatedAt     time.Time `json:"createdAt,omitempty"`
-	MergedWarning string    `json:"mergedWarning,omitempty"`
+	Personal      bool                  `json:"personal"`
+	CreatedAt     time.Time             `json:"createdAt,omitempty"`
+	MergedWarning string                `json:"mergedWarning,omitempty"`
 }
 
 type CreateFamilyInviteRequest struct {
@@ -126,10 +126,11 @@ type CreateFavoriteRequest struct {
 }
 
 type PromptDebugEntry struct {
-	Operation string    `json:"operation"`
-	Model     string    `json:"model,omitempty"`
-	Prompt    string    `json:"prompt"`
-	CreatedAt time.Time `json:"createdAt,omitempty"`
+	Operation string            `json:"operation"`
+	Model     string            `json:"model,omitempty"`
+	Prompt    string            `json:"prompt"`
+	Meta      map[string]string `json:"meta,omitempty"`
+	CreatedAt time.Time         `json:"createdAt,omitempty"`
 }
 
 type OpenAIRequestMetric struct {

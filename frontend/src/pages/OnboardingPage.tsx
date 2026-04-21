@@ -34,6 +34,7 @@ export function OnboardingPage() {
   const [hasEdited, setHasEdited] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteCopyState, setInviteCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
+  const [lastLinkedAccountEmail, setLastLinkedAccountEmail] = useState('');
 
   const profileQuery = useQuery({
     queryKey: ['profile'],
@@ -407,12 +408,13 @@ export function OnboardingPage() {
                           <select
                             className="input"
                             value={account.linkedMemberId ?? ''}
-                            onChange={(event) =>
+                            onChange={(event) => {
+                              setLastLinkedAccountEmail(account.email || 'Dieses Login');
                               linkMutation.mutate({
                                 accountUserId: account.userId,
                                 memberId: event.target.value,
-                              })
-                            }
+                              });
+                            }}
                           >
                             <option value="">Nicht zugewiesen</option>
                             {memberOptions.map((member) => (
@@ -429,7 +431,11 @@ export function OnboardingPage() {
                   )}
                 </div>
                 {linkMutation.isError ? <p className="error-copy">{errorMessage(linkMutation.error)}</p> : null}
-                {linkMutation.isSuccess ? <p className="success-copy">Zuordnung gespeichert.</p> : null}
+                {linkMutation.isSuccess ? (
+                  <p className="success-copy">
+                    {lastLinkedAccountEmail ? `${lastLinkedAccountEmail} wurde aktualisiert.` : 'Zuordnung gespeichert.'}
+                  </p>
+                ) : null}
 
                 <p className="panel-feedback" role="note">
                   Hinweis: Beim Erstellen und Annehmen der Einladung wird der persönliche Account der eingeladenen Person

@@ -84,6 +84,7 @@ export interface PromptDebugEntry {
   operation: string;
   model?: string;
   prompt: string;
+  meta?: Record<string, string>;
   createdAt?: string;
 }
 
