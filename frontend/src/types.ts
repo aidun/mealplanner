@@ -52,6 +52,7 @@ export interface FamilySummary {
   id: string;
   name: string;
   memberCount: number;
+  members?: string[];
   personal: boolean;
   createdAt?: string;
   mergedWarning?: string;

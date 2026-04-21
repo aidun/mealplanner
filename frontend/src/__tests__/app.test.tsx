@@ -90,7 +90,7 @@ const regeneratedPlan = {
 
 const shoppingList = [{ name: 'Zucchini', amount: 2, unit: 'Stk', category: 'Gemüse' }];
 const favorites = [{ id: 'favorite-meal-2', meal: plan.days[1]!.meals[0]! }];
-const family = { id: 'family-1', name: 'Familie Weber', memberCount: 2, personal: false };
+const family = { id: 'family-1', name: 'Familie Weber', memberCount: 2, members: ['Anna', 'Ben'], personal: false };
 const session = { authenticated: true, csrfToken: 'csrf-token-1' };
 const providers = {
   providers: [
@@ -496,6 +496,20 @@ describe('Mealplanner app', () => {
     });
     expect(await screen.findByText('https://mealplanner.test/family/invites/accept?token=invite-token')).toBeInTheDocument();
     expect(screen.getByText(/persönliche Account geht im Familienkonto auf/i)).toBeInTheDocument();
+    expect(screen.getByLabelText('Familienkonto Übersicht')).toHaveTextContent('Anna');
+    expect(screen.getByLabelText('Familienkonto Übersicht')).toHaveTextContent('Ben');
+  });
+
+  it('accepts an invite and lands on the merged family profile', async () => {
+    renderApp('/family/invites/accept?token=invite-token');
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Einladung annehmen' }));
+
+    expect(await screen.findByText('Familienkonto aktiv. Das gemeinsame Profil wurde geladen.')).toBeInTheDocument();
+    await screen.findByText('Anna');
+    await screen.findByText('Ben');
+    expect(screen.getByLabelText('Familienkonto Übersicht')).toHaveTextContent('Anna');
+    expect(screen.getByLabelText('Familienkonto Übersicht')).toHaveTextContent('Ben');
   });
 
   it('shows feedback when plan generation fails', async () => {

@@ -227,6 +227,15 @@ func (s Store) GetFamily(ctx context.Context, userID string) (domain.FamilySumma
 	if status == "merged" {
 		summary.MergedWarning = "Dieser persoenliche Account ist in einem Familienaccount aufgegangen."
 	}
+	profile, err := s.GetProfileByFamily(ctx, familyID)
+	if err == nil {
+		for _, member := range profile.Members {
+			name := strings.TrimSpace(member.Name)
+			if name != "" {
+				summary.Members = append(summary.Members, name)
+			}
+		}
+	}
 	return summary, err
 }
 

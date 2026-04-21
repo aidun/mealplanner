@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
-import { createFamilyInvite, getProfile, saveProfile } from '../api';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { createFamilyInvite, getFamily, getProfile, saveProfile } from '../api';
 import { formToProfile, profileToForm } from '../lib/profile-form';
 import type { ProfileFormState } from '../types';
 
@@ -22,13 +22,19 @@ const EMPTY_FORM: ProfileFormState = {
 export function OnboardingPage() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const location = useLocation();
   const profileQuery = useQuery({
     queryKey: ['profile'],
     queryFn: getProfile,
   });
+  const familyQuery = useQuery({
+    queryKey: ['family'],
+    queryFn: getFamily,
+  });
   const [form, setForm] = useState<ProfileFormState>(EMPTY_FORM);
   const [hasEdited, setHasEdited] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
+  const joinedFamily = new URLSearchParams(location.search).get('family') === 'joined';
 
   useEffect(() => {
     if (profileQuery.data) {
@@ -98,6 +104,11 @@ export function OnboardingPage() {
               </button>
             ) : null}
           </div>
+          {joinedFamily ? (
+            <div className="status-strip status-strip-success" role="status" aria-live="polite">
+              <span>Familienkonto aktiv. Das gemeinsame Profil wurde geladen.</span>
+            </div>
+          ) : null}
 
           <form
             className="profile-form"
@@ -154,6 +165,21 @@ export function OnboardingPage() {
                 <p>Erstelle einen Einladungslink für eine Person. Beim Annehmen geht ihr persönlicher Account im Familienkonto auf.</p>
               </div>
               <div className="profile-section-fields">
+                <div className="family-overview" aria-label="Familienkonto Übersicht">
+                  <strong>{familyQuery.data?.personal ? 'Persönlicher Bereich' : 'Gemeinsames Familienkonto'}</strong>
+                  {familyQuery.data?.mergedWarning ? <p>{familyQuery.data.mergedWarning}</p> : null}
+                  {familyQuery.data?.members?.length ? (
+                    <div className="family-member-list">
+                      {familyQuery.data.members.map((member) => (
+                        <span key={member} className="profile-chip">
+                          {member}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p>Noch keine zusammengeführten Familienmitglieder sichtbar.</p>
+                  )}
+                </div>
                 <p className="panel-feedback" role="note">
                   Hinweis: Beim Erstellen und Annehmen der Einladung wird der persönliche Account der eingeladenen Person in dieses Familienkonto überführt. Das Profil wird sinnvoll zusammengeführt.
                 </p>

@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { acceptFamilyInvite, getSession } from './api';
 import { DashboardPage } from './pages/DashboardPage';
 import { LegalPage } from './pages/LegalPage';
@@ -21,9 +21,21 @@ export function App() {
 }
 
 function AcceptInvitePage() {
-  const token = new URLSearchParams(window.location.search).get('token') ?? '';
+  const location = useLocation();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const token = new URLSearchParams(location.search).get('token') ?? '';
   const mutation = useMutation({
     mutationFn: () => acceptFamilyInvite(token),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['family'] }),
+        queryClient.invalidateQueries({ queryKey: ['profile'] }),
+        queryClient.invalidateQueries({ queryKey: ['current-plan'] }),
+        queryClient.invalidateQueries({ queryKey: ['favorites'] }),
+      ]);
+      navigate('/onboarding?family=joined', { replace: true });
+    },
   });
 
   return (
@@ -44,7 +56,6 @@ function AcceptInvitePage() {
           >
             {mutation.isPending ? 'Wird zusammengeführt' : 'Einladung annehmen'}
           </button>
-          {mutation.isSuccess ? <p className="panel-feedback">Du bist jetzt im Familienkonto.</p> : null}
           {mutation.isError ? <p className="error-copy">Einladung konnte nicht angenommen werden.</p> : null}
         </section>
       </main>

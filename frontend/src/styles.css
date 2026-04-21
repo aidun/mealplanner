@@ -597,6 +597,23 @@ a:focus-visible {
   text-underline-offset: 3px;
 }
 
+.family-overview,
+.family-members-inline {
+  display: grid;
+  gap: 10px;
+}
+
+.family-member-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.family-note {
+  margin: 10px 0 0;
+  color: var(--muted);
+}
+
 .prompt-debug {
   position: fixed;
   right: 16px;

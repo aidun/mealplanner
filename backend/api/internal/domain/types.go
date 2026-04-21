@@ -19,6 +19,7 @@ type FamilySummary struct {
 	ID            string    `json:"id"`
 	Name          string    `json:"name"`
 	MemberCount   int       `json:"memberCount"`
+	Members       []string  `json:"members,omitempty"`
 	Personal      bool      `json:"personal"`
 	CreatedAt     time.Time `json:"createdAt,omitempty"`
 	MergedWarning string    `json:"mergedWarning,omitempty"`

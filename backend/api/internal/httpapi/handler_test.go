@@ -155,7 +155,13 @@ func (m *memoryRepo) GetPlan(r *http.Request, id string) (domain.Plan, error) {
 
 func (m *memoryRepo) GetFamily(r *http.Request) (domain.FamilySummary, error) {
 	familyID := m.familyID(mustUserID(r.Context()))
-	return domain.FamilySummary{ID: familyID, Name: "Familie", MemberCount: len(m.familyMembers[familyID]), Personal: len(m.familyMembers[familyID]) == 1}, nil
+	summary := domain.FamilySummary{ID: familyID, Name: "Familie", MemberCount: len(m.familyMembers[familyID]), Personal: len(m.familyMembers[familyID]) == 1}
+	for _, member := range m.profiles[familyID].Members {
+		if strings.TrimSpace(member.Name) != "" {
+			summary.Members = append(summary.Members, member.Name)
+		}
+	}
+	return summary, nil
 }
 
 func (m *memoryRepo) CreateFamilyInvite(r *http.Request, emailHash string, ttl time.Duration) (domain.FamilyInvite, string, error) {
@@ -340,10 +346,13 @@ func TestBringExport(t *testing.T) {
 		t.Fatalf("expected text/html content type, got %q", contentType)
 	}
 	body := rec.Body.String()
-	for _, expected := range []string{"schema.org", `"@type":"Recipe"`, "recipeIngredient", `"author":"Mealplanner"`, `"prepTime":"PT10M"`, `"totalTime":"PT10M"`, "itemtype=\"https://schema.org/Recipe\"", "itemprop=\"recipeIngredient\"", "itemprop=\"author\"", "itemprop=\"recipeInstructions\"", "platform.getbring.com/widgets/import.js", "data-bring-import", "2 Stk Zucchini", "400 g Pasta"} {
+	for _, expected := range []string{"schema.org", `"@type":"Recipe"`, "recipeIngredient", `"author":"Mealplanner"`, `"prepTime":"PT10M"`, `"totalTime":"PT10M"`, "itemprop=\"recipeIngredient ingredients\"", "itemprop=\"author\"", "itemprop=\"recipeInstructions\"", "platform.getbring.com/widgets/import.js", "data-bring-import", "2 Stk Zucchini", "400 g Pasta"} {
 		if !strings.Contains(body, expected) {
 			t.Fatalf("bring export missing %q in body: %s", expected, body)
 		}
+	}
+	if !strings.Contains(body, `itemtype="https://schema.org/Recipe"`) && !strings.Contains(body, `itemtype="http://schema.org/Recipe"`) {
+		t.Fatalf("bring export missing recipe itemtype in body: %s", body)
 	}
 
 	req = httptest.NewRequest(http.MethodGet, "/api/plans/plan-1/bring-export-url", nil)
@@ -407,7 +416,7 @@ func TestBringExportCanScopeWeekDayAndMeal(t *testing.T) {
 				Date:  "2026-04-20",
 				Label: "Mo",
 				Meals: []domain.Meal{
-					{ID: "meal-1", Slot: "dinner", Title: "Pasta", Ingredients: []domain.Ingredient{{Name: "Pasta", Amount: 400, Unit: "g"}}},
+					{ID: "meal-1", Slot: "dinner", Title: "Pasta", Description: "Sahnig und mild.", Instructions: []string{"Wasser kochen", "Pasta garen", "Sauce unterheben"}, Ingredients: []domain.Ingredient{{Name: "Pasta", Amount: 400, Unit: "g"}}},
 					{ID: "meal-2", Slot: "lunch", Title: "Salat", Ingredients: []domain.Ingredient{{Name: "Gurke", Amount: 1, Unit: "Stk"}}},
 				},
 			},
@@ -447,7 +456,7 @@ func TestBringExportCanScopeWeekDayAndMeal(t *testing.T) {
 		t.Fatalf("expected signed meal export 200, got %d: %s", rec.Code, rec.Body.String())
 	}
 	body := rec.Body.String()
-	for _, expected := range []string{"Pasta", "400 g Pasta", "Mealplanner Rezept: Pasta"} {
+	for _, expected := range []string{"Pasta", "400 g Pasta", "Mealplanner Rezept: Pasta", "itemprop=\"yield\"", "itemprop=\"recipeIngredient ingredients\"", "Wasser kochen", "\"image\":\"data:image/svg+xml;utf8,"} {
 		if !strings.Contains(body, expected) {
 			t.Fatalf("meal export missing %q in body: %s", expected, body)
 		}
@@ -684,6 +693,13 @@ func TestFamilyInviteMergesProfileOnlyWithMatchingEmailHash(t *testing.T) {
 	merged := repo.profiles["family-user-1"]
 	if len(merged.Members) != 2 || repo.activeFamilies["user-2"] != "family-user-1" {
 		t.Fatalf("expected merged profile and active family switch, profile=%+v active=%s", merged, repo.activeFamilies["user-2"])
+	}
+	req = httptest.NewRequest(http.MethodGet, "/api/family", nil)
+	setAuth(repo, req, "user-2")
+	rec = httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"members":["A","B"]`) {
+		t.Fatalf("expected merged family members in summary, got %d: %s", rec.Code, rec.Body.String())
 	}
 }
 

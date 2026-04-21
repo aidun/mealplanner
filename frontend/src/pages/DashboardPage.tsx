@@ -226,6 +226,16 @@ export function DashboardPage() {
                 <span className="profile-chip profile-chip-accent">{familyQuery.data.memberCount} im Familienkonto</span>
               ) : null}
             </div>
+            {familyQuery.data?.members?.length ? (
+              <div className="family-members-inline" aria-label="Familienmitglieder">
+                {familyQuery.data.members.map((member) => (
+                  <span key={member} className="profile-chip">
+                    {member}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+            {familyQuery.data?.mergedWarning ? <p className="family-note">{familyQuery.data.mergedWarning}</p> : null}
           </div>
 
           <div className="home-hero-actions">
