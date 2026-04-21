@@ -132,6 +132,9 @@ export function DashboardPage() {
     () => (favoritesQuery.data ?? []).find((favorite) => favorite.id === selectedFavoriteId),
     [favoritesQuery.data, selectedFavoriteId]
   );
+  const favorites = favoritesQuery.data ?? [];
+  const favoriteSlots = useMemo(() => summarizeFavoriteSlots(favorites), [favorites]);
+  const favoriteTags = useMemo(() => summarizeFavoriteTags(favorites), [favorites]);
   const inspectedMeal = selectedFavorite?.meal ?? selectedMeal;
   const selectedDay = useMemo(
     () => currentPlanQuery.data?.days.find((day) => day.meals.some((meal) => meal.id === inspectedMeal?.id)),
@@ -268,15 +271,29 @@ export function DashboardPage() {
           </div>
         ) : null}
 
-        {(favoritesQuery.data ?? []).length > 0 ? (
+        {favorites.length > 0 ? (
           <section className="favorites-rail" aria-labelledby="favorites-title">
             <div className="favorites-rail-copy">
               <span className="eyebrow">Favoriten</span>
               <h2 id="favorites-title">Wieder gern kochen</h2>
               <p>Gerichte, die ihr behalten wollt und die bei neuen Wochen wieder auftauchen duerfen.</p>
             </div>
+            <div className="favorites-rail-summary" aria-label="Favoriten wirken auf neue Wochen">
+              <div className="favorites-rail-stat">
+                <strong>{favorites.length}</strong>
+                <span>liegen fuer die naechste Woche bereit</span>
+              </div>
+              <div className="favorites-rail-stat">
+                <strong>{favoriteSlots.join(', ') || 'alle Mahlzeiten'}</strong>
+                <span>werden beim Planen zuerst geprueft</span>
+              </div>
+              <div className="favorites-rail-stat">
+                <strong>{favoriteTags[0] ?? 'euer Stil'}</strong>
+                <span>taucht bevorzugt als Richtung wieder auf</span>
+              </div>
+            </div>
             <div className="favorites-rail-list">
-              {(favoritesQuery.data ?? []).map((favorite) => {
+              {favorites.map((favorite) => {
                 const active = selectedFavoriteId === favorite.id;
                 return (
                   <button
@@ -379,6 +396,15 @@ function PromptDebugOverlay({
   const latest = snapshot?.latest;
   const recent = snapshot?.recent ?? [];
   const totalTokens = (snapshot?.openai?.tokens ?? []).filter((metric) => metric.type === 'total');
+  const requestMetrics = snapshot?.openai?.requests ?? [];
+  const totalRequests = requestMetrics.reduce((sum, metric) => sum + metric.count, 0);
+  const successRequests = requestMetrics
+    .filter((metric) => metric.status === 'success')
+    .reduce((sum, metric) => sum + metric.count, 0);
+  const averageDuration = totalRequests > 0
+    ? requestMetrics.reduce((sum, metric) => sum + metric.durationSum, 0) / totalRequests
+    : 0;
+  const operations = mergePromptOperations(snapshot);
 
   return (
     <div className="prompt-debug">
@@ -410,6 +436,29 @@ function PromptDebugOverlay({
                 <strong>{totalTokens.reduce((sum, metric) => sum + metric.count, 0)}</strong>
                 <span>OpenAI Tokens</span>
               </div>
+              <div className="prompt-debug-metric">
+                <strong>{successRequests}/{totalRequests || 0}</strong>
+                <span>Requests erfolgreich</span>
+              </div>
+              <div className="prompt-debug-metric">
+                <strong>{averageDuration > 0 ? `${averageDuration.toFixed(2)}s` : 'n/a'}</strong>
+                <span>mittlere Dauer</span>
+              </div>
+            </div>
+          ) : null}
+          {operations.length > 0 ? (
+            <div className="prompt-debug-history">
+              <h3>Diagnose</h3>
+              <div className="prompt-debug-ops">
+                {operations.map((operation) => (
+                  <article key={operation.operation} className="prompt-debug-op">
+                    <strong>{operation.operation}</strong>
+                    <span>{operation.model || 'mealplanner'}</span>
+                    <span>{operation.tokens > 0 ? `${operation.tokens} Tokens` : 'ohne Tokenwert'}</span>
+                    <span>{operation.requests > 0 ? `${operation.requests} Requests` : 'ohne Requestwert'}</span>
+                  </article>
+                ))}
+              </div>
             </div>
           ) : null}
           <pre>{loading ? 'Prompt wird geladen.' : latest?.prompt ?? 'Noch kein Prompt gespeichert.'}</pre>
@@ -421,7 +470,7 @@ function PromptDebugOverlay({
                   <li key={`${entry.operation}-${entry.createdAt ?? index}`}>
                     <strong>{entry.operation}</strong>
                     {entry.model ? ` · ${entry.model}` : ''}
-                    {entry.createdAt ? ` · ${entry.createdAt}` : ''}
+                    {entry.createdAt ? ` · ${formatPromptTimestamp(entry.createdAt)}` : ''}
                   </li>
                 ))}
               </ul>
@@ -443,6 +492,76 @@ function errorMessage(error: unknown) {
     }
   }
   return 'Aktion konnte nicht ausgeführt werden.';
+}
+
+function summarizeFavoriteSlots(favorites: FavoriteRecipe[]) {
+  return Array.from(
+    new Set(
+      favorites
+        .map((favorite) => favorite.meal.slot)
+        .filter(Boolean)
+        .map((slot) => slotLabel(slot))
+    )
+  ).slice(0, 3);
+}
+
+function summarizeFavoriteTags(favorites: FavoriteRecipe[]) {
+  const counts = new Map<string, number>();
+  for (const favorite of favorites) {
+    for (const tag of favorite.meal.tags ?? []) {
+      const value = tag.trim();
+      if (!value) continue;
+      counts.set(value, (counts.get(value) ?? 0) + 1);
+    }
+  }
+  return Array.from(counts.entries())
+    .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
+    .map(([tag]) => tag)
+    .slice(0, 3);
+}
+
+function slotLabel(slot?: string) {
+  switch (slot) {
+    case 'breakfast':
+      return 'Fruehstueck';
+    case 'lunch':
+      return 'Mittag';
+    case 'dinner':
+      return 'Abendessen';
+    case 'snack':
+      return 'Snack';
+    default:
+      return slot || '';
+  }
+}
+
+function formatPromptTimestamp(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat('de-DE', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date);
+}
+
+function mergePromptOperations(snapshot?: PromptDebugSnapshot) {
+  const operations = new Map<string, { operation: string; model?: string; tokens: number; requests: number }>();
+  for (const token of snapshot?.openai?.tokens ?? []) {
+    if (token.type !== 'total') continue;
+    const key = `${token.operation}:${token.model}`;
+    const current = operations.get(key) ?? { operation: token.operation, model: token.model, tokens: 0, requests: 0 };
+    current.tokens += token.count;
+    operations.set(key, current);
+  }
+  for (const request of snapshot?.openai?.requests ?? []) {
+    const key = `${request.operation}:${request.model}`;
+    const current = operations.get(key) ?? { operation: request.operation, model: request.model, tokens: 0, requests: 0 };
+    current.requests += request.count;
+    operations.set(key, current);
+  }
+  return Array.from(operations.values()).sort((left, right) => right.tokens - left.tokens || right.requests - left.requests);
 }
 
 function countShoppingItems(shoppingList: unknown) {

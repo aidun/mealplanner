@@ -618,6 +618,30 @@ a:focus-visible {
   scrollbar-width: none;
 }
 
+.favorites-rail-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.favorites-rail-stat {
+  display: grid;
+  gap: 3px;
+  padding: 12px 14px;
+  border: 1px solid rgba(18, 33, 29, 0.08);
+  border-radius: 8px;
+  background: rgba(245, 249, 245, 0.92);
+}
+
+.favorites-rail-stat strong {
+  font-size: 0.96rem;
+}
+
+.favorites-rail-stat span {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
 .favorites-rail-list::-webkit-scrollbar {
   display: none;
 }
@@ -767,6 +791,43 @@ a:focus-visible {
   gap: 10px;
 }
 
+.family-roster {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.family-roster-card {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid rgba(18, 33, 29, 0.08);
+  border-radius: 8px;
+  background: rgba(245, 249, 245, 0.82);
+}
+
+.family-roster-card p {
+  margin: 4px 0 0;
+  color: var(--muted);
+}
+
+.family-roster-mails {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.family-mail-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 9px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(18, 33, 29, 0.08);
+  font-size: 0.8rem;
+}
+
 .family-summary-row {
   display: flex;
   flex-wrap: wrap;
@@ -842,6 +903,26 @@ a:focus-visible {
 
 .prompt-debug-history h3 {
   margin: 0;
+}
+
+.prompt-debug-ops {
+  display: grid;
+  gap: 10px;
+}
+
+.prompt-debug-op {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid rgba(18, 33, 29, 0.08);
+  border-radius: 8px;
+  background: rgba(245, 249, 245, 0.9);
+}
+
+.prompt-debug-op span {
+  color: var(--muted);
+  font-size: 0.82rem;
 }
 
 .panel-feedback {
@@ -1779,6 +1860,13 @@ a:focus-visible {
     padding-inline: 14px;
   }
 
+  .favorites-rail-summary,
+  .family-roster,
+  .prompt-debug-op,
+  .prompt-debug-metrics {
+    grid-template-columns: 1fr;
+  }
+
   .board-carousel {
     padding: 12px 14px 14px;
   }
@@ -1793,8 +1881,7 @@ a:focus-visible {
     padding: 10px;
   }
 
-  .inspector-summary-grid,
-  .prompt-debug-metrics {
+  .inspector-summary-grid {
     grid-template-columns: 1fr;
   }
 

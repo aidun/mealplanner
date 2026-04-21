@@ -261,6 +261,8 @@ describe('Mealplanner app', () => {
     expect(screen.getAllByText('generate_week').length).toBeGreaterThan(0);
     expect(screen.getByText(/Familienprofil/)).toBeInTheDocument();
     expect(screen.getByText('OpenAI Tokens')).toBeInTheDocument();
+    expect(screen.getByText('Diagnose')).toBeInTheDocument();
+    expect(screen.getByText('0.70s')).toBeInTheDocument();
   });
 
   it('shows the login page without a session and only enabled providers', async () => {
@@ -403,6 +405,8 @@ describe('Mealplanner app', () => {
     renderApp('/');
 
     expect(await screen.findByText('Wieder gern kochen')).toBeInTheDocument();
+    expect(screen.getByText('liegen fuer die naechste Woche bereit')).toBeInTheDocument();
+    expect(screen.getByText('Fruehstueck')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Beeren-Porridge/ }));
     expect(await screen.findByText(/Favorit aus eurer Sammlung/)).toBeInTheDocument();
   });
@@ -534,9 +538,17 @@ describe('Mealplanner app', () => {
     });
     expect(await screen.findByText('https://mealplanner.test/family/invites/accept?token=invite-token')).toBeInTheDocument();
     expect(screen.getByText(/persönliche Account geht im Familienkonto auf/i)).toBeInTheDocument();
-    expect(screen.getByText('anna@example.test')).toBeInTheDocument();
+    expect(screen.getAllByText('anna@example.test').length).toBeGreaterThan(0);
     expect(screen.getAllByDisplayValue('Mama').length).toBeGreaterThan(0);
     expect(screen.getByText(/von 2 Logins zugeordnet/i)).toBeInTheDocument();
+  });
+
+  it('shows merged family members with visible login mails', async () => {
+    renderApp('/onboarding');
+
+    expect(await screen.findByLabelText('Wer gehoert zum Familienkonto')).toBeInTheDocument();
+    expect(await screen.findAllByText('anna@example.test')).not.toHaveLength(0);
+    expect(screen.getAllByText('ben@example.test').length).toBeGreaterThan(0);
   });
 
   it('copies the invite link from onboarding', async () => {

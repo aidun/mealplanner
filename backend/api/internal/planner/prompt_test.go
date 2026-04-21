@@ -79,7 +79,23 @@ func TestWeekPromptIncludesFavoritesAsInspiration(t *testing.T) {
 		Meal: domain.Meal{Title: "Lieblingspasta", Slot: "dinner", Description: "Tomatig und schnell", Tags: []string{"favorit"}},
 	}})
 
-	if !strings.Contains(prompt, "Lieblingspasta") || !strings.Contains(prompt, "Favoriten") {
+	for _, expected := range []string{"Lieblingspasta", "Favoriten", "mindestens 2 Mahlzeiten"} {
+		if !strings.Contains(prompt, expected) {
+			t.Fatalf("prompt should include favorite guidance %q: %s", expected, prompt)
+		}
+	}
+}
+
+func TestRegeneratePromptPrefersFavoritesWhenNoteIsOpen(t *testing.T) {
+	prompt := RegeneratePrompt(domain.DefaultProfile(), domain.Plan{
+		WeekStart: "2026-04-20",
+		Days: []domain.DayPlan{{
+			Date: "2026-04-20",
+			Meals: []domain.Meal{{ID: "meal-1", Slot: "dinner", Title: "Pasta"}},
+		}},
+	}, "meal-1", "", []domain.FavoriteRecipe{{Meal: domain.Meal{Title: "Ofengemuese"}}})
+
+	if !strings.Contains(prompt, "pruefe zuerst passende Favoriten") {
 		t.Fatalf("prompt should include compact favorites: %s", prompt)
 	}
 }

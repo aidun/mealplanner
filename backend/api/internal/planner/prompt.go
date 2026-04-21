@@ -77,6 +77,7 @@ Regeln:
 - Jede Mahlzeit braucht Beschreibung, Zutaten, Anleitung und geschaetzte Naehrwerte pro Portion.
 - Beachte alle Vorlieben, Abneigungen und Einschraenkungen pro Person.
 - Nutze Favoriten als Inspiration. Wiederhole passende Favoriten oder Varianten davon, aber mache die Woche nicht monoton.
+- Wenn Favoriten gut passen, uebernimm mindestens 2 Mahlzeiten der Woche direkt daraus oder als klar erkennbare Variante.
 - Gib nur JSON im vereinbarten Schema zurueck.
 
 Familienprofil:
@@ -103,6 +104,7 @@ Regeln:
 - Wenn die Anmerkung eine Zutat ausschliesst, darf sie weder in Titel, Zutaten noch Anleitung vorkommen.
 - Wenn die Anmerkung Tempo, Kindertauglichkeit, Aufwand oder Stil nennt, muss das in Beschreibung, Zutaten und Anleitung sichtbar umgesetzt werden.
 - Favoriten duerfen als Stil- oder Rezeptvorlage dienen, wenn sie zur Anmerkung passen.
+- Wenn die Anmerkung offen bleibt, pruefe zuerst passende Favoriten oder nahe Varianten daraus.
 - Naehrwerte sind pro Portion anzugeben.
 - Gib nur die einzelne Mahlzeit im vereinbarten JSON-Schema zurueck.
 

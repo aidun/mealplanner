@@ -124,6 +124,16 @@ export function OnboardingPage() {
       };
     });
   }, [familyQuery.data?.accounts, form.members]);
+  const familyRoster = useMemo(
+    () =>
+      form.members.map((member, index) => ({
+        id: member.id,
+        label: member.alias.trim() || member.name.trim() || `Mitglied ${index + 1}`,
+        role: member.role.trim() || 'Profilmitglied',
+        accounts: linkedMembers.filter((account) => account.linkedMemberId === member.id),
+      })),
+    [form.members, linkedMembers]
+  );
   const linkedAccountsCount = linkedMembers.filter((account) => account.linkedMemberId).length;
 
   const statusMessage = useMemo(() => {
@@ -344,6 +354,28 @@ export function OnboardingPage() {
                     <span>{linkedAccountsCount} von {linkedMembers.length} Logins zugeordnet</span>
                     <span>{memberOptions.length} Profilmitglieder aktiv</span>
                   </div>
+                </div>
+
+                <div className="family-roster" aria-label="Wer gehoert zum Familienkonto">
+                  {familyRoster.map((member) => (
+                    <article key={member.id} className="family-roster-card">
+                      <div>
+                        <strong>{member.label}</strong>
+                        <p>{member.role}</p>
+                      </div>
+                      {member.accounts.length > 0 ? (
+                        <div className="family-roster-mails">
+                          {member.accounts.map((account) => (
+                            <span key={`${member.id}-${account.userId}`} className="family-mail-chip">
+                              {account.email || 'Keine Mail'}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="muted">Noch kein Login zugeordnet.</p>
+                      )}
+                    </article>
+                  ))}
                 </div>
 
                 <div className="family-account-list">
