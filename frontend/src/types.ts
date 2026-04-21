@@ -86,6 +86,30 @@ export interface PromptDebugEntry {
   createdAt?: string;
 }
 
+export interface OpenAIRequestMetric {
+  operation: string;
+  model: string;
+  status: string;
+  count: number;
+  durationSum: number;
+}
+
+export interface OpenAITokenMetric {
+  operation: string;
+  model: string;
+  type: string;
+  count: number;
+}
+
+export interface PromptDebugSnapshot {
+  latest?: PromptDebugEntry;
+  recent?: PromptDebugEntry[];
+  openai?: {
+    requests?: OpenAIRequestMetric[];
+    tokens?: OpenAITokenMetric[];
+  };
+}
+
 export interface Day {
   date: string;
   label?: string;

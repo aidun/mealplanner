@@ -7,10 +7,11 @@ interface MealBoardProps {
   planId?: string;
   days?: Day[];
   selectedMealId?: string;
+  favoriteMealIDs?: Set<string>;
   onSelectMeal: (meal: Meal) => void;
 }
 
-export function MealBoard({ planId, days = [], selectedMealId, onSelectMeal }: MealBoardProps) {
+export function MealBoard({ planId, days = [], selectedMealId, favoriteMealIDs, onSelectMeal }: MealBoardProps) {
   const [activeDayIndex, setActiveDayIndex] = useState(0);
   const safeDayIndex = days.length === 0 ? 0 : Math.min(activeDayIndex, days.length - 1);
   const activeDay = days[safeDayIndex];
@@ -39,7 +40,7 @@ export function MealBoard({ planId, days = [], selectedMealId, onSelectMeal }: M
       <div className="surface-header">
         <div>
           <h2>Diese Woche auf dem Tisch</h2>
-          <p>Ein Tag nach dem anderen. Kurz scannen, dann die Details darunter öffnen.</p>
+          <p>Ein Tag nach dem anderen. Erst waehlen, dann darunter weiterlesen.</p>
         </div>
         {days.length > 0 ? (
           <div className="carousel-actions" aria-label="Tage wechseln">
@@ -109,9 +110,12 @@ export function MealBoard({ planId, days = [], selectedMealId, onSelectMeal }: M
                         <span className="slot-label">{meal.slot ?? 'Mahlzeit'}</span>
                         <span className="meal-title">{meal.title}</span>
                       </div>
-                      <div className="nutrition-line">
-                        {formatNutritionPerPortion(meal.nutrition)}
-                        {meal.estimatedNutrition ? ' · geschätzt' : ''}
+                      <div className="meal-row-meta">
+                        {favoriteMealIDs?.has(meal.id) ? <span className="meal-inline-badge">Favorit</span> : null}
+                        <div className="nutrition-line">
+                          {formatNutritionPerPortion(meal.nutrition)}
+                          {meal.estimatedNutrition ? ' · geschaetzt' : ''}
+                        </div>
                       </div>
                     </button>
                   );

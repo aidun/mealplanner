@@ -132,6 +132,32 @@ type PromptDebugEntry struct {
 	CreatedAt time.Time `json:"createdAt,omitempty"`
 }
 
+type OpenAIRequestMetric struct {
+	Operation   string  `json:"operation"`
+	Model       string  `json:"model"`
+	Status      string  `json:"status"`
+	Count       uint64  `json:"count"`
+	DurationSum float64 `json:"durationSum"`
+}
+
+type OpenAITokenMetric struct {
+	Operation string `json:"operation"`
+	Model     string `json:"model"`
+	Type      string `json:"type"`
+	Count     uint64 `json:"count"`
+}
+
+type PromptDebugSnapshot struct {
+	Latest *PromptDebugEntry     `json:"latest,omitempty"`
+	Recent []PromptDebugEntry    `json:"recent,omitempty"`
+	OpenAI PromptDebugOpenAIData `json:"openai"`
+}
+
+type PromptDebugOpenAIData struct {
+	Requests []OpenAIRequestMetric `json:"requests,omitempty"`
+	Tokens   []OpenAITokenMetric   `json:"tokens,omitempty"`
+}
+
 type Serving struct {
 	MemberID string  `json:"memberId"`
 	Name     string  `json:"name"`

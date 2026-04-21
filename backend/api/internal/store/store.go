@@ -513,6 +513,36 @@ func (s Store) LatestPromptDebug(ctx context.Context, userID string) (domain.Pro
 	return entry, err
 }
 
+func (s Store) ListPromptDebug(ctx context.Context, userID string, limit int) ([]domain.PromptDebugEntry, error) {
+	familyID, err := s.activeFamilyID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if limit <= 0 {
+		limit = 5
+	}
+	rows, err := s.pool.Query(ctx, `SELECT operation, model, prompt, created_at FROM prompt_debug_entries WHERE family_id = $1 ORDER BY created_at DESC LIMIT $2`, familyID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var entries []domain.PromptDebugEntry
+	for rows.Next() {
+		var entry domain.PromptDebugEntry
+		if err := rows.Scan(&entry.Operation, &entry.Model, &entry.Prompt, &entry.CreatedAt); err != nil {
+			return nil, err
+		}
+		entries = append(entries, entry)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if len(entries) == 0 {
+		return nil, ErrNotFound
+	}
+	return entries, nil
+}
+
 func (s Store) activeFamilyID(ctx context.Context, userID string) (string, error) {
 	if err := s.ensurePersonalFamily(ctx, userID); err != nil {
 		return "", err

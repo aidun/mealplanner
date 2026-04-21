@@ -33,6 +33,7 @@ export function OnboardingPage() {
   const [form, setForm] = useState<ProfileFormState>(EMPTY_FORM);
   const [hasEdited, setHasEdited] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteCopyState, setInviteCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
 
   const profileQuery = useQuery({
     queryKey: ['profile'],
@@ -123,6 +124,7 @@ export function OnboardingPage() {
       };
     });
   }, [familyQuery.data?.accounts, form.members]);
+  const linkedAccountsCount = linkedMembers.filter((account) => account.linkedMemberId).length;
 
   const statusMessage = useMemo(() => {
     if (saveMutation.isPending) return 'Profil wird gespeichert.';
@@ -139,7 +141,7 @@ export function OnboardingPage() {
           <button type="button" className="brand-mark brand-button" onClick={() => navigate('/')}>
             Mealplanner
           </button>
-          <p className="brand-subtitle">Profil, Familienkonto und Planungsregeln</p>
+          <p className="brand-subtitle">Familie, Aliase und Regeln fuer kommende Wochen.</p>
         </div>
       </header>
 
@@ -148,11 +150,11 @@ export function OnboardingPage() {
           <div className="profile-page-intro">
             <span className="eyebrow">Profil</span>
             <h1>Familienkonto pflegen</h1>
-            <p>Mitglieder, Aliase, verknüpfte Logins und die Regeln für kommende Wochenpläne.</p>
+            <p>Mitglieder, Aliase, verknuepfte Logins und die Regeln fuer eure kommenden Wochen.</p>
             <div className="profile-overview-grid" aria-label="Profilübersicht">
               <div className="profile-overview-card">
                 <strong>{form.members.length}</strong>
-                <span>Profile im Haushalt</span>
+                <span>Mitglieder im Profil</span>
               </div>
               <div className="profile-overview-card">
                 <strong>{familyQuery.data?.accounts?.length ?? 0}</strong>
@@ -338,6 +340,10 @@ export function OnboardingPage() {
                 <div className="family-overview" aria-label="Familienkonto Übersicht">
                   <strong>{familyQuery.data?.personal ? 'Persönlicher Bereich' : 'Gemeinsames Familienkonto'}</strong>
                   {familyQuery.data?.mergedWarning ? <p>{familyQuery.data.mergedWarning}</p> : null}
+                  <div className="family-summary-row">
+                    <span>{linkedAccountsCount} von {linkedMembers.length} Logins zugeordnet</span>
+                    <span>{memberOptions.length} Profilmitglieder aktiv</span>
+                  </div>
                 </div>
 
                 <div className="family-account-list">
@@ -384,6 +390,7 @@ export function OnboardingPage() {
                   )}
                 </div>
                 {linkMutation.isError ? <p className="error-copy">{errorMessage(linkMutation.error)}</p> : null}
+                {linkMutation.isSuccess ? <p className="success-copy">Zuordnung gespeichert.</p> : null}
 
                 <p className="panel-feedback" role="note">
                   Hinweis: Beim Erstellen und Annehmen der Einladung wird der persönliche Account der eingeladenen Person
@@ -411,7 +418,22 @@ export function OnboardingPage() {
                   <div className="invite-result">
                     <strong>Einladungslink</strong>
                     <a href={inviteMutation.data.inviteLink}>{inviteMutation.data.inviteLink}</a>
+                    <button
+                      type="button"
+                      className="button button-secondary compact-action"
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(inviteMutation.data!.inviteLink);
+                          setInviteCopyState('copied');
+                        } catch {
+                          setInviteCopyState('failed');
+                        }
+                      }}
+                    >
+                      {inviteCopyState === 'copied' ? 'Link kopiert' : 'Link kopieren'}
+                    </button>
                     <p>{inviteMutation.data.warningText}</p>
+                    {inviteCopyState === 'failed' ? <p className="error-copy">Link konnte nicht kopiert werden.</p> : null}
                   </div>
                 ) : null}
                 {inviteMutation.isError ? <p className="error-copy">{errorMessage(inviteMutation.error)}</p> : null}

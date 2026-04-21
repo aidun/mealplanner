@@ -4,9 +4,9 @@ import type {
   FamilySummary,
   FavoriteRecipe,
   Meal,
+  PromptDebugSnapshot,
   Plan,
   Profile,
-  PromptDebugEntry,
   Session,
   ShoppingList,
   UpdateFamilyMemberLinkRequest,
@@ -185,5 +185,5 @@ export async function getShoppingList(planId: string) {
 }
 
 export async function getLatestPromptDebug() {
-  return request<PromptDebugEntry>('/api/debug/prompts/latest', undefined, { allow404: true });
+  return request<PromptDebugSnapshot>('/api/debug/prompts/latest', undefined, { allow404: true });
 }

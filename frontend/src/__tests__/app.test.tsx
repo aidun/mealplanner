@@ -210,9 +210,20 @@ function createFetchMock(options: { authenticated?: boolean } = {}) {
     }
 
     if (url.endsWith('/api/debug/prompts/latest')) {
-      return new Response(JSON.stringify({ operation: 'generate_week', prompt: 'Familienprofil:\\nprivater Haushalt' }), {
-        status: 200,
-      });
+      return new Response(
+        JSON.stringify({
+          latest: { operation: 'generate_week', model: 'gpt-5.4-mini', prompt: 'Familienprofil:\\nprivater Haushalt' },
+          recent: [
+            { operation: 'generate_week', model: 'gpt-5.4-mini', prompt: 'Familienprofil:\\nprivater Haushalt', createdAt: '2026-04-21T09:00:00Z' },
+            { operation: 'regenerate_meal', model: 'gpt-5.4-mini', prompt: 'Regeneration', createdAt: '2026-04-21T08:00:00Z' },
+          ],
+          openai: {
+            requests: [{ operation: 'generate_week', model: 'gpt-5.4-mini', status: 'success', count: 2, durationSum: 1.4 }],
+            tokens: [{ operation: 'generate_week', model: 'gpt-5.4-mini', type: 'total', count: 640 }],
+          },
+        }),
+        { status: 200 }
+      );
     }
 
     if (url.includes('/api/plans/plan-1/bring-export-url')) {
@@ -247,8 +258,9 @@ describe('Mealplanner app', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Prompt prüfen' }));
 
     expect(await screen.findByLabelText('Prompt Debug Overlay')).toBeInTheDocument();
-    expect(screen.getByText('generate_week')).toBeInTheDocument();
+    expect(screen.getAllByText('generate_week').length).toBeGreaterThan(0);
     expect(screen.getByText(/Familienprofil/)).toBeInTheDocument();
+    expect(screen.getByText('OpenAI Tokens')).toBeInTheDocument();
   });
 
   it('shows the login page without a session and only enabled providers', async () => {
@@ -387,6 +399,14 @@ describe('Mealplanner app', () => {
     );
   });
 
+  it('shows favorites as a reusable rail on the dashboard', async () => {
+    renderApp('/');
+
+    expect(await screen.findByText('Wieder gern kochen')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Beeren-Porridge/ }));
+    expect(await screen.findByText(/Favorit aus eurer Sammlung/)).toBeInTheDocument();
+  });
+
   it('keeps the weekly Bring link stable when shopping list contents change', async () => {
     let exportCalls = 0;
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
@@ -430,7 +450,7 @@ describe('Mealplanner app', () => {
     expect(await screen.findByRole('button', { name: /Pasta mit Gemüse/ })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
 
-    expect(await screen.findByRole('button', { name: /Beeren-Porridge/ })).toBeInTheDocument();
+    expect((await screen.findAllByRole('button', { name: /Beeren-Porridge/ })).length).toBeGreaterThan(0);
     expect(screen.queryByRole('button', { name: /Pasta mit Gemüse/ })).not.toBeInTheDocument();
   });
 
@@ -466,6 +486,7 @@ describe('Mealplanner app', () => {
     expect(styles).toContain('.surface-actions,\n  .bring-export-button {\n    width: 100%;');
     expect(styles).toContain('.board-carousel');
     expect(styles).toContain('.day-tabs');
+    expect(styles).toContain('.workspace-pane-switch');
   });
 
   it('opens onboarding and saves the profile', async () => {
@@ -515,6 +536,24 @@ describe('Mealplanner app', () => {
     expect(screen.getByText(/persönliche Account geht im Familienkonto auf/i)).toBeInTheDocument();
     expect(screen.getByText('anna@example.test')).toBeInTheDocument();
     expect(screen.getAllByDisplayValue('Mama').length).toBeGreaterThan(0);
+    expect(screen.getByText(/von 2 Logins zugeordnet/i)).toBeInTheDocument();
+  });
+
+  it('copies the invite link from onboarding', async () => {
+    renderApp('/onboarding');
+
+    fireEvent.change(await screen.findByLabelText('E-Mail-Adresse für Einladung'), {
+      target: { value: 'person@example.test' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Einladungslink erstellen' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Link kopieren' }));
+
+    await waitFor(() => {
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+        'https://mealplanner.test/family/invites/accept?token=invite-token'
+      );
+    });
+    expect(screen.getByRole('button', { name: 'Link kopiert' })).toBeInTheDocument();
   });
 
   it('accepts an invite and lands on the merged family profile', async () => {
@@ -578,6 +617,33 @@ describe('Mealplanner app', () => {
         })
       );
     });
+  });
+
+  it('covers the main planner smoke path', async () => {
+    renderApp('/');
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Woche planen' }));
+    await screen.findByRole('button', { name: /Pasta mit Gemüse/ });
+
+    fireEvent.click(screen.getByRole('button', { name: /Pasta mit Gemüse/ }));
+    fireEvent.change(screen.getByLabelText('Wunsch zur Änderung'), {
+      target: { value: 'Bitte schneller und mit mehr Gemüse.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Gericht austauschen' }));
+    await waitFor(() => expect(screen.getAllByText('Cremige Gemüsepasta').length).toBeGreaterThan(0));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Als Favorit merken' }));
+    await waitFor(() =>
+      expect(fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/favorites'),
+        expect.objectContaining({ method: 'POST' })
+      )
+    );
+
+    expect(screen.getByRole('link', { name: 'Rezept zu Bring' })).toHaveAttribute(
+      'href',
+      expect.stringContaining('/api/plans/plan-1/bring-export')
+    );
   });
 
   it('logs out and returns to the login page', async () => {

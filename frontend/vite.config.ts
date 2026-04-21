@@ -22,6 +22,8 @@ export default defineConfig(({ mode }) => {
       setupFiles: ['./src/test/setup.ts'],
       globals: true,
       css: true,
+      include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
+      exclude: ['e2e/**'],
     },
   };
 });

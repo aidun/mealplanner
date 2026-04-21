@@ -30,7 +30,7 @@ type memoryRepo struct {
 	familyMembers  map[string]map[string]memoryFamilyMember
 	invites        map[string]memoryInvite
 	favorites      map[string][]domain.FavoriteRecipe
-	prompts        map[string]domain.PromptDebugEntry
+	prompts        map[string][]domain.PromptDebugEntry
 }
 
 type memorySession struct {
@@ -62,7 +62,7 @@ func newMemoryRepo() *memoryRepo {
 		familyMembers:  map[string]map[string]memoryFamilyMember{},
 		invites:        map[string]memoryInvite{},
 		favorites:      map[string][]domain.FavoriteRecipe{},
-		prompts:        map[string]domain.PromptDebugEntry{},
+		prompts:        map[string][]domain.PromptDebugEntry{},
 	}
 }
 
@@ -268,16 +268,28 @@ func (m *memoryRepo) DeleteFavorite(r *http.Request, id string) error {
 
 func (m *memoryRepo) SavePromptDebug(r *http.Request, entry domain.PromptDebugEntry) error {
 	entry.CreatedAt = time.Now()
-	m.prompts[m.familyID(mustUserID(r.Context()))] = entry
+	familyID := m.familyID(mustUserID(r.Context()))
+	m.prompts[familyID] = append([]domain.PromptDebugEntry{entry}, m.prompts[familyID]...)
 	return nil
 }
 
 func (m *memoryRepo) LatestPromptDebug(r *http.Request) (domain.PromptDebugEntry, error) {
-	entry := m.prompts[m.familyID(mustUserID(r.Context()))]
-	if entry.Operation == "" {
+	entries := m.prompts[m.familyID(mustUserID(r.Context()))]
+	if len(entries) == 0 {
 		return domain.PromptDebugEntry{}, store.ErrNotFound
 	}
-	return entry, nil
+	return entries[0], nil
+}
+
+func (m *memoryRepo) ListPromptDebug(r *http.Request, limit int) ([]domain.PromptDebugEntry, error) {
+	entries := append([]domain.PromptDebugEntry(nil), m.prompts[m.familyID(mustUserID(r.Context()))]...)
+	if len(entries) == 0 {
+		return nil, store.ErrNotFound
+	}
+	if limit > 0 && len(entries) > limit {
+		entries = entries[:limit]
+	}
+	return entries, nil
 }
 
 func (m *memoryRepo) familyID(userID string) string {
@@ -763,7 +775,7 @@ func TestPromptDebugEndpointOnlyWhenEnabled(t *testing.T) {
 	setAuth(repo, req, "user-1")
 	rec = httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
-	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "generate_week") || !strings.Contains(rec.Body.String(), "Familienprofil") {
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"latest"`) || !strings.Contains(rec.Body.String(), `"recent"`) || !strings.Contains(rec.Body.String(), "generate_week") || !strings.Contains(rec.Body.String(), "Familienprofil") {
 		t.Fatalf("expected prompt debug entry, got %d: %s", rec.Code, rec.Body.String())
 	}
 }

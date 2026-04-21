@@ -15,6 +15,7 @@ import (
 	"github.com/aidun/mealplanner/backend/api/internal/auth"
 	"github.com/aidun/mealplanner/backend/api/internal/domain"
 	"github.com/aidun/mealplanner/backend/api/internal/planner"
+	"github.com/aidun/mealplanner/backend/api/internal/provider"
 	"github.com/aidun/mealplanner/backend/api/internal/store"
 )
 
@@ -42,6 +43,7 @@ type Repository interface {
 	DeleteFavorite(r *http.Request, id string) error
 	SavePromptDebug(r *http.Request, entry domain.PromptDebugEntry) error
 	LatestPromptDebug(r *http.Request) (domain.PromptDebugEntry, error)
+	ListPromptDebug(r *http.Request, limit int) ([]domain.PromptDebugEntry, error)
 }
 
 type StoreRepository struct {
@@ -138,6 +140,10 @@ func (r StoreRepository) SavePromptDebug(req *http.Request, entry domain.PromptD
 
 func (r StoreRepository) LatestPromptDebug(req *http.Request) (domain.PromptDebugEntry, error) {
 	return r.Store.LatestPromptDebug(req.Context(), mustUserID(req.Context()))
+}
+
+func (r StoreRepository) ListPromptDebug(req *http.Request, limit int) ([]domain.PromptDebugEntry, error) {
+	return r.Store.ListPromptDebug(req.Context(), mustUserID(req.Context()), limit)
 }
 
 type Handler struct {
@@ -365,16 +371,57 @@ func (h *Handler) getLatestPromptDebug(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "not found")
 		return
 	}
-	entry, err := h.repo.LatestPromptDebug(r)
-	if errors.Is(err, store.ErrNotFound) {
-		writeError(w, http.StatusNotFound, "prompt not found")
-		return
-	}
-	if err != nil {
+	recent, err := h.repo.ListPromptDebug(r, 5)
+	if err != nil && !errors.Is(err, store.ErrNotFound) {
 		h.serverError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, entry)
+	var latest *domain.PromptDebugEntry
+	if len(recent) > 0 {
+		entry := recent[0]
+		latest = &entry
+	}
+	if latest == nil {
+		entry, latestErr := h.repo.LatestPromptDebug(r)
+		if latestErr == nil {
+			latest = &entry
+			recent = []domain.PromptDebugEntry{entry}
+		} else if !errors.Is(latestErr, store.ErrNotFound) {
+			h.serverError(w, latestErr)
+			return
+		}
+	}
+	if latest == nil {
+		writeError(w, http.StatusNotFound, "prompt not found")
+		return
+	}
+	requests, tokens := provider.OpenAIMetricsSnapshot()
+	response := domain.PromptDebugSnapshot{
+		Latest: latest,
+		Recent: recent,
+		OpenAI: domain.PromptDebugOpenAIData{
+			Requests: make([]domain.OpenAIRequestMetric, 0, len(requests)),
+			Tokens:   make([]domain.OpenAITokenMetric, 0, len(tokens)),
+		},
+	}
+	for _, metric := range requests {
+		response.OpenAI.Requests = append(response.OpenAI.Requests, domain.OpenAIRequestMetric{
+			Operation:   metric.Operation,
+			Model:       metric.Model,
+			Status:      metric.Status,
+			Count:       metric.Count,
+			DurationSum: metric.DurationSum,
+		})
+	}
+	for _, metric := range tokens {
+		response.OpenAI.Tokens = append(response.OpenAI.Tokens, domain.OpenAITokenMetric{
+			Operation: metric.Operation,
+			Model:     metric.Model,
+			Type:      metric.Type,
+			Count:     metric.Count,
+		})
+	}
+	writeJSON(w, http.StatusOK, response)
 }
 
 func (h *Handler) createPlan(w http.ResponseWriter, r *http.Request) {

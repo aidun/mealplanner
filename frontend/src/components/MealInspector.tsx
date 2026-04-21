@@ -8,6 +8,8 @@ interface MealInspectorProps {
   dayDate?: string;
   meal?: Meal;
   favoriteId?: string;
+  contextNote?: string;
+  canActOnMeal?: boolean;
   onToggleFavorite?: (meal: Meal, favoriteId?: string) => void;
   onRegenerate: (note: string) => void;
   isRegenerating: boolean;
@@ -19,6 +21,8 @@ export function MealInspector({
   dayDate,
   meal,
   favoriteId,
+  contextNote,
+  canActOnMeal = true,
   onToggleFavorite,
   onRegenerate,
   isRegenerating,
@@ -49,7 +53,11 @@ export function MealInspector({
       <div className="surface-header">
         <div>
           <h2>{meal.title}</h2>
-          <p>{meal.slot ?? 'Mahlzeit'}{dayDate ? ` · ${dayDate}` : ''}</p>
+          <p>
+            {meal.slot ?? 'Mahlzeit'}
+            {dayDate ? ` fuer ${dayDate}` : ''}
+            {contextNote ? ` · ${contextNote}` : ''}
+          </p>
         </div>
         <div className="surface-actions">
           <button
@@ -66,45 +74,70 @@ export function MealInspector({
             scope={{ day: dayDate, meal: meal.id }}
             label="Rezept zu Bring"
             className="button button-secondary bring-export-button compact-action"
+            disabled={!canActOnMeal}
           />
         </div>
       </div>
 
       {meal.description ? <p className="inspector-copy">{meal.description}</p> : null}
+      {meal.regenerationNote ? (
+        <p className="inspector-note" role="note">
+          Berücksichtigt: {meal.regenerationNote}
+        </p>
+      ) : null}
+      {!canActOnMeal ? (
+        <p className="inspector-note" role="note">
+          Dieses Rezept kommt gerade aus eurer Sammlung. Bring und Regeneration stehen im aktiven Wochenplan bereit.
+        </p>
+      ) : null}
 
-      <div className="stack">
-        <div>
+      <div className="inspector-summary-grid">
+        <div className="inspector-summary-card">
+          <strong>{formatNutritionPerPortion(meal.nutrition) || 'Keine Angaben'}</strong>
+          <span>Nährwerte pro Portion</span>
+        </div>
+        <div className="inspector-summary-card">
+          <strong>{meal.ingredients.length}</strong>
+          <span>Zutaten</span>
+        </div>
+        <div className="inspector-summary-card">
+          <strong>{meal.instructions.length}</strong>
+          <span>Schritte</span>
+        </div>
+      </div>
+
+      <div className="stack inspector-stack">
+        <section className="inspector-section">
           <h3>Zutaten</h3>
-          <ul className="list">
+          <ul className="list ingredient-list">
             {meal.ingredients.map((ingredient, index) => (
-              <li key={`${ingredient.name}-${index}`}>
-                <strong>{ingredient.name}</strong>
-                {ingredient.amount ? ` · ${ingredient.amount}${ingredient.unit ? ` ${ingredient.unit}` : ''}` : ''}
-                {ingredient.note ? ` · ${ingredient.note}` : ''}
+              <li key={`${ingredient.name}-${index}`} className="ingredient-row">
+                <span className="ingredient-amount">
+                  {ingredient.amount ? `${ingredient.amount}${ingredient.unit ? ` ${ingredient.unit}` : ''}` : 'nach Bedarf'}
+                </span>
+                <div className="ingredient-copy">
+                  <strong>{ingredient.name}</strong>
+                  {ingredient.note ? <span>{ingredient.note}</span> : null}
+                </div>
               </li>
             ))}
           </ul>
-        </div>
+        </section>
 
-        <div>
+        <section className="inspector-section">
           <h3>Schritte</h3>
-          <ol className="list ordered-list">
+          <ol className="list ordered-list step-list">
             {meal.instructions.map((step, index) => (
-              <li key={`${meal.id}-step-${index}`}>{step}</li>
+              <li key={`${meal.id}-step-${index}`} className="step-row">
+                <span className="step-index">{index + 1}</span>
+                <span>{step}</span>
+              </li>
             ))}
           </ol>
-        </div>
-
-        <div>
-          <h3>Nährwerte</h3>
-          <p>
-            {formatNutritionPerPortion(meal.nutrition) || 'Keine Angaben'}
-            {meal.estimatedNutrition ? ' · geschätzt' : ''}
-          </p>
-        </div>
+        </section>
 
         {meal.servings.length > 0 ? (
-          <div>
+          <section className="inspector-section">
             <h3>Portionen</h3>
             {hasUnevenServings(meal) ? (
               <p className="panel-feedback" role="note">
@@ -120,10 +153,10 @@ export function MealInspector({
                 </li>
               ))}
             </ul>
-          </div>
+          </section>
         ) : null}
 
-        <div>
+        <section className="inspector-section">
           <label className="field-label" htmlFor="regenerate-note">
             Wunsch zur Änderung
           </label>
@@ -135,16 +168,17 @@ export function MealInspector({
             value={note}
             onChange={(event) => setNote(event.target.value)}
             onInput={(event) => setNote((event.target as HTMLTextAreaElement).value)}
+            disabled={!canActOnMeal}
           />
           <button
             type="button"
             className="button button-primary full-width"
             onClick={() => onRegenerate(note)}
-            disabled={isRegenerating}
+            disabled={isRegenerating || !canActOnMeal}
           >
             {isRegenerating ? 'Wir suchen ein anderes Gericht' : 'Gericht austauschen'}
           </button>
-        </div>
+        </section>
       </div>
 
       {meal.tags.length > 0 ? (
