@@ -948,8 +948,8 @@ a:focus-visible {
 
 .workspace {
   display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.9fr);
-  gap: 20px;
+  grid-template-columns: minmax(0, 1.42fr) minmax(340px, 0.88fr);
+  gap: 24px;
   align-items: start;
 }
 
@@ -963,6 +963,12 @@ a:focus-visible {
 .workspace-main {
   display: grid;
   gap: 20px;
+  min-width: 0;
+}
+
+.workspace-main > *,
+.workspace-side > * {
+  min-width: 0;
 }
 
 .workspace-pane-hidden-mobile {
@@ -1369,6 +1375,8 @@ a:focus-visible {
 .shopping-list-panel {
   position: static;
   align-self: start;
+  width: 100%;
+  min-width: 0;
 }
 
 .shopping-list-panel .stack {
@@ -2497,7 +2505,7 @@ a:focus-visible {
   color: var(--muted);
 }
 
-@media (max-width: 1200px) {
+@media (max-width: 1320px) {
   .workspace {
     grid-template-columns: 1fr;
   }

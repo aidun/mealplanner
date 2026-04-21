@@ -568,6 +568,8 @@ describe('Mealplanner app', () => {
     expect(styles).toContain('.bring-export-button');
     expect(styles).toContain('min-height: 44px');
     expect(styles).toContain('@media (max-width: 760px)');
+    expect(styles).toContain('@media (max-width: 1320px)');
+    expect(styles).toContain('.workspace-main > *,\n.workspace-side > * {\n  min-width: 0;');
     expect(styles).toContain('.surface-actions,\n  .bring-export-button {\n    width: 100%;');
     expect(styles).toContain('.board-carousel');
     expect(styles).toContain('.day-tabs');
