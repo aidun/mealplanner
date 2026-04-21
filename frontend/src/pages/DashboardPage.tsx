@@ -72,6 +72,10 @@ export function DashboardPage() {
     () => allMeals.find((meal) => meal.id === selectedMealId) ?? allMeals[0],
     [allMeals, selectedMealId]
   );
+  const selectedDay = useMemo(
+    () => currentPlanQuery.data?.days.find((day) => day.meals.some((meal) => meal.id === selectedMeal?.id)),
+    [currentPlanQuery.data?.days, selectedMeal?.id]
+  );
 
   useEffect(() => {
     if (!selectedMealId && allMeals[0]) {
@@ -191,11 +195,14 @@ export function DashboardPage() {
         <div className="workspace">
           <div className="workspace-main">
             <MealBoard
+              planId={currentPlanQuery.data?.id}
               days={currentPlanQuery.data?.days}
               selectedMealId={selectedMealId}
               onSelectMeal={(meal) => setSelectedMealId(meal.id)}
             />
             <MealInspector
+              planId={currentPlanQuery.data?.id}
+              dayDate={selectedDay?.date}
               meal={selectedMeal}
               onRegenerate={handleRegenerate}
               isRegenerating={regenerateMealMutation.isPending}

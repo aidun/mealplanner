@@ -31,3 +31,8 @@ export function formatNutrition(nutrition?: Nutrition) {
   ].filter(Boolean);
   return parts.join(' • ');
 }
+
+export function formatNutritionPerPortion(nutrition?: Nutrition) {
+  const value = formatNutrition(nutrition);
+  return value ? `${value} pro Portion` : '';
+}

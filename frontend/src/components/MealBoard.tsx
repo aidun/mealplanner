@@ -1,14 +1,16 @@
 import { useEffect, useState } from 'react';
 import type { Day, Meal } from '../types';
-import { formatDate, formatNutrition } from '../lib/format';
+import { formatDate, formatNutritionPerPortion } from '../lib/format';
+import { BringLink } from './BringLink';
 
 interface MealBoardProps {
+  planId?: string;
   days?: Day[];
   selectedMealId?: string;
   onSelectMeal: (meal: Meal) => void;
 }
 
-export function MealBoard({ days = [], selectedMealId, onSelectMeal }: MealBoardProps) {
+export function MealBoard({ planId, days = [], selectedMealId, onSelectMeal }: MealBoardProps) {
   const [activeDayIndex, setActiveDayIndex] = useState(0);
   const safeDayIndex = days.length === 0 ? 0 : Math.min(activeDayIndex, days.length - 1);
   const activeDay = days[safeDayIndex];
@@ -79,6 +81,13 @@ export function MealBoard({ days = [], selectedMealId, onSelectMeal }: MealBoard
                 <h3>{activeDay.label ?? formatDate(activeDay.date)}</h3>
                 <p>{formatDate(activeDay.date)}</p>
               </div>
+              <BringLink
+                planId={planId}
+                scope={{ day: activeDay.date }}
+                label="Tag zu Bring"
+                className="button button-secondary bring-export-button compact-action"
+                disabled={activeDay.meals.length === 0}
+              />
             </header>
 
             <div className="meal-stack">
@@ -100,7 +109,7 @@ export function MealBoard({ days = [], selectedMealId, onSelectMeal }: MealBoard
                         <span className="meal-title">{meal.title}</span>
                       </div>
                       <div className="nutrition-line">
-                        {formatNutrition(meal.nutrition)}
+                        {formatNutritionPerPortion(meal.nutrition)}
                         {meal.estimatedNutrition ? ' · geschätzt' : ''}
                       </div>
                     </button>

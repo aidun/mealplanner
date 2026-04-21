@@ -28,6 +28,11 @@ type bringExportView struct {
 	SchemaJSON   template.JS
 }
 
+type bringExportScope struct {
+	Day  string
+	Meal string
+}
+
 type bringExportItem struct {
 	Name     string
 	Amount   string
@@ -38,30 +43,56 @@ type bringExportItem struct {
 
 func (h *Handler) getBringExportURL(w http.ResponseWriter, r *http.Request) {
 	planID := r.PathValue("planID")
-	if _, err := h.repo.GetPlan(r, planID); errors.Is(err, store.ErrNotFound) {
+	scope := bringScopeFromRequest(r)
+	plan, err := h.repo.GetPlan(r, planID)
+	if errors.Is(err, store.ErrNotFound) {
 		writeError(w, http.StatusNotFound, "plan not found")
 		return
 	} else if err != nil {
 		h.serverError(w, err)
 		return
 	}
-	token, ok := h.signBringExport(planID)
+	if _, err := scopedBringPlan(plan, scope); errors.Is(err, store.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "bring export scope not found")
+		return
+	} else if err != nil {
+		h.serverError(w, err)
+		return
+	}
+	token, ok := h.signBringExport(planID, scope)
 	if !ok {
 		writeError(w, http.StatusServiceUnavailable, "bring export is not configured")
 		return
 	}
 	exportURL := h.absoluteRequestURL(r, "/api/plans/"+url.PathEscape(planID)+"/bring-export")
 	query := exportURL.Query()
+	if scope.Day != "" {
+		query.Set("day", scope.Day)
+	}
+	if scope.Meal != "" {
+		query.Set("meal", scope.Meal)
+	}
 	query.Set("token", token)
 	exportURL.RawQuery = query.Encode()
-	writeJSON(w, http.StatusOK, map[string]string{"url": exportURL.String()})
+	pageURL := exportURL.String()
+	writeJSON(w, http.StatusOK, map[string]string{"url": bringDirectURL(pageURL, exportURL.Host), "pageUrl": pageURL})
 }
 
 func (h *Handler) getBringExport(w http.ResponseWriter, r *http.Request) {
 	planID := r.PathValue("planID")
+	scope := bringScopeFromRequest(r)
 	plan, err := h.planForBringExport(r, planID)
 	if errors.Is(err, store.ErrNotFound) {
 		writeError(w, http.StatusNotFound, "plan not found")
+		return
+	}
+	if err != nil {
+		h.serverError(w, err)
+		return
+	}
+	plan, err = scopedBringPlan(plan, scope)
+	if errors.Is(err, store.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "bring export scope not found")
 		return
 	}
 	if err != nil {
@@ -86,8 +117,9 @@ func (h *Handler) getBringExport(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) planForBringExport(r *http.Request, planID string) (domain.Plan, error) {
 	token := strings.TrimSpace(r.URL.Query().Get("token"))
+	scope := bringScopeFromRequest(r)
 	if token != "" {
-		if !h.verifyBringExport(planID, token) {
+		if !h.verifyBringExport(planID, scope, token) {
 			return domain.Plan{}, store.ErrNotFound
 		}
 		return h.repo.GetPlanByID(r, planID)
@@ -100,7 +132,36 @@ func (h *Handler) planForBringExport(r *http.Request, planID string) (domain.Pla
 	return h.repo.GetPlan(withUserID(r, userID), planID)
 }
 
-func (h *Handler) signBringExport(planID string) (string, bool) {
+func (h *Handler) signBringExport(planID string, scope bringExportScope) (string, bool) {
+	if !configuredSecret(h.apiSecret) {
+		return "", false
+	}
+	mac := hmac.New(sha256.New, []byte(h.apiSecret))
+	mac.Write([]byte("bring-export:"))
+	mac.Write([]byte(planID))
+	mac.Write([]byte(":day:"))
+	mac.Write([]byte(scope.Day))
+	mac.Write([]byte(":meal:"))
+	mac.Write([]byte(scope.Meal))
+	return base64.RawURLEncoding.EncodeToString(mac.Sum(nil)), true
+}
+
+func (h *Handler) verifyBringExport(planID string, scope bringExportScope, token string) bool {
+	expected, ok := h.signBringExport(planID, scope)
+	if !ok {
+		return false
+	}
+	if verifyBringToken(expected, token) {
+		return true
+	}
+	if scope.Day == "" && scope.Meal == "" {
+		legacy, ok := h.signLegacyBringExport(planID)
+		return ok && verifyBringToken(legacy, token)
+	}
+	return false
+}
+
+func (h *Handler) signLegacyBringExport(planID string) (string, bool) {
 	if !configuredSecret(h.apiSecret) {
 		return "", false
 	}
@@ -110,11 +171,7 @@ func (h *Handler) signBringExport(planID string) (string, bool) {
 	return base64.RawURLEncoding.EncodeToString(mac.Sum(nil)), true
 }
 
-func (h *Handler) verifyBringExport(planID string, token string) bool {
-	expected, ok := h.signBringExport(planID)
-	if !ok {
-		return false
-	}
+func verifyBringToken(expected string, token string) bool {
 	expectedBytes, err := base64.RawURLEncoding.DecodeString(expected)
 	if err != nil {
 		return false
@@ -124,6 +181,13 @@ func (h *Handler) verifyBringExport(planID string, token string) bool {
 		return false
 	}
 	return hmac.Equal(tokenBytes, expectedBytes)
+}
+
+func bringScopeFromRequest(r *http.Request) bringExportScope {
+	return bringExportScope{
+		Day:  strings.TrimSpace(r.URL.Query().Get("day")),
+		Meal: strings.TrimSpace(r.URL.Query().Get("meal")),
+	}
 }
 
 func (h *Handler) absoluteRequestURL(r *http.Request, path string) *url.URL {
@@ -157,6 +221,60 @@ func firstForwardedValue(value string) string {
 	return strings.TrimSpace(parts[0])
 }
 
+func bringDirectURL(recipeURL string, domain string) string {
+	recipeURL = strings.TrimSpace(recipeURL)
+	if recipeURL == "" {
+		return ""
+	}
+	source := base64.StdEncoding.EncodeToString([]byte(recipeURL))
+	source = strings.NewReplacer("+", "-", "/", "_").Replace(source)
+	deepLink := "https://deeplink.getbring.com/import?type=RECIPE&src=" + source + "&bring_source=importWidget&bring_medium=importRecipe&bring_campaign=" + url.QueryEscape(domain)
+	webFallback := "https://deeplink.getbring.com/import?type=RECIPE&src=" + source
+	values := url.Values{}
+	values.Set("deep_link_value", deepLink)
+	values.Set("af_web_dp", webFallback)
+	values.Set("bring_source", "importWidget")
+	values.Set("bring_medium", domain)
+	values.Set("bring_campaign", "importRecipe")
+	values.Set("is_retargeting", "false")
+	values.Set("utm_source", "importWidget")
+	values.Set("utm_medium", domain)
+	values.Set("utm_campaign", "importRecipe")
+	values.Set("pid", "importWidget")
+	values.Set("c", domain)
+	values.Set("af_channel", "importRecipe")
+	return "https://enjoy.getbring.com/ZAzR?" + values.Encode()
+}
+
+func scopedBringPlan(plan domain.Plan, scope bringExportScope) (domain.Plan, error) {
+	if scope.Day == "" && scope.Meal == "" {
+		return plan, nil
+	}
+	filtered := plan
+	filtered.Days = nil
+	filtered.ShoppingList = nil
+	for _, day := range plan.Days {
+		if scope.Day != "" && day.Date != scope.Day {
+			continue
+		}
+		nextDay := day
+		nextDay.Meals = nil
+		for _, meal := range day.Meals {
+			if scope.Meal != "" && meal.ID != scope.Meal {
+				continue
+			}
+			nextDay.Meals = append(nextDay.Meals, meal)
+		}
+		if len(nextDay.Meals) > 0 || (scope.Meal == "" && scope.Day != "") {
+			filtered.Days = append(filtered.Days, nextDay)
+		}
+	}
+	if len(filtered.Days) == 0 {
+		return domain.Plan{}, store.ErrNotFound
+	}
+	return filtered, nil
+}
+
 func newBringExportView(plan domain.Plan, canonicalURL string) (bringExportView, error) {
 	shoppingItems := domain.ConsolidateShoppingList(plan)
 	items := make([]bringExportItem, 0, len(shoppingItems))
@@ -176,11 +294,7 @@ func newBringExportView(plan domain.Plan, canonicalURL string) (bringExportView,
 		ingredients = append(ingredients, line)
 	}
 
-	title := "Mealplanner Einkaufsliste"
-	if strings.TrimSpace(plan.WeekStart) != "" {
-		title = fmt.Sprintf("Mealplanner Einkaufsliste ab %s", strings.TrimSpace(plan.WeekStart))
-	}
-	description := "Ein vorbereitetes Wochenrezept fuer die Familienkueche mit allen Zutaten aus dem aktuellen Mealplanner-Wochenplan."
+	title, description, yield := bringExportCopy(plan)
 	schema := map[string]any{
 		"@context":         "https://schema.org",
 		"@type":            "Recipe",
@@ -192,7 +306,7 @@ func newBringExportView(plan domain.Plan, canonicalURL string) (bringExportView,
 		"prepTime":         "PT10M",
 		"recipeCategory":   "Wochenplan",
 		"recipeCuisine":    "Familienkueche",
-		"recipeYield":      "1 Wochenplan",
+		"recipeYield":      yield,
 		"recipeIngredient": ingredients,
 		"recipeInstructions": []map[string]string{{
 			"@type": "HowToStep",
@@ -222,6 +336,44 @@ func newBringExportView(plan domain.Plan, canonicalURL string) (bringExportView,
 		// #nosec G203 -- rawSchema is produced by json.Marshal before template execution.
 		SchemaJSON: template.JS(rawSchema),
 	}, nil
+}
+
+func bringExportCopy(plan domain.Plan) (title string, description string, yield string) {
+	mealCount := 0
+	var onlyMeal domain.Meal
+	var onlyDay domain.DayPlan
+	for _, day := range plan.Days {
+		if len(day.Meals) > 0 {
+			onlyDay = day
+		}
+		for _, meal := range day.Meals {
+			mealCount++
+			onlyMeal = meal
+		}
+	}
+	if mealCount == 1 {
+		title = "Mealplanner Rezept"
+		if strings.TrimSpace(onlyMeal.Title) != "" {
+			title = "Mealplanner Rezept: " + strings.TrimSpace(onlyMeal.Title)
+		}
+		return title, "Zutaten fuer ein einzelnes Mealplanner-Rezept.", "1 Rezept"
+	}
+	if len(plan.Days) == 1 {
+		day := strings.TrimSpace(onlyDay.Label)
+		if day == "" {
+			day = strings.TrimSpace(onlyDay.Date)
+		}
+		title = "Mealplanner Einkaufsliste fuer einen Tag"
+		if day != "" {
+			title = "Mealplanner Einkaufsliste fuer " + day
+		}
+		return title, "Alle Zutaten fuer diesen Mealplanner-Tag.", "1 Tag"
+	}
+	title = "Mealplanner Einkaufsliste"
+	if strings.TrimSpace(plan.WeekStart) != "" {
+		title = fmt.Sprintf("Mealplanner Einkaufsliste ab %s", strings.TrimSpace(plan.WeekStart))
+	}
+	return title, "Ein vorbereitetes Wochenrezept fuer die Familienkueche mit allen Zutaten aus dem aktuellen Mealplanner-Wochenplan.", "1 Wochenplan"
 }
 
 func formatBringIngredient(item domain.ShoppingItem) string {

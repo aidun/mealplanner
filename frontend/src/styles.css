@@ -566,7 +566,14 @@ a:focus-visible {
 }
 
 .bring-export-button {
+  min-height: 44px;
   white-space: nowrap;
+}
+
+.compact-action {
+  min-height: 40px;
+  padding-inline: 12px;
+  font-size: 0.86rem;
 }
 
 .panel-feedback {
@@ -658,6 +665,10 @@ a:focus-visible {
 }
 
 .day-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   padding: 14px 14px 10px;
   border-bottom: 1px solid var(--line);
   background: linear-gradient(180deg, #ffffff 0%, #f6fbf8 100%);

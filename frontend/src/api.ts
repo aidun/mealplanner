@@ -111,8 +111,17 @@ export async function regenerateMeal(planId: string, mealId: string, note: strin
   );
 }
 
-export async function getBringExportUrl(planId: string) {
-  return request<{ url: string }>(`/api/plans/${encodeURIComponent(planId)}/bring-export-url`);
+export interface BringExportScope {
+  day?: string;
+  meal?: string;
+}
+
+export async function getBringExportUrl(planId: string, scope: BringExportScope = {}) {
+  const params = new URLSearchParams();
+  if (scope.day) params.set('day', scope.day);
+  if (scope.meal) params.set('meal', scope.meal);
+  const suffix = params.size > 0 ? `?${params.toString()}` : '';
+  return request<{ url: string }>(`/api/plans/${encodeURIComponent(planId)}/bring-export-url${suffix}`);
 }
 
 export async function getShoppingList(planId: string) {

@@ -36,7 +36,10 @@ const plan = {
           slot: 'dinner',
           title: 'Pasta mit Gemüse',
           description: 'Familienfreundlich und schnell.',
-          servings: [{ memberId: 'anna', name: 'Anna', portion: '100% Portion', factor: 1 }],
+          servings: [
+            { memberId: 'anna', name: 'Anna', portion: '100% Portion', factor: 1 },
+            { memberId: 'ben', name: 'Ben', portion: '70% Portion', factor: 0.7 },
+          ],
           ingredients: [{ name: 'Pasta', amount: 400, unit: 'g' }],
           instructions: ['Wasser kochen', 'Sauce mischen'],
           nutrition: { calories: 560, proteinG: 24, carbsG: 72, fatG: 14 },
@@ -153,8 +156,10 @@ function createFetchMock(options: { authenticated?: boolean } = {}) {
       return new Response(JSON.stringify(shoppingList), { status: 200 });
     }
 
-    if (url.endsWith('/api/plans/plan-1/bring-export-url')) {
-      return new Response(JSON.stringify({ url: '/api/plans/plan-1/bring-export?token=test-token' }), {
+    if (url.includes('/api/plans/plan-1/bring-export-url')) {
+      const suffix = url.includes('?') ? `?${url.split('?')[1]}` : '';
+      const pageUrl = `/api/plans/plan-1/bring-export${suffix}${suffix ? '&' : '?'}token=test-token`;
+      return new Response(JSON.stringify({ url: `https://enjoy.getbring.com/ZAzR${suffix}${suffix ? '&' : '?'}token=test-token`, pageUrl }), {
         status: 200,
       });
     }
@@ -258,7 +263,17 @@ describe('Mealplanner app', () => {
     expect(within(mealButton).queryByText('Familienfreundlich und schnell.')).not.toBeInTheDocument();
     expect(await screen.findByText('Familienfreundlich und schnell.')).toBeInTheDocument();
     expect(await screen.findByText('Einkaufsliste')).toBeInTheDocument();
-    expect(await screen.findByRole('link', { name: 'Zu Bring' })).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: 'Woche zu Bring' })).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: 'Tag zu Bring' })).toHaveAttribute(
+      'href',
+      expect.stringContaining('day=2026-04-13')
+    );
+    expect(await screen.findByRole('link', { name: 'Rezept zu Bring' })).toHaveAttribute(
+      'href',
+      expect.stringContaining('meal=meal-1')
+    );
+    expect(screen.getAllByText(/pro Portion/).length).toBeGreaterThan(0);
+    expect(screen.getByText('Die Aufteilung ist nicht gleichmäßig. Nährwerte beziehen sich auf die angegebene Portion.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Liste kopieren' })).toBeInTheDocument();
     expect(screen.getByText('1 Artikel · 1 Bereiche')).toBeInTheDocument();
     expect(screen.getByText('Zucchini')).toBeInTheDocument();
@@ -267,20 +282,20 @@ describe('Mealplanner app', () => {
   it('renders the Bring export as a direct link without opening a popup', async () => {
     renderApp('/');
 
-    const bringLink = await screen.findByRole('link', { name: 'Zu Bring' });
+    const bringLink = await screen.findByRole('link', { name: 'Woche zu Bring' });
 
-    expect(bringLink).toHaveAttribute('href', '/api/plans/plan-1/bring-export?token=test-token');
+    expect(bringLink).toHaveAttribute('href', expect.stringContaining('https://enjoy.getbring.com/ZAzR'));
     expect(bringLink).not.toHaveAttribute('target');
     expect(window.open).not.toHaveBeenCalled();
   });
 
-  it('refreshes the Bring export link when shopping list contents change', async () => {
+  it('keeps the weekly Bring link stable when shopping list contents change', async () => {
     let exportCalls = 0;
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
       if (url.endsWith('/api/plans/plan-1/bring-export-url')) {
         exportCalls += 1;
-        return new Response(JSON.stringify({ url: `/api/plans/plan-1/bring-export?token=${exportCalls}` }), {
+        return new Response(JSON.stringify({ url: `https://enjoy.getbring.com/ZAzR?token=${exportCalls}` }), {
           status: 200,
         });
       }
@@ -291,9 +306,9 @@ describe('Mealplanner app', () => {
     const { rerender } = render(
       <ShoppingListPanel planId="plan-1" shoppingList={[{ name: 'Zucchini', amount: 2, unit: 'Stk' }]} loading={false} />
     );
-    expect(await screen.findByRole('link', { name: 'Zu Bring' })).toHaveAttribute(
+    expect(await screen.findByRole('link', { name: 'Woche zu Bring' })).toHaveAttribute(
       'href',
-      '/api/plans/plan-1/bring-export?token=1'
+      'https://enjoy.getbring.com/ZAzR?token=1'
     );
 
     rerender(
@@ -304,7 +319,11 @@ describe('Mealplanner app', () => {
       />
     );
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    expect(await screen.findByRole('link', { name: 'Woche zu Bring' })).toHaveAttribute(
+      'href',
+      'https://enjoy.getbring.com/ZAzR?token=1'
+    );
   });
 
   it('moves through days as a carousel', async () => {
@@ -463,8 +482,8 @@ describe('Mealplanner app', () => {
         if (url.endsWith('/api/plans/plan-1/shopping-list')) {
           return new Response(JSON.stringify(shoppingList), { status: 200 });
         }
-        if (url.endsWith('/api/plans/plan-1/bring-export-url')) {
-          return new Response(JSON.stringify({ url: '/api/plans/plan-1/bring-export?token=test-token' }), {
+        if (url.includes('/api/plans/plan-1/bring-export-url')) {
+          return new Response(JSON.stringify({ url: 'https://enjoy.getbring.com/ZAzR?token=test-token' }), {
             status: 200,
           });
         }

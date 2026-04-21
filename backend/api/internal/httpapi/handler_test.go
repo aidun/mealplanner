@@ -2,9 +2,13 @@ package httpapi
 
 import (
 	"bytes"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -212,15 +216,121 @@ func TestBringExport(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.HasPrefix(payload["url"], "https://mealplanner.test/api/plans/plan-1/bring-export?token=") {
+	if !strings.HasPrefix(payload["url"], "https://enjoy.getbring.com/") {
 		t.Fatalf("unexpected signed url %q", payload["url"])
 	}
+	if !strings.HasPrefix(payload["pageUrl"], "https://mealplanner.test/api/plans/plan-1/bring-export?token=") {
+		t.Fatalf("unexpected signed page url %q", payload["pageUrl"])
+	}
 
-	req = httptest.NewRequest(http.MethodGet, payload["url"], nil)
+	req = httptest.NewRequest(http.MethodGet, payload["pageUrl"], nil)
 	rec = httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("expected public signed export 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestBringExportCanScopeWeekDayAndMeal(t *testing.T) {
+	repo := newMemoryRepo()
+	repo.plans["user-1|plan-1"] = domain.Plan{
+		ID:        "plan-1",
+		WeekStart: "2026-04-20",
+		Days: []domain.DayPlan{
+			{
+				Date:  "2026-04-20",
+				Label: "Mo",
+				Meals: []domain.Meal{
+					{ID: "meal-1", Slot: "dinner", Title: "Pasta", Ingredients: []domain.Ingredient{{Name: "Pasta", Amount: 400, Unit: "g"}}},
+					{ID: "meal-2", Slot: "lunch", Title: "Salat", Ingredients: []domain.Ingredient{{Name: "Gurke", Amount: 1, Unit: "Stk"}}},
+				},
+			},
+			{
+				Date:  "2026-04-21",
+				Label: "Di",
+				Meals: []domain.Meal{
+					{ID: "meal-3", Slot: "dinner", Title: "Curry", Ingredients: []domain.Ingredient{{Name: "Reis", Amount: 300, Unit: "g"}}},
+				},
+			},
+		},
+	}
+	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "test-secret", nil, nil)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/plans/plan-1/bring-export-url?day=2026-04-20&meal=meal-1", nil)
+	setAuth(repo, req, "user-1")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected signed meal url 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+	var payload map[string]string
+	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasPrefix(payload["url"], "https://enjoy.getbring.com/") || !strings.Contains(payload["url"], "deep_link_value=") {
+		t.Fatalf("expected direct Bring link, got %q", payload["url"])
+	}
+	if !strings.Contains(payload["pageUrl"], "day=2026-04-20") || !strings.Contains(payload["pageUrl"], "meal=meal-1") || !strings.Contains(payload["pageUrl"], "token=") {
+		t.Fatalf("expected scoped signed url, got %q", payload["url"])
+	}
+
+	req = httptest.NewRequest(http.MethodGet, payload["pageUrl"], nil)
+	rec = httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected signed meal export 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+	body := rec.Body.String()
+	for _, expected := range []string{"Pasta", "400 g Pasta", "Mealplanner Rezept: Pasta"} {
+		if !strings.Contains(body, expected) {
+			t.Fatalf("meal export missing %q in body: %s", expected, body)
+		}
+	}
+	for _, unexpected := range []string{"Gurke", "Reis"} {
+		if strings.Contains(body, unexpected) {
+			t.Fatalf("meal export included %q unexpectedly: %s", unexpected, body)
+		}
+	}
+
+	req = httptest.NewRequest(http.MethodGet, "/api/plans/plan-1/bring-export-url?day=2026-04-20", nil)
+	setAuth(repo, req, "user-1")
+	rec = httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected signed day url 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+	payload = map[string]string{}
+	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
+		t.Fatal(err)
+	}
+	req = httptest.NewRequest(http.MethodGet, payload["pageUrl"], nil)
+	rec = httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected signed day export 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+	body = rec.Body.String()
+	if !strings.Contains(body, "400 g Pasta") || !strings.Contains(body, "1 Stk Gurke") || strings.Contains(body, "300 g Reis") {
+		t.Fatalf("day export did not contain only selected day ingredients: %s", body)
+	}
+}
+
+func TestBringExportKeepsExistingWeekTokensValid(t *testing.T) {
+	repo := newMemoryRepo()
+	repo.plans["user-1|plan-1"] = domain.Plan{ID: "plan-1", WeekStart: "2026-04-20"}
+	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "test-secret", nil, nil)
+
+	mac := hmac.New(sha256.New, []byte("test-secret"))
+	mac.Write([]byte("bring-export:"))
+	mac.Write([]byte("plan-1"))
+	oldToken := base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
+
+	req := httptest.NewRequest(http.MethodGet, "/api/plans/plan-1/bring-export?token="+url.QueryEscape(oldToken), nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected legacy week token to stay valid, got %d: %s", rec.Code, rec.Body.String())
 	}
 }
 
@@ -442,10 +552,10 @@ func TestBringExportURLUsesConfiguredBaseURL(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.HasPrefix(payload["url"], "https://mealplanner.test/api/plans/plan-1/bring-export?token=") {
+	if !strings.HasPrefix(payload["pageUrl"], "https://mealplanner.test/api/plans/plan-1/bring-export?token=") {
 		t.Fatalf("unexpected export url %q", payload["url"])
 	}
-	if strings.Contains(payload["url"], "attacker.example") {
+	if strings.Contains(payload["pageUrl"], "attacker.example") || strings.Contains(payload["url"], "attacker.example") {
 		t.Fatalf("export url trusted spoofed host: %q", payload["url"])
 	}
 }

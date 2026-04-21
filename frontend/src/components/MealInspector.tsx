@@ -1,14 +1,17 @@
 import { useEffect, useState } from 'react';
 import type { Meal } from '../types';
-import { formatNutrition } from '../lib/format';
+import { formatNutritionPerPortion } from '../lib/format';
+import { BringLink } from './BringLink';
 
 interface MealInspectorProps {
+  planId?: string;
+  dayDate?: string;
   meal?: Meal;
   onRegenerate: (note: string) => void;
   isRegenerating: boolean;
 }
 
-export function MealInspector({ meal, onRegenerate, isRegenerating }: MealInspectorProps) {
+export function MealInspector({ planId, dayDate, meal, onRegenerate, isRegenerating }: MealInspectorProps) {
   const [note, setNote] = useState('');
 
   useEffect(() => {
@@ -36,6 +39,12 @@ export function MealInspector({ meal, onRegenerate, isRegenerating }: MealInspec
           <h2>{meal.title}</h2>
           <p>{meal.slot ?? 'Mahlzeit'}</p>
         </div>
+        <BringLink
+          planId={planId}
+          scope={{ day: dayDate, meal: meal.id }}
+          label="Rezept zu Bring"
+          className="button button-secondary bring-export-button compact-action"
+        />
       </div>
 
       {meal.description ? <p className="inspector-copy">{meal.description}</p> : null}
@@ -65,8 +74,31 @@ export function MealInspector({ meal, onRegenerate, isRegenerating }: MealInspec
 
         <div>
           <h3>Nährwerte</h3>
-          <p>{formatNutrition(meal.nutrition) || 'Keine Angaben'}{meal.estimatedNutrition ? ' · geschätzt' : ''}</p>
+          <p>
+            {formatNutritionPerPortion(meal.nutrition) || 'Keine Angaben'}
+            {meal.estimatedNutrition ? ' · geschätzt' : ''}
+          </p>
         </div>
+
+        {meal.servings.length > 0 ? (
+          <div>
+            <h3>Portionen</h3>
+            {hasUnevenServings(meal) ? (
+              <p className="panel-feedback" role="note">
+                Die Aufteilung ist nicht gleichmäßig. Nährwerte beziehen sich auf die angegebene Portion.
+              </p>
+            ) : null}
+            <ul className="list">
+              {meal.servings.map((serving) => (
+                <li key={`${meal.id}-${serving.memberId}`}>
+                  <strong>{serving.name || serving.memberId}</strong>
+                  {serving.portion ? ` · ${serving.portion}` : ''}
+                  {serving.factor && serving.factor !== 1 ? ` · Faktor ${serving.factor}` : ''}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
 
         <div>
           <label className="field-label" htmlFor="regenerate-note">
@@ -103,4 +135,10 @@ export function MealInspector({ meal, onRegenerate, isRegenerating }: MealInspec
       ) : null}
     </section>
   );
+}
+
+function hasUnevenServings(meal: Meal) {
+  if (meal.servings.length < 2) return false;
+  const first = meal.servings[0]?.factor ?? 1;
+  return meal.servings.some((serving) => Math.abs((serving.factor ?? 1) - first) > 0.001);
 }
