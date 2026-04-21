@@ -42,6 +42,35 @@ export interface Meal {
   regenerationNote?: string;
 }
 
+export interface FavoriteRecipe {
+  id: string;
+  meal: Meal;
+  createdAt?: string;
+}
+
+export interface FamilySummary {
+  id: string;
+  name: string;
+  memberCount: number;
+  personal: boolean;
+  createdAt?: string;
+  mergedWarning?: string;
+}
+
+export interface FamilyInvite {
+  id: string;
+  inviteLink: string;
+  expiresAt: string;
+  warningText?: string;
+}
+
+export interface PromptDebugEntry {
+  operation: string;
+  model?: string;
+  prompt: string;
+  createdAt?: string;
+}
+
 export interface Day {
   date: string;
   label?: string;

@@ -42,9 +42,9 @@ func NewOpenAIGenerator(cfg OpenAIConfig) (OpenAIGenerator, error) {
 	}, nil
 }
 
-func (g OpenAIGenerator) GenerateWeek(ctx context.Context, profile domain.Profile, weekStart time.Time) (domain.Plan, error) {
+func (g OpenAIGenerator) GenerateWeek(ctx context.Context, profile domain.Profile, weekStart time.Time, favorites []domain.FavoriteRecipe) (domain.Plan, error) {
 	var plan domain.Plan
-	if err := g.call(ctx, "generate_week", planner.WeekPrompt(profile, weekStart), planSchema(), &plan); err != nil {
+	if err := g.call(ctx, "generate_week", planner.WeekPrompt(profile, weekStart, favorites), planSchema(), &plan); err != nil {
 		return domain.Plan{}, err
 	}
 	plan.WeekStart = weekStart.Format("2006-01-02")
@@ -55,9 +55,9 @@ func (g OpenAIGenerator) GenerateWeek(ctx context.Context, profile domain.Profil
 	return plan, nil
 }
 
-func (g OpenAIGenerator) RegenerateMeal(ctx context.Context, profile domain.Profile, plan domain.Plan, mealID string, note string) (domain.Meal, error) {
+func (g OpenAIGenerator) RegenerateMeal(ctx context.Context, profile domain.Profile, plan domain.Plan, mealID string, note string, favorites []domain.FavoriteRecipe) (domain.Meal, error) {
 	var meal domain.Meal
-	if err := g.call(ctx, "regenerate_meal", planner.RegeneratePrompt(profile, plan, mealID, note), mealSchema(), &meal); err != nil {
+	if err := g.call(ctx, "regenerate_meal", planner.RegeneratePrompt(profile, plan, mealID, note, favorites), mealSchema(), &meal); err != nil {
 		return domain.Meal{}, err
 	}
 	meal.ID = mealID
@@ -65,6 +65,15 @@ func (g OpenAIGenerator) RegenerateMeal(ctx context.Context, profile domain.Prof
 	meal.EstimatedNutrition = true
 	meal.GeneratedAt = time.Now()
 	return meal, nil
+}
+
+func (g OpenAIGenerator) MergeProfiles(ctx context.Context, target domain.Profile, incoming domain.Profile) (domain.Profile, error) {
+	var profile domain.Profile
+	if err := g.call(ctx, "merge_profile", planner.MergeProfilePrompt(target, incoming), profileSchema(), &profile); err != nil {
+		return domain.Profile{}, err
+	}
+	profile.UpdatedAt = time.Now()
+	return profile, nil
 }
 
 func (g OpenAIGenerator) call(ctx context.Context, operation string, prompt string, schema map[string]any, target any) error {
@@ -273,6 +282,47 @@ func nutritionSchema() map[string]any {
 			"carbsG":   map[string]any{"type": "integer"},
 			"fatG":     map[string]any{"type": "integer"},
 			"fiberG":   map[string]any{"type": "integer"},
+		},
+	}
+}
+
+func profileSchema() map[string]any {
+	member := map[string]any{
+		"type":                 "object",
+		"additionalProperties": false,
+		"required":             []string{"id", "name", "role", "age", "caloriesTarget", "presets", "likes", "dislikes", "restrictions"},
+		"properties": map[string]any{
+			"id":             stringSchema(),
+			"name":           stringSchema(),
+			"role":           stringSchema(),
+			"age":            map[string]any{"type": "integer"},
+			"caloriesTarget": map[string]any{"type": "integer"},
+			"presets":        map[string]any{"type": "array", "items": stringSchema()},
+			"likes":          stringSchema(),
+			"dislikes":       stringSchema(),
+			"restrictions":   stringSchema(),
+		},
+	}
+	return map[string]any{
+		"type":                 "object",
+		"additionalProperties": false,
+		"required":             []string{"householdName", "members", "defaults", "presets", "notes"},
+		"properties": map[string]any{
+			"householdName": stringSchema(),
+			"members":       map[string]any{"type": "array", "items": member},
+			"defaults": map[string]any{
+				"type":                 "object",
+				"additionalProperties": false,
+				"required":             []string{"breakfast", "lunch", "dinner", "snacks"},
+				"properties": map[string]any{
+					"breakfast": stringSchema(),
+					"lunch":     stringSchema(),
+					"dinner":    stringSchema(),
+					"snacks":    stringSchema(),
+				},
+			},
+			"presets": map[string]any{"type": "array", "items": stringSchema()},
+			"notes":   stringSchema(),
 		},
 	}
 }

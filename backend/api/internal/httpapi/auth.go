@@ -86,7 +86,7 @@ func (h *Handler) googleCallback(w http.ResponseWriter, r *http.Request) {
 		h.serverError(w, err)
 		return
 	}
-	userID, err := h.repo.UpsertUser(r, identity.Provider, identity.SubjectHash)
+	userID, err := h.repo.UpsertUser(r, identity.Provider, identity.SubjectHash, identity.EmailHash)
 	if err != nil {
 		h.serverError(w, err)
 		return

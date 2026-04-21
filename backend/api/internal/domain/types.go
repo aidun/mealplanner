@@ -15,6 +15,33 @@ type Profile struct {
 	UpdatedAt     time.Time    `json:"updatedAt,omitempty"`
 }
 
+type FamilySummary struct {
+	ID            string    `json:"id"`
+	Name          string    `json:"name"`
+	MemberCount   int       `json:"memberCount"`
+	Personal      bool      `json:"personal"`
+	CreatedAt     time.Time `json:"createdAt,omitempty"`
+	MergedWarning string    `json:"mergedWarning,omitempty"`
+}
+
+type CreateFamilyInviteRequest struct {
+	Email string `json:"email"`
+}
+
+type FamilyInvite struct {
+	ID          string    `json:"id"`
+	InviteLink  string    `json:"inviteLink,omitempty"`
+	EmailHash   string    `json:"emailHash,omitempty"`
+	ExpiresAt   time.Time `json:"expiresAt"`
+	CreatedAt   time.Time `json:"createdAt,omitempty"`
+	AcceptedAt  time.Time `json:"acceptedAt,omitempty"`
+	WarningText string    `json:"warningText,omitempty"`
+}
+
+type AcceptFamilyInviteRequest struct {
+	Token string `json:"token"`
+}
+
 type Member struct {
 	ID             string   `json:"id"`
 	Name           string   `json:"name"`
@@ -65,6 +92,23 @@ type Meal struct {
 	RegenerationNote   string            `json:"regenerationNote,omitempty"`
 	GeneratedAt        time.Time         `json:"generatedAt,omitempty"`
 	Meta               map[string]string `json:"meta,omitempty"`
+}
+
+type FavoriteRecipe struct {
+	ID        string    `json:"id"`
+	Meal      Meal      `json:"meal"`
+	CreatedAt time.Time `json:"createdAt,omitempty"`
+}
+
+type CreateFavoriteRequest struct {
+	Meal Meal `json:"meal"`
+}
+
+type PromptDebugEntry struct {
+	Operation string    `json:"operation"`
+	Model     string    `json:"model,omitempty"`
+	Prompt    string    `json:"prompt"`
+	CreatedAt time.Time `json:"createdAt,omitempty"`
 }
 
 type Serving struct {

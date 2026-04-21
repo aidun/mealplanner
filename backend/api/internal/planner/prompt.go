@@ -17,6 +17,13 @@ type promptProfile struct {
 	Notes     string              `json:"notes,omitempty"`
 }
 
+type promptFavorite struct {
+	Title       string   `json:"title"`
+	Slot        string   `json:"slot,omitempty"`
+	Description string   `json:"description,omitempty"`
+	Tags        []string `json:"tags,omitempty"`
+}
+
 type promptMember struct {
 	ID             string   `json:"id"`
 	Role           string   `json:"role,omitempty"`
@@ -54,8 +61,9 @@ type promptMealSummary struct {
 	Tags  []string `json:"tags,omitempty"`
 }
 
-func WeekPrompt(profile domain.Profile, weekStart time.Time) string {
+func WeekPrompt(profile domain.Profile, weekStart time.Time, favorites []domain.FavoriteRecipe) string {
 	body, _ := json.MarshalIndent(minimizeProfile(profile), "", "  ")
+	favoriteBody, _ := json.MarshalIndent(minimizeFavorites(favorites), "", "  ")
 	return fmt.Sprintf(`Erstelle einen Wochen-Essensplan fuer eine Familie.
 
 Woche startet am %s.
@@ -65,22 +73,27 @@ Regeln:
 - Pro Tag Fruehstueck, Mittagessen und Abendessen.
 - Snacks nur wenn Profile, Kalorienziel oder Alltagssinn dafuer sprechen.
 - Ein gemeinsames Gericht pro Mahlzeit, Portionen pro Person skalieren.
-- Jede Mahlzeit braucht Beschreibung, Zutaten, Anleitung und geschaetzte Naehrwerte.
+- Jede Mahlzeit braucht Beschreibung, Zutaten, Anleitung und geschaetzte Naehrwerte pro Portion.
 - Beachte alle Vorlieben, Abneigungen und Einschraenkungen pro Person.
+- Nutze Favoriten als Inspiration. Wiederhole passende Favoriten oder Varianten davon, aber mache die Woche nicht monoton.
 - Gib nur JSON im vereinbarten Schema zurueck.
 
 Familienprofil:
-%s`, weekStart.Format("2006-01-02"), string(body))
+%s
+
+Favoriten:
+%s`, weekStart.Format("2006-01-02"), string(body), string(favoriteBody))
 }
 
-func RegeneratePrompt(profile domain.Profile, plan domain.Plan, mealID string, note string) string {
+func RegeneratePrompt(profile domain.Profile, plan domain.Plan, mealID string, note string, favorites []domain.FavoriteRecipe) string {
 	cleanNote := strings.TrimSpace(note)
 	body, _ := json.MarshalIndent(struct {
-		Profile promptProfile     `json:"profile"`
-		Plan    promptPlanContext `json:"plan"`
-		MealID  string            `json:"mealId"`
-		Note    string            `json:"note"`
-	}{Profile: minimizeProfile(profile), Plan: minimizePlanContext(plan, mealID), MealID: mealID, Note: cleanNote}, "", "  ")
+		Profile   promptProfile     `json:"profile"`
+		Plan      promptPlanContext `json:"plan"`
+		MealID    string            `json:"mealId"`
+		Note      string            `json:"note"`
+		Favorites []promptFavorite  `json:"favorites,omitempty"`
+	}{Profile: minimizeProfile(profile), Plan: minimizePlanContext(plan, mealID), MealID: mealID, Note: cleanNote, Favorites: minimizeFavorites(favorites)}, "", "  ")
 	return fmt.Sprintf(`Erzeuge genau eine Ersatz-Mahlzeit fuer mealId %s.
 
 Regeln:
@@ -88,6 +101,8 @@ Regeln:
 - Die Nutzer-Anmerkung ist verbindlich.
 - Wenn die Anmerkung eine Zutat ausschliesst, darf sie weder in Titel, Zutaten noch Anleitung vorkommen.
 - Wenn die Anmerkung Tempo, Kindertauglichkeit, Aufwand oder Stil nennt, muss das in Beschreibung, Zutaten und Anleitung sichtbar umgesetzt werden.
+- Favoriten duerfen als Stil- oder Rezeptvorlage dienen, wenn sie zur Anmerkung passen.
+- Naehrwerte sind pro Portion anzugeben.
 - Gib nur die einzelne Mahlzeit im vereinbarten JSON-Schema zurueck.
 
 Nutzer-Anmerkung:
@@ -95,6 +110,23 @@ Nutzer-Anmerkung:
 
 Kontext:
 %s`, mealID, cleanNote, string(body))
+}
+
+func MergeProfilePrompt(target domain.Profile, incoming domain.Profile) string {
+	body, _ := json.MarshalIndent(struct {
+		Target   promptProfile `json:"targetFamilyProfile"`
+		Incoming promptProfile `json:"incomingPersonalProfile"`
+	}{Target: minimizeProfile(target), Incoming: minimizeProfile(incoming)}, "", "  ")
+	return fmt.Sprintf(`Mische zwei Familienprofile zu einem gemeinsamen Mealplanner-Profil.
+
+Regeln:
+- Bewahre Personen, Vorlieben, Abneigungen, Einschraenkungen und Kalorienziele sinnvoll.
+- Loese Dopplungen pragmatisch auf.
+- Keine Login-Daten, E-Mail-Adressen oder Namen erfinden.
+- Gib nur das gemeinsame Profil im vereinbarten JSON-Schema zurueck.
+
+Kontext:
+%s`, string(body))
 }
 
 func minimizeProfile(profile domain.Profile) promptProfile {
@@ -118,6 +150,27 @@ func minimizeProfile(profile domain.Profile) promptProfile {
 		Presets:   profile.Presets,
 		Notes:     trimPromptText(profile.Notes, 500),
 	}
+}
+
+func minimizeFavorites(favorites []domain.FavoriteRecipe) []promptFavorite {
+	out := make([]promptFavorite, 0, len(favorites))
+	for _, favorite := range favorites {
+		meal := favorite.Meal
+		title := strings.TrimSpace(meal.Title)
+		if title == "" {
+			continue
+		}
+		out = append(out, promptFavorite{
+			Title:       trimPromptText(title, 120),
+			Slot:        trimPromptText(meal.Slot, 40),
+			Description: trimPromptText(meal.Description, 240),
+			Tags:        meal.Tags,
+		})
+		if len(out) >= 10 {
+			break
+		}
+	}
+	return out
 }
 
 func minimizePlanContext(plan domain.Plan, mealID string) promptPlanContext {

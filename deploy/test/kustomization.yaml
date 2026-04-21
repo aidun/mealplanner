@@ -23,3 +23,12 @@ patches:
     target:
       kind: Namespace
       name: mealplanner-test
+  - patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: PROMPT_DEBUG
+          value: "true"
+    target:
+      kind: Deployment
+      name: api

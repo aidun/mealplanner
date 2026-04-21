@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/aidun/mealplanner/backend/api/internal/domain"
@@ -16,7 +17,7 @@ func NewMockGenerator() MockGenerator {
 	return MockGenerator{now: time.Now}
 }
 
-func (g MockGenerator) GenerateWeek(_ context.Context, profile domain.Profile, weekStart time.Time) (domain.Plan, error) {
+func (g MockGenerator) GenerateWeek(_ context.Context, profile domain.Profile, weekStart time.Time, favorites []domain.FavoriteRecipe) (domain.Plan, error) {
 	plan := domain.Plan{
 		ID:        fmt.Sprintf("plan-%s", weekStart.Format("20060102")),
 		WeekStart: weekStart.Format("2006-01-02"),
@@ -39,6 +40,10 @@ func (g MockGenerator) GenerateWeek(_ context.Context, profile domain.Profile, w
 		for _, slot := range slots {
 			day.Meals = append(day.Meals, g.meal(profile, date, slot, titles[slot], ""))
 		}
+		if i == 0 && len(favorites) > 0 && strings.TrimSpace(favorites[0].Meal.Title) != "" {
+			day.Meals[0].Title = favorites[0].Meal.Title
+			day.Meals[0].Description = "Favorit aus eurer Familienkueche."
+		}
 		if i == 2 || i == 5 {
 			day.Meals = append(day.Meals, g.meal(profile, date, "snack", titles["snack"], "optionaler Snack"))
 		}
@@ -48,7 +53,7 @@ func (g MockGenerator) GenerateWeek(_ context.Context, profile domain.Profile, w
 	return plan, nil
 }
 
-func (g MockGenerator) RegenerateMeal(_ context.Context, profile domain.Profile, plan domain.Plan, mealID string, note string) (domain.Meal, error) {
+func (g MockGenerator) RegenerateMeal(_ context.Context, profile domain.Profile, plan domain.Plan, mealID string, note string, _ []domain.FavoriteRecipe) (domain.Meal, error) {
 	for _, day := range plan.Days {
 		for _, meal := range day.Meals {
 			if meal.ID == mealID {
@@ -61,6 +66,53 @@ func (g MockGenerator) RegenerateMeal(_ context.Context, profile domain.Profile,
 		}
 	}
 	return domain.Meal{}, fmt.Errorf("meal %s not found", mealID)
+}
+
+func (g MockGenerator) MergeProfiles(_ context.Context, target domain.Profile, incoming domain.Profile) (domain.Profile, error) {
+	merged := target
+	seen := map[string]bool{}
+	for _, member := range merged.Members {
+		seen[strings.ToLower(strings.TrimSpace(member.ID))] = true
+	}
+	for _, member := range incoming.Members {
+		key := strings.ToLower(strings.TrimSpace(member.ID))
+		if key == "" || seen[key] {
+			member.ID = "member-" + strings.ToLower(strings.ReplaceAll(strings.TrimSpace(member.Name), " ", "-"))
+			key = strings.ToLower(strings.TrimSpace(member.ID))
+		}
+		if key != "" && !seen[key] {
+			merged.Members = append(merged.Members, member)
+			seen[key] = true
+		}
+	}
+	merged.Presets = appendUnique(merged.Presets, incoming.Presets...)
+	merged.Notes = strings.TrimSpace(strings.Join(nonEmpty(merged.Notes, incoming.Notes), "\n"))
+	merged.UpdatedAt = g.now()
+	return merged, nil
+}
+
+func appendUnique(values []string, more ...string) []string {
+	seen := map[string]bool{}
+	out := make([]string, 0, len(values)+len(more))
+	for _, value := range append(values, more...) {
+		value = strings.TrimSpace(value)
+		key := strings.ToLower(value)
+		if value != "" && !seen[key] {
+			out = append(out, value)
+			seen[key] = true
+		}
+	}
+	return out
+}
+
+func nonEmpty(values ...string) []string {
+	out := make([]string, 0, len(values))
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			out = append(out, strings.TrimSpace(value))
+		}
+	}
+	return out
 }
 
 func (g MockGenerator) meal(profile domain.Profile, date time.Time, slot string, title string, note string) domain.Meal {

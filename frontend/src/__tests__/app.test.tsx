@@ -89,6 +89,8 @@ const regeneratedPlan = {
 };
 
 const shoppingList = [{ name: 'Zucchini', amount: 2, unit: 'Stk', category: 'Gemüse' }];
+const favorites = [{ id: 'favorite-meal-2', meal: plan.days[1]!.meals[0]! }];
+const family = { id: 'family-1', name: 'Familie Weber', memberCount: 2, personal: false };
 const session = { authenticated: true, csrfToken: 'csrf-token-1' };
 const providers = {
   providers: [
@@ -116,6 +118,7 @@ function renderApp(initialEntry = '/') {
 
 beforeEach(() => {
   vi.restoreAllMocks();
+  window.localStorage.clear();
   vi.spyOn(window, 'open').mockImplementation(() => null);
   Object.defineProperty(navigator, 'clipboard', {
     configurable: true,
@@ -123,6 +126,7 @@ beforeEach(() => {
       writeText: vi.fn().mockResolvedValue(undefined),
     },
   });
+
   vi.stubGlobal('fetch', createFetchMock());
 });
 
@@ -156,6 +160,44 @@ function createFetchMock(options: { authenticated?: boolean } = {}) {
       return new Response(JSON.stringify(shoppingList), { status: 200 });
     }
 
+    if (url.endsWith('/api/family') && (!init || !init.method || init.method === 'GET')) {
+      return new Response(JSON.stringify(family), { status: 200 });
+    }
+
+    if (url.endsWith('/api/favorites') && (!init || !init.method || init.method === 'GET')) {
+      return new Response(JSON.stringify(favorites), { status: 200 });
+    }
+
+    if (url.endsWith('/api/favorites') && init?.method === 'POST') {
+      return new Response(JSON.stringify({ id: 'favorite-meal-1', meal: baseMeal }), { status: 201 });
+    }
+
+    if (url.includes('/api/favorites/') && init?.method === 'DELETE') {
+      return new Response(null, { status: 204 });
+    }
+
+    if (url.endsWith('/api/family/invites') && init?.method === 'POST') {
+      return new Response(
+        JSON.stringify({
+          id: 'invite-1',
+          inviteLink: 'https://mealplanner.test/family/invites/accept?token=invite-token',
+          expiresAt: '2026-04-28T00:00:00Z',
+          warningText: 'Der persönliche Account geht im Familienkonto auf.',
+        }),
+        { status: 201 }
+      );
+    }
+
+    if (url.endsWith('/api/family/invites/accept') && init?.method === 'POST') {
+      return new Response(JSON.stringify(family), { status: 200 });
+    }
+
+    if (url.endsWith('/api/debug/prompts/latest')) {
+      return new Response(JSON.stringify({ operation: 'generate_week', prompt: 'Familienprofil:\\nprivater Haushalt' }), {
+        status: 200,
+      });
+    }
+
     if (url.includes('/api/plans/plan-1/bring-export-url')) {
       const suffix = url.includes('?') ? `?${url.split('?')[1]}` : '';
       const pageUrl = `/api/plans/plan-1/bring-export${suffix}${suffix ? '&' : '?'}token=test-token`;
@@ -181,6 +223,17 @@ function createFetchMock(options: { authenticated?: boolean } = {}) {
 }
 
 describe('Mealplanner app', () => {
+  it('shows the prompt debug overlay in the test environment', async () => {
+    window.localStorage.setItem('mealplanner.promptDebug', 'true');
+    renderApp('/');
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Prompt prüfen' }));
+
+    expect(await screen.findByLabelText('Prompt Debug Overlay')).toBeInTheDocument();
+    expect(screen.getByText('generate_week')).toBeInTheDocument();
+    expect(screen.getByText(/Familienprofil/)).toBeInTheDocument();
+  });
+
   it('shows the login page without a session and only enabled providers', async () => {
     vi.stubGlobal('fetch', createFetchMock({ authenticated: false }));
 
@@ -285,8 +338,36 @@ describe('Mealplanner app', () => {
     const bringLink = await screen.findByRole('link', { name: 'Woche zu Bring' });
 
     expect(bringLink).toHaveAttribute('href', expect.stringContaining('https://enjoy.getbring.com/ZAzR'));
-    expect(bringLink).not.toHaveAttribute('target');
+    expect(bringLink).toHaveAttribute('target', '_blank');
+    expect(bringLink).toHaveAttribute('rel', 'noopener noreferrer');
     expect(window.open).not.toHaveBeenCalled();
+  });
+
+  it('marks and removes recipe favorites', async () => {
+    const fetchMock = vi.mocked(fetch);
+    renderApp('/');
+
+    const addButton = await screen.findByRole('button', { name: 'Als Favorit merken' });
+    fireEvent.click(addButton);
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('/api/favorites'),
+        expect.objectContaining({ method: 'POST' })
+      )
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+    await waitFor(() => expect(screen.getAllByText('Beeren-Porridge').length).toBeGreaterThan(0));
+    const removeButton = await screen.findByRole('button', { name: 'Favorit entfernen' });
+    fireEvent.click(removeButton);
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('/api/favorites/favorite-meal-2'),
+        expect.objectContaining({ method: 'DELETE' })
+      )
+    );
   });
 
   it('keeps the weekly Bring link stable when shopping list contents change', async () => {
@@ -392,6 +473,29 @@ describe('Mealplanner app', () => {
     await waitFor(() => {
       expect(screen.getAllByText('Profil gespeichert. Der nächste Wochenplan nutzt diese Angaben.').length).toBeGreaterThan(0);
     });
+  });
+
+  it('creates a family invite link from onboarding', async () => {
+    renderApp('/onboarding');
+
+    expect(await screen.findByText('Familienkonto')).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('E-Mail-Adresse für Einladung'), {
+      target: { value: 'person@example.test' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Einladungslink erstellen' }));
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/family/invites'),
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({ 'X-CSRF-Token': 'csrf-token-1' }),
+          body: JSON.stringify({ email: 'person@example.test' }),
+        })
+      );
+    });
+    expect(await screen.findByText('https://mealplanner.test/family/invites/accept?token=invite-token')).toBeInTheDocument();
+    expect(screen.getByText(/persönliche Account geht im Familienkonto auf/i)).toBeInTheDocument();
   });
 
   it('shows feedback when plan generation fails', async () => {

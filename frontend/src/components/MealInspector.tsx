@@ -7,11 +7,23 @@ interface MealInspectorProps {
   planId?: string;
   dayDate?: string;
   meal?: Meal;
+  favoriteId?: string;
+  onToggleFavorite?: (meal: Meal, favoriteId?: string) => void;
   onRegenerate: (note: string) => void;
   isRegenerating: boolean;
+  isFavoriteBusy?: boolean;
 }
 
-export function MealInspector({ planId, dayDate, meal, onRegenerate, isRegenerating }: MealInspectorProps) {
+export function MealInspector({
+  planId,
+  dayDate,
+  meal,
+  favoriteId,
+  onToggleFavorite,
+  onRegenerate,
+  isRegenerating,
+  isFavoriteBusy,
+}: MealInspectorProps) {
   const [note, setNote] = useState('');
 
   useEffect(() => {
@@ -39,12 +51,23 @@ export function MealInspector({ planId, dayDate, meal, onRegenerate, isRegenerat
           <h2>{meal.title}</h2>
           <p>{meal.slot ?? 'Mahlzeit'}</p>
         </div>
-        <BringLink
-          planId={planId}
-          scope={{ day: dayDate, meal: meal.id }}
-          label="Rezept zu Bring"
-          className="button button-secondary bring-export-button compact-action"
-        />
+        <div className="surface-actions">
+          <button
+            type="button"
+            className="button button-secondary compact-action"
+            onClick={() => onToggleFavorite?.(meal, favoriteId)}
+            disabled={!onToggleFavorite || isFavoriteBusy}
+            aria-pressed={Boolean(favoriteId)}
+          >
+            {favoriteId ? 'Favorit entfernen' : 'Als Favorit merken'}
+          </button>
+          <BringLink
+            planId={planId}
+            scope={{ day: dayDate, meal: meal.id }}
+            label="Rezept zu Bring"
+            className="button button-secondary bring-export-button compact-action"
+          />
+        </div>
       </div>
 
       {meal.description ? <p className="inspector-copy">{meal.description}</p> : null}

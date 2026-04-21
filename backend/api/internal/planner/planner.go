@@ -9,8 +9,9 @@ import (
 )
 
 type Generator interface {
-	GenerateWeek(ctx context.Context, profile domain.Profile, weekStart time.Time) (domain.Plan, error)
-	RegenerateMeal(ctx context.Context, profile domain.Profile, plan domain.Plan, mealID string, note string) (domain.Meal, error)
+	GenerateWeek(ctx context.Context, profile domain.Profile, weekStart time.Time, favorites []domain.FavoriteRecipe) (domain.Plan, error)
+	RegenerateMeal(ctx context.Context, profile domain.Profile, plan domain.Plan, mealID string, note string, favorites []domain.FavoriteRecipe) (domain.Meal, error)
+	MergeProfiles(ctx context.Context, target domain.Profile, incoming domain.Profile) (domain.Profile, error)
 }
 
 type Planner struct {
@@ -27,7 +28,7 @@ func (p Planner) WithNow(now func() time.Time) Planner {
 	return p
 }
 
-func (p Planner) GenerateWeek(ctx context.Context, profile domain.Profile, weekStart string) (domain.Plan, error) {
+func (p Planner) GenerateWeek(ctx context.Context, profile domain.Profile, weekStart string, favorites []domain.FavoriteRecipe) (domain.Plan, error) {
 	if err := profile.Validate(); err != nil {
 		return domain.Plan{}, err
 	}
@@ -35,7 +36,7 @@ func (p Planner) GenerateWeek(ctx context.Context, profile domain.Profile, weekS
 	if err != nil {
 		return domain.Plan{}, err
 	}
-	plan, err := p.generator.GenerateWeek(ctx, profile, start)
+	plan, err := p.generator.GenerateWeek(ctx, profile, start, favorites)
 	if err != nil {
 		return domain.Plan{}, err
 	}
@@ -46,11 +47,11 @@ func (p Planner) GenerateWeek(ctx context.Context, profile domain.Profile, weekS
 	return plan, nil
 }
 
-func (p Planner) RegenerateMeal(ctx context.Context, profile domain.Profile, plan domain.Plan, mealID string, note string) (domain.Plan, error) {
+func (p Planner) RegenerateMeal(ctx context.Context, profile domain.Profile, plan domain.Plan, mealID string, note string, favorites []domain.FavoriteRecipe) (domain.Plan, error) {
 	if err := profile.Validate(); err != nil {
 		return domain.Plan{}, err
 	}
-	meal, err := p.generator.RegenerateMeal(ctx, profile, plan, mealID, note)
+	meal, err := p.generator.RegenerateMeal(ctx, profile, plan, mealID, note, favorites)
 	if err != nil {
 		return domain.Plan{}, err
 	}
@@ -72,6 +73,39 @@ func (p Planner) RegenerateMeal(ctx context.Context, profile domain.Profile, pla
 	plan.Status = "planned"
 	plan.ShoppingList = domain.ConsolidateShoppingList(plan)
 	return plan, nil
+}
+
+func (p Planner) MergeProfiles(ctx context.Context, target domain.Profile, incoming domain.Profile) (domain.Profile, error) {
+	if err := target.Validate(); err != nil {
+		return domain.Profile{}, err
+	}
+	if err := incoming.Validate(); err != nil {
+		return domain.Profile{}, err
+	}
+	merged, err := p.generator.MergeProfiles(ctx, target, incoming)
+	if err != nil {
+		return domain.Profile{}, err
+	}
+	if err := merged.Validate(); err != nil {
+		return domain.Profile{}, err
+	}
+	return merged, nil
+}
+
+func (p Planner) PreviewWeekPrompt(profile domain.Profile, weekStart string, favorites []domain.FavoriteRecipe) (string, error) {
+	start, err := parseOrNextWeekStart(weekStart, p.now())
+	if err != nil {
+		return "", err
+	}
+	return WeekPrompt(profile, start, favorites), nil
+}
+
+func (p Planner) PreviewRegeneratePrompt(profile domain.Profile, plan domain.Plan, mealID string, note string, favorites []domain.FavoriteRecipe) string {
+	return RegeneratePrompt(profile, plan, mealID, note, favorites)
+}
+
+func (p Planner) PreviewMergePrompt(target domain.Profile, incoming domain.Profile) string {
+	return MergeProfilePrompt(target, incoming)
 }
 
 func parseOrNextWeekStart(value string, now time.Time) (time.Time, error) {

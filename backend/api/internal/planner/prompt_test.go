@@ -23,7 +23,7 @@ func TestWeekPromptMinimizesPersonalLoginContext(t *testing.T) {
 		Notes: "Naehrwerte sind Schaetzungen.",
 	}
 
-	prompt := WeekPrompt(profile, time.Date(2026, 4, 20, 0, 0, 0, 0, time.UTC))
+	prompt := WeekPrompt(profile, time.Date(2026, 4, 20, 0, 0, 0, 0, time.UTC), nil)
 
 	for _, forbidden := range []string{"Familie Hartmann", "Markus Hartmann", `"name"`, `"markus"`} {
 		if strings.Contains(prompt, forbidden) {
@@ -59,7 +59,7 @@ func TestRegeneratePromptDoesNotSendFullPlanOrServingNames(t *testing.T) {
 		}},
 	}
 
-	prompt := RegeneratePrompt(profile, plan, "meal-1", "ohne Tomaten")
+	prompt := RegeneratePrompt(profile, plan, "meal-1", "ohne Tomaten", nil)
 
 	for _, forbidden := range []string{"Familie Hartmann", "Alexandra", "shoppingList", "servings"} {
 		if strings.Contains(prompt, forbidden) {
@@ -70,5 +70,15 @@ func TestRegeneratePromptDoesNotSendFullPlanOrServingNames(t *testing.T) {
 		if !strings.Contains(prompt, expected) {
 			t.Fatalf("regeneration prompt missing expected context %q:\n%s", expected, prompt)
 		}
+	}
+}
+
+func TestWeekPromptIncludesFavoritesAsInspiration(t *testing.T) {
+	prompt := WeekPrompt(domain.DefaultProfile(), time.Date(2026, 4, 20, 0, 0, 0, 0, time.UTC), []domain.FavoriteRecipe{{
+		Meal: domain.Meal{Title: "Lieblingspasta", Slot: "dinner", Description: "Tomatig und schnell", Tags: []string{"favorit"}},
+	}})
+
+	if !strings.Contains(prompt, "Lieblingspasta") || !strings.Contains(prompt, "Favoriten") {
+		t.Fatalf("prompt should include compact favorites: %s", prompt)
 	}
 }

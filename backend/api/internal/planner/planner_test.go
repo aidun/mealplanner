@@ -11,17 +11,22 @@ import (
 
 type fakeGenerator struct{}
 
-func (fakeGenerator) GenerateWeek(context.Context, domain.Profile, time.Time) (domain.Plan, error) {
+func (fakeGenerator) GenerateWeek(context.Context, domain.Profile, time.Time, []domain.FavoriteRecipe) (domain.Plan, error) {
 	return domain.Plan{ID: "plan-1", Days: []domain.DayPlan{{Date: "2026-04-20", Meals: []domain.Meal{{ID: "meal-1", Slot: "breakfast", Ingredients: []domain.Ingredient{{Name: "Hafer", Amount: 100, Unit: "g"}}}}}}}, nil
 }
 
-func (fakeGenerator) RegenerateMeal(_ context.Context, _ domain.Profile, _ domain.Plan, mealID string, note string) (domain.Meal, error) {
+func (fakeGenerator) RegenerateMeal(_ context.Context, _ domain.Profile, _ domain.Plan, mealID string, note string, _ []domain.FavoriteRecipe) (domain.Meal, error) {
 	return domain.Meal{ID: mealID, Slot: "breakfast", Title: "Neu", RegenerationNote: note, Ingredients: []domain.Ingredient{{Name: "Joghurt", Amount: 500, Unit: "g"}}}, nil
+}
+
+func (fakeGenerator) MergeProfiles(_ context.Context, target domain.Profile, incoming domain.Profile) (domain.Profile, error) {
+	target.Members = append(target.Members, incoming.Members...)
+	return target, nil
 }
 
 func TestGenerateWeekUsesExplicitWeekMonday(t *testing.T) {
 	p := New(fakeGenerator{})
-	plan, err := p.GenerateWeek(context.Background(), domain.DefaultProfile(), "2026-04-22")
+	plan, err := p.GenerateWeek(context.Background(), domain.DefaultProfile(), "2026-04-22", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -36,7 +41,7 @@ func TestGenerateWeekUsesExplicitWeekMonday(t *testing.T) {
 func TestRegenerateMealReplacesMealAndStoresNote(t *testing.T) {
 	p := New(fakeGenerator{})
 	plan := domain.Plan{ID: "plan-1", Days: []domain.DayPlan{{Meals: []domain.Meal{{ID: "meal-1", Slot: "breakfast"}}}}}
-	updated, err := p.RegenerateMeal(context.Background(), domain.DefaultProfile(), plan, "meal-1", "ohne Tomaten")
+	updated, err := p.RegenerateMeal(context.Background(), domain.DefaultProfile(), plan, "meal-1", "ohne Tomaten", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,7 +54,7 @@ func TestRegenerateMealReplacesMealAndStoresNote(t *testing.T) {
 }
 
 func TestWeekPromptIncludesMinimizedProfile(t *testing.T) {
-	prompt := WeekPrompt(domain.DefaultProfile(), time.Date(2026, 4, 19, 0, 0, 0, 0, time.UTC))
+	prompt := WeekPrompt(domain.DefaultProfile(), time.Date(2026, 4, 19, 0, 0, 0, 0, time.UTC), nil)
 	if strings.Contains(prompt, "Familie Hartmann") || strings.Contains(prompt, `"name"`) {
 		t.Fatalf("prompt should not include personal profile names: %s", prompt)
 	}

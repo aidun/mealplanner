@@ -1,4 +1,15 @@
-import type { AuthProvidersResponse, Plan, Profile, Session, ShoppingList } from './types';
+import type {
+  AuthProvidersResponse,
+  FamilyInvite,
+  FamilySummary,
+  FavoriteRecipe,
+  Meal,
+  Plan,
+  Profile,
+  PromptDebugEntry,
+  Session,
+  ShoppingList,
+} from './types';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
 
@@ -21,7 +32,7 @@ async function request<T>(
 ): Promise<T | null> {
   const hasBody = init.body !== undefined && init.body !== null;
   const method = (init.method ?? 'GET').toUpperCase();
-  const mutating = method === 'POST' || method === 'PUT';
+  const mutating = method === 'POST' || method === 'PUT' || method === 'DELETE';
   const headers: Record<string, string> = {
     ...(hasBody ? { 'Content-Type': 'application/json' } : {}),
     ...(mutating && csrfToken ? { 'X-CSRF-Token': csrfToken } : {}),
@@ -90,6 +101,24 @@ export async function saveProfile(profile: Profile) {
   });
 }
 
+export async function getFamily() {
+  return request<FamilySummary>('/api/family');
+}
+
+export async function createFamilyInvite(email: string) {
+  return request<FamilyInvite>('/api/family/invites', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  });
+}
+
+export async function acceptFamilyInvite(token: string) {
+  return request<FamilySummary>('/api/family/invites/accept', {
+    method: 'POST',
+    body: JSON.stringify({ token }),
+  });
+}
+
 export async function getCurrentPlan() {
   return request<Plan>('/api/plans/current', undefined, { allow404: true });
 }
@@ -111,6 +140,21 @@ export async function regenerateMeal(planId: string, mealId: string, note: strin
   );
 }
 
+export async function getFavorites() {
+  return request<FavoriteRecipe[]>('/api/favorites');
+}
+
+export async function createFavorite(meal: Meal) {
+  return request<FavoriteRecipe>('/api/favorites', {
+    method: 'POST',
+    body: JSON.stringify({ meal }),
+  });
+}
+
+export async function deleteFavorite(favoriteId: string) {
+  return request<null>(`/api/favorites/${encodeURIComponent(favoriteId)}`, { method: 'DELETE' });
+}
+
 export interface BringExportScope {
   day?: string;
   meal?: string;
@@ -128,4 +172,8 @@ export async function getShoppingList(planId: string) {
   return request<ShoppingList>(`/api/plans/${encodeURIComponent(planId)}/shopping-list`, undefined, {
     allow404: true,
   });
+}
+
+export async function getLatestPromptDebug() {
+  return request<PromptDebugEntry>('/api/debug/prompts/latest', undefined, { allow404: true });
 }

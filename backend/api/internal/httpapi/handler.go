@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -18,25 +19,36 @@ import (
 )
 
 type Repository interface {
-	UpsertUser(r *http.Request, provider, subjectHash string) (string, error)
+	UpsertUser(r *http.Request, provider, subjectHash string, emailHash string) (string, error)
 	CreateSession(r *http.Request, userID string, ttl time.Duration) (string, string, time.Time, error)
 	GetSession(r *http.Request, sessionID string) (string, string, time.Time, error)
 	DeleteSession(r *http.Request, sessionID string) error
 	ListUserIDs(r *http.Request) ([]string, error)
+	GetFamily(r *http.Request) (domain.FamilySummary, error)
+	CreateFamilyInvite(r *http.Request, emailHash string, ttl time.Duration) (domain.FamilyInvite, string, error)
+	AcceptFamilyInvite(r *http.Request, token string, mergedProfile domain.Profile) (domain.FamilySummary, error)
+	UserEmailHash(r *http.Request) (string, error)
+	GetProfileByFamily(r *http.Request, familyID string) (domain.Profile, error)
+	InviteTargetFamily(r *http.Request, token string) (string, error)
 	GetProfile(r *http.Request) (domain.Profile, error)
 	SaveProfile(r *http.Request, profile domain.Profile) (domain.Profile, error)
 	SavePlan(r *http.Request, plan domain.Plan) (domain.Plan, error)
 	GetCurrentPlan(r *http.Request) (domain.Plan, error)
 	GetPlan(r *http.Request, id string) (domain.Plan, error)
 	GetPlanByID(r *http.Request, id string) (domain.Plan, error)
+	ListFavorites(r *http.Request) ([]domain.FavoriteRecipe, error)
+	SaveFavorite(r *http.Request, meal domain.Meal) (domain.FavoriteRecipe, error)
+	DeleteFavorite(r *http.Request, id string) error
+	SavePromptDebug(r *http.Request, entry domain.PromptDebugEntry) error
+	LatestPromptDebug(r *http.Request) (domain.PromptDebugEntry, error)
 }
 
 type StoreRepository struct {
 	Store store.Store
 }
 
-func (r StoreRepository) UpsertUser(req *http.Request, provider, subjectHash string) (string, error) {
-	return r.Store.UpsertUser(req.Context(), provider, subjectHash)
+func (r StoreRepository) UpsertUser(req *http.Request, provider, subjectHash string, emailHash string) (string, error) {
+	return r.Store.UpsertUser(req.Context(), provider, subjectHash, emailHash)
 }
 
 func (r StoreRepository) CreateSession(req *http.Request, userID string, ttl time.Duration) (string, string, time.Time, error) {
@@ -53,6 +65,30 @@ func (r StoreRepository) DeleteSession(req *http.Request, sessionID string) erro
 
 func (r StoreRepository) ListUserIDs(req *http.Request) ([]string, error) {
 	return r.Store.ListUserIDs(req.Context())
+}
+
+func (r StoreRepository) GetFamily(req *http.Request) (domain.FamilySummary, error) {
+	return r.Store.GetFamily(req.Context(), mustUserID(req.Context()))
+}
+
+func (r StoreRepository) CreateFamilyInvite(req *http.Request, emailHash string, ttl time.Duration) (domain.FamilyInvite, string, error) {
+	return r.Store.CreateFamilyInvite(req.Context(), mustUserID(req.Context()), emailHash, ttl)
+}
+
+func (r StoreRepository) AcceptFamilyInvite(req *http.Request, token string, mergedProfile domain.Profile) (domain.FamilySummary, error) {
+	return r.Store.AcceptFamilyInvite(req.Context(), mustUserID(req.Context()), token, mergedProfile)
+}
+
+func (r StoreRepository) UserEmailHash(req *http.Request) (string, error) {
+	return r.Store.UserEmailHash(req.Context(), mustUserID(req.Context()))
+}
+
+func (r StoreRepository) GetProfileByFamily(req *http.Request, familyID string) (domain.Profile, error) {
+	return r.Store.GetProfileByFamily(req.Context(), familyID)
+}
+
+func (r StoreRepository) InviteTargetFamily(req *http.Request, token string) (string, error) {
+	return r.Store.InviteTargetFamily(req.Context(), token)
 }
 
 func (r StoreRepository) GetProfile(req *http.Request) (domain.Profile, error) {
@@ -79,6 +115,26 @@ func (r StoreRepository) GetPlanByID(req *http.Request, id string) (domain.Plan,
 	return r.Store.GetPlanByID(req.Context(), id)
 }
 
+func (r StoreRepository) ListFavorites(req *http.Request) ([]domain.FavoriteRecipe, error) {
+	return r.Store.ListFavorites(req.Context(), mustUserID(req.Context()))
+}
+
+func (r StoreRepository) SaveFavorite(req *http.Request, meal domain.Meal) (domain.FavoriteRecipe, error) {
+	return r.Store.SaveFavorite(req.Context(), mustUserID(req.Context()), meal)
+}
+
+func (r StoreRepository) DeleteFavorite(req *http.Request, id string) error {
+	return r.Store.DeleteFavorite(req.Context(), mustUserID(req.Context()), id)
+}
+
+func (r StoreRepository) SavePromptDebug(req *http.Request, entry domain.PromptDebugEntry) error {
+	return r.Store.SavePromptDebug(req.Context(), mustUserID(req.Context()), entry)
+}
+
+func (r StoreRepository) LatestPromptDebug(req *http.Request) (domain.PromptDebugEntry, error) {
+	return r.Store.LatestPromptDebug(req.Context(), mustUserID(req.Context()))
+}
+
 type Handler struct {
 	repo        Repository
 	planner     planner.Planner
@@ -87,6 +143,7 @@ type Handler struct {
 	apiSecret   string
 	corsOrigins []string
 	logger      *slog.Logger
+	promptDebug bool
 }
 
 const maxJSONBodyBytes = 1 << 20
@@ -95,7 +152,7 @@ func New(repo Repository, planner planner.Planner, authService auth.Service, api
 	if logger == nil {
 		logger = slog.Default()
 	}
-	h := &Handler{repo: repo, planner: planner, auth: authService, metrics: NewMetrics(), apiSecret: strings.TrimSpace(apiSecret), corsOrigins: corsOrigins, logger: logger}
+	h := &Handler{repo: repo, planner: planner, auth: authService, metrics: NewMetrics(), apiSecret: strings.TrimSpace(apiSecret), corsOrigins: corsOrigins, logger: logger, promptDebug: strings.EqualFold(strings.TrimSpace(getenv("PROMPT_DEBUG")), "true")}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", h.health)
 	mux.Handle("GET /metrics", h.metrics)
@@ -109,6 +166,13 @@ func New(repo Repository, planner planner.Planner, authService auth.Service, api
 	mux.HandleFunc("POST /api/internal/plans/weekly", h.withAPI(h.createPlansForAllUsers))
 	mux.HandleFunc("GET /api/profile", h.withSession(h.getProfile))
 	mux.HandleFunc("PUT /api/profile", h.withSession(h.withCSRF(h.putProfile)))
+	mux.HandleFunc("GET /api/family", h.withSession(h.getFamily))
+	mux.HandleFunc("POST /api/family/invites", h.withSession(h.withCSRF(h.createFamilyInvite)))
+	mux.HandleFunc("POST /api/family/invites/accept", h.withSession(h.withCSRF(h.acceptFamilyInvite)))
+	mux.HandleFunc("GET /api/favorites", h.withSession(h.getFavorites))
+	mux.HandleFunc("POST /api/favorites", h.withSession(h.withCSRF(h.createFavorite)))
+	mux.HandleFunc("DELETE /api/favorites/{favoriteID}", h.withSession(h.withCSRF(h.deleteFavorite)))
+	mux.HandleFunc("GET /api/debug/prompts/latest", h.withSession(h.getLatestPromptDebug))
 	mux.HandleFunc("POST /api/plans", h.withSession(h.withCSRF(h.createPlan)))
 	mux.HandleFunc("GET /api/plans/current", h.withSession(h.getCurrentPlan))
 	mux.HandleFunc("GET /api/plans/{planID}/bring-export", h.getBringExport)
@@ -149,6 +213,142 @@ func (h *Handler) putProfile(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, saved)
 }
 
+func (h *Handler) getFamily(w http.ResponseWriter, r *http.Request) {
+	family, err := h.repo.GetFamily(r)
+	if err != nil {
+		h.serverError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, family)
+}
+
+func (h *Handler) createFamilyInvite(w http.ResponseWriter, r *http.Request) {
+	var req domain.CreateFamilyInviteRequest
+	if err := decodeJSON(w, r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	emailHash := h.auth.Hash("email:" + strings.ToLower(strings.TrimSpace(req.Email)))
+	if strings.TrimSpace(req.Email) == "" {
+		writeError(w, http.StatusBadRequest, "Bitte gib eine E-Mail-Adresse an.")
+		return
+	}
+	invite, token, err := h.repo.CreateFamilyInvite(r, emailHash, 7*24*time.Hour)
+	if err != nil {
+		h.serverError(w, err)
+		return
+	}
+	invite.InviteLink = h.absoluteRequestURL(r, "/family/invites/accept").String() + "?token=" + token
+	writeJSON(w, http.StatusCreated, invite)
+}
+
+func (h *Handler) acceptFamilyInvite(w http.ResponseWriter, r *http.Request) {
+	var req domain.AcceptFamilyInviteRequest
+	if err := decodeJSON(w, r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	token := strings.TrimSpace(req.Token)
+	if token == "" {
+		writeError(w, http.StatusBadRequest, "Einladung fehlt.")
+		return
+	}
+	targetFamilyID, err := h.repo.InviteTargetFamily(r, token)
+	if errors.Is(err, store.ErrNotFound) {
+		writeError(w, http.StatusForbidden, "Einladung ist ungueltig oder abgelaufen.")
+		return
+	}
+	if err != nil {
+		h.serverError(w, err)
+		return
+	}
+	targetProfile, err := h.repo.GetProfileByFamily(r, targetFamilyID)
+	if err != nil {
+		h.serverError(w, err)
+		return
+	}
+	incomingProfile, err := h.repo.GetProfile(r)
+	if err != nil {
+		h.serverError(w, err)
+		return
+	}
+	if h.promptDebug {
+		_ = h.repo.SavePromptDebug(r, domain.PromptDebugEntry{Operation: "merge_profile", Model: "mealplanner", Prompt: h.planner.PreviewMergePrompt(targetProfile, incomingProfile)})
+	}
+	merged, err := h.planner.MergeProfiles(r.Context(), targetProfile, incomingProfile)
+	if err != nil {
+		h.serverError(w, err)
+		return
+	}
+	family, err := h.repo.AcceptFamilyInvite(r, token, merged)
+	if errors.Is(err, store.ErrNotFound) {
+		writeError(w, http.StatusForbidden, "Einladung ist ungueltig oder abgelaufen.")
+		return
+	}
+	if err != nil {
+		h.serverError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, family)
+}
+
+func (h *Handler) getFavorites(w http.ResponseWriter, r *http.Request) {
+	favorites, err := h.repo.ListFavorites(r)
+	if err != nil {
+		h.serverError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, favorites)
+}
+
+func (h *Handler) createFavorite(w http.ResponseWriter, r *http.Request) {
+	var req domain.CreateFavoriteRequest
+	if err := decodeJSON(w, r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if strings.TrimSpace(req.Meal.Title) == "" {
+		writeError(w, http.StatusBadRequest, "Favorit braucht ein Rezept.")
+		return
+	}
+	favorite, err := h.repo.SaveFavorite(r, req.Meal)
+	if err != nil {
+		h.serverError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, favorite)
+}
+
+func (h *Handler) deleteFavorite(w http.ResponseWriter, r *http.Request) {
+	err := h.repo.DeleteFavorite(r, r.PathValue("favoriteID"))
+	if errors.Is(err, store.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "favorite not found")
+		return
+	}
+	if err != nil {
+		h.serverError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) getLatestPromptDebug(w http.ResponseWriter, r *http.Request) {
+	if !h.promptDebug {
+		writeError(w, http.StatusNotFound, "not found")
+		return
+	}
+	entry, err := h.repo.LatestPromptDebug(r)
+	if errors.Is(err, store.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "prompt not found")
+		return
+	}
+	if err != nil {
+		h.serverError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, entry)
+}
+
 func (h *Handler) createPlan(w http.ResponseWriter, r *http.Request) {
 	var req domain.CreatePlanRequest
 	if r.Body != nil && r.ContentLength != 0 {
@@ -162,7 +362,17 @@ func (h *Handler) createPlan(w http.ResponseWriter, r *http.Request) {
 		h.serverError(w, err)
 		return
 	}
-	plan, err := h.planner.GenerateWeek(r.Context(), profile, req.WeekStart)
+	favorites, err := h.repo.ListFavorites(r)
+	if err != nil {
+		h.serverError(w, err)
+		return
+	}
+	if h.promptDebug {
+		if prompt, err := h.planner.PreviewWeekPrompt(profile, req.WeekStart, favorites); err == nil {
+			_ = h.repo.SavePromptDebug(r, domain.PromptDebugEntry{Operation: "generate_week", Model: "mealplanner", Prompt: prompt})
+		}
+	}
+	plan, err := h.planner.GenerateWeek(r.Context(), profile, req.WeekStart, favorites)
 	if err != nil {
 		h.serverError(w, err)
 		return
@@ -190,7 +400,12 @@ func (h *Handler) createPlansForAllUsers(w http.ResponseWriter, r *http.Request)
 			failures = append(failures, map[string]string{"userID": userID, "error": err.Error()})
 			continue
 		}
-		plan, err := h.planner.GenerateWeek(req.Context(), profile, "")
+		favorites, err := h.repo.ListFavorites(req)
+		if err != nil {
+			failures = append(failures, map[string]string{"userID": userID, "error": err.Error()})
+			continue
+		}
+		plan, err := h.planner.GenerateWeek(req.Context(), profile, "", favorites)
 		if err != nil {
 			failures = append(failures, map[string]string{"userID": userID, "error": err.Error()})
 			continue
@@ -259,7 +474,15 @@ func (h *Handler) regenerateMeal(w http.ResponseWriter, r *http.Request) {
 		h.serverError(w, err)
 		return
 	}
-	updated, err := h.planner.RegenerateMeal(r.Context(), profile, plan, r.PathValue("mealID"), req.Note)
+	favorites, err := h.repo.ListFavorites(r)
+	if err != nil {
+		h.serverError(w, err)
+		return
+	}
+	if h.promptDebug {
+		_ = h.repo.SavePromptDebug(r, domain.PromptDebugEntry{Operation: "regenerate_meal", Model: "mealplanner", Prompt: h.planner.PreviewRegeneratePrompt(profile, plan, r.PathValue("mealID"), req.Note, favorites)})
+	}
+	updated, err := h.planner.RegenerateMeal(r.Context(), profile, plan, r.PathValue("mealID"), req.Note, favorites)
 	if err != nil {
 		h.serverError(w, err)
 		return
@@ -362,4 +585,8 @@ func withUserID(r *http.Request, userID string) *http.Request {
 func configuredSecret(value string) bool {
 	value = strings.TrimSpace(value)
 	return value != "" && !strings.HasPrefix(value, "__set_")
+}
+
+func getenv(key string) string {
+	return os.Getenv(key)
 }

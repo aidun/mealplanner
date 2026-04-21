@@ -1,5 +1,7 @@
 FROM node:22-alpine AS build
 WORKDIR /app
+ARG VITE_PROMPT_DEBUG=false
+ENV VITE_PROMPT_DEBUG=$VITE_PROMPT_DEBUG
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .

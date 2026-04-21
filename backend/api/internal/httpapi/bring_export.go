@@ -22,6 +22,7 @@ type bringExportView struct {
 	Title        string
 	WeekStart    string
 	Description  string
+	Yield        string
 	CanonicalURL string
 	Items        []bringExportItem
 	Ingredients  []string
@@ -276,7 +277,10 @@ func scopedBringPlan(plan domain.Plan, scope bringExportScope) (domain.Plan, err
 }
 
 func newBringExportView(plan domain.Plan, canonicalURL string) (bringExportView, error) {
-	shoppingItems := domain.ConsolidateShoppingList(plan)
+	shoppingItems := plan.ShoppingList
+	if len(shoppingItems) == 0 {
+		shoppingItems = domain.ConsolidateShoppingList(plan)
+	}
 	items := make([]bringExportItem, 0, len(shoppingItems))
 	ingredients := make([]string, 0, len(shoppingItems))
 	for _, item := range shoppingItems {
@@ -330,6 +334,7 @@ func newBringExportView(plan domain.Plan, canonicalURL string) (bringExportView,
 		Title:        title,
 		WeekStart:    strings.TrimSpace(plan.WeekStart),
 		Description:  description,
+		Yield:        yield,
 		CanonicalURL: strings.TrimSpace(canonicalURL),
 		Items:        items,
 		Ingredients:  ingredients,
@@ -508,7 +513,7 @@ var bringExportTemplate = template.Must(template.New("bring-export").Parse(`<!do
     <h1 itemprop="name">{{ .Title }}</h1>
     <meta itemprop="author" content="Mealplanner">
     {{ if .CanonicalURL }}<meta itemprop="url" content="{{ .CanonicalURL }}">{{ end }}
-    <meta itemprop="recipeYield" content="1 Wochenplan">
+    <meta itemprop="recipeYield" content="{{ .Yield }}">
     <meta itemprop="prepTime" content="PT10M">
     <meta itemprop="cookTime" content="PT0M">
     <meta itemprop="totalTime" content="PT10M">

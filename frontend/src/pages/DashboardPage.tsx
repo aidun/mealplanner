@@ -8,15 +8,26 @@ import { ShoppingListPanel } from '../components/ShoppingListPanel';
 import { LoginPage } from './LoginPage';
 import {
   createPlan,
+  createFavorite,
+  deleteFavorite,
+  getFamily,
   getCurrentPlan,
+  getFavorites,
+  getLatestPromptDebug,
   getProfile,
   getShoppingList,
   logout,
   regenerateMeal,
 } from '../api';
+import type { Meal } from '../types';
+
+function promptDebugEnabled() {
+  return import.meta.env.VITE_PROMPT_DEBUG === 'true' || window.localStorage.getItem('mealplanner.promptDebug') === 'true';
+}
 
 export function DashboardPage() {
   const queryClient = useQueryClient();
+  const promptDebug = promptDebugEnabled();
   const [selectedMealId, setSelectedMealId] = useState<string | undefined>();
   const [loggedOut, setLoggedOut] = useState(false);
 
@@ -36,6 +47,22 @@ export function DashboardPage() {
     enabled: Boolean(currentPlanQuery.data?.id),
   });
 
+  const familyQuery = useQuery({
+    queryKey: ['family'],
+    queryFn: getFamily,
+  });
+
+  const favoritesQuery = useQuery({
+    queryKey: ['favorites'],
+    queryFn: getFavorites,
+  });
+
+  const promptDebugQuery = useQuery({
+    queryKey: ['prompt-debug'],
+    queryFn: getLatestPromptDebug,
+    enabled: promptDebug,
+  });
+
   const createPlanMutation = useMutation({
     mutationFn: () => createPlan({}),
     onSuccess: async () => {
@@ -52,6 +79,30 @@ export function DashboardPage() {
         queryClient.setQueryData(['current-plan'], updatedPlan);
       }
       await queryClient.invalidateQueries({ queryKey: ['shopping-list'] });
+    },
+  });
+
+  const createFavoriteMutation = useMutation({
+    mutationFn: createFavorite,
+    onSuccess: async (favorite) => {
+      if (favorite) {
+        queryClient.setQueryData(['favorites'], (current: unknown) => {
+          const list = Array.isArray(current) ? current : [];
+          return [...list.filter((item: any) => item.id !== favorite.id), favorite];
+        });
+      }
+      await queryClient.invalidateQueries({ queryKey: ['favorites'] });
+    },
+  });
+
+  const deleteFavoriteMutation = useMutation({
+    mutationFn: deleteFavorite,
+    onSuccess: async (_result, favoriteId) => {
+      queryClient.setQueryData(['favorites'], (current: unknown) => {
+        const list = Array.isArray(current) ? current : [];
+        return list.filter((item: any) => item.id !== favoriteId);
+      });
+      await queryClient.invalidateQueries({ queryKey: ['favorites'] });
     },
   });
 
@@ -76,6 +127,13 @@ export function DashboardPage() {
     () => currentPlanQuery.data?.days.find((day) => day.meals.some((meal) => meal.id === selectedMeal?.id)),
     [currentPlanQuery.data?.days, selectedMeal?.id]
   );
+  const favoriteByMealID = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const favorite of favoritesQuery.data ?? []) {
+      if (favorite.meal.id) map.set(favorite.meal.id, favorite.id);
+    }
+    return map;
+  }, [favoritesQuery.data]);
 
   useEffect(() => {
     if (!selectedMealId && allMeals[0]) {
@@ -98,6 +156,14 @@ export function DashboardPage() {
       mealId: selectedMeal.id,
       note,
     });
+  };
+
+  const handleToggleFavorite = (meal: Meal, favoriteId?: string) => {
+    if (favoriteId) {
+      deleteFavoriteMutation.mutate(favoriteId);
+      return;
+    }
+    createFavoriteMutation.mutate(meal);
   };
 
   const profile = profileQuery.data;
@@ -156,6 +222,9 @@ export function DashboardPage() {
                   {preset}
                 </span>
               ))}
+              {familyQuery.data ? (
+                <span className="profile-chip profile-chip-accent">{familyQuery.data.memberCount} im Familienkonto</span>
+              ) : null}
             </div>
           </div>
 
@@ -204,8 +273,11 @@ export function DashboardPage() {
               planId={currentPlanQuery.data?.id}
               dayDate={selectedDay?.date}
               meal={selectedMeal}
+              favoriteId={selectedMeal ? favoriteByMealID.get(selectedMeal.id) : undefined}
+              onToggleFavorite={handleToggleFavorite}
               onRegenerate={handleRegenerate}
               isRegenerating={regenerateMealMutation.isPending}
+              isFavoriteBusy={createFavoriteMutation.isPending || deleteFavoriteMutation.isPending}
             />
           </div>
 
@@ -217,7 +289,52 @@ export function DashboardPage() {
             />
           </div>
         </div>
+
+        {promptDebug ? (
+          <PromptDebugOverlay
+            loading={promptDebugQuery.isLoading}
+            prompt={promptDebugQuery.data?.prompt}
+            operation={promptDebugQuery.data?.operation}
+            onRefresh={() => promptDebugQuery.refetch()}
+          />
+        ) : null}
       </main>
+    </div>
+  );
+}
+
+function PromptDebugOverlay({
+  loading,
+  prompt,
+  operation,
+  onRefresh,
+}: {
+  loading: boolean;
+  prompt?: string;
+  operation?: string;
+  onRefresh: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="prompt-debug">
+      <button type="button" className="button button-secondary" onClick={() => setOpen((value) => !value)}>
+        Prompt prüfen
+      </button>
+      {open ? (
+        <section className="prompt-debug-panel" aria-label="Prompt Debug Overlay">
+          <div className="surface-header">
+            <div>
+              <span className="eyebrow">Testmodus</span>
+              <h2>{operation ?? 'Prompt'}</h2>
+            </div>
+            <button type="button" className="button button-secondary compact-action" onClick={onRefresh}>
+              Aktualisieren
+            </button>
+          </div>
+          <pre>{loading ? 'Prompt wird geladen.' : prompt ?? 'Noch kein Prompt gespeichert.'}</pre>
+        </section>
+      ) : null}
     </div>
   );
 }

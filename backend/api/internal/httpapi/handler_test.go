@@ -21,9 +21,15 @@ import (
 )
 
 type memoryRepo struct {
-	profiles map[string]domain.Profile
-	plans    map[string]domain.Plan
-	sessions map[string]memorySession
+	profiles       map[string]domain.Profile
+	plans          map[string]domain.Plan
+	sessions       map[string]memorySession
+	emailHashes    map[string]string
+	activeFamilies map[string]string
+	familyMembers  map[string]map[string]bool
+	invites        map[string]memoryInvite
+	favorites      map[string][]domain.FavoriteRecipe
+	prompts        map[string]domain.PromptDebugEntry
 }
 
 type memorySession struct {
@@ -32,16 +38,35 @@ type memorySession struct {
 	expiresAt time.Time
 }
 
+type memoryInvite struct {
+	targetFamilyID string
+	emailHash      string
+	token          string
+	expiresAt      time.Time
+}
+
 func newMemoryRepo() *memoryRepo {
 	return &memoryRepo{
-		profiles: map[string]domain.Profile{},
-		plans:    map[string]domain.Plan{},
-		sessions: map[string]memorySession{},
+		profiles:       map[string]domain.Profile{},
+		plans:          map[string]domain.Plan{},
+		sessions:       map[string]memorySession{},
+		emailHashes:    map[string]string{},
+		activeFamilies: map[string]string{},
+		familyMembers:  map[string]map[string]bool{},
+		invites:        map[string]memoryInvite{},
+		favorites:      map[string][]domain.FavoriteRecipe{},
+		prompts:        map[string]domain.PromptDebugEntry{},
 	}
 }
 
-func (m *memoryRepo) UpsertUser(_ *http.Request, _, _ string) (string, error) {
-	return "user-1", nil
+func (m *memoryRepo) UpsertUser(_ *http.Request, _, subjectHash string, emailHash string) (string, error) {
+	userID := "user-" + subjectHash
+	if subjectHash == "" || subjectHash == "subject" {
+		userID = "user-1"
+	}
+	m.emailHashes[userID] = emailHash
+	m.ensureFamily(userID)
+	return userID, nil
 }
 
 func (m *memoryRepo) CreateSession(_ *http.Request, userID string, ttl time.Duration) (string, string, time.Time, error) {
@@ -81,27 +106,36 @@ func (m *memoryRepo) ListUserIDs(_ *http.Request) ([]string, error) {
 }
 
 func (m *memoryRepo) GetProfile(r *http.Request) (domain.Profile, error) {
-	userID := mustUserID(r.Context())
-	if m.profiles[userID].HouseholdName == "" {
+	familyID := m.familyID(mustUserID(r.Context()))
+	if m.profiles[familyID].HouseholdName == "" {
+		if legacy := m.profiles[mustUserID(r.Context())]; legacy.HouseholdName != "" {
+			return legacy, nil
+		}
 		return domain.DefaultProfile(), nil
 	}
-	return m.profiles[userID], nil
+	return m.profiles[familyID], nil
 }
 
 func (m *memoryRepo) SaveProfile(r *http.Request, profile domain.Profile) (domain.Profile, error) {
-	m.profiles[mustUserID(r.Context())] = profile
+	m.profiles[m.familyID(mustUserID(r.Context()))] = profile
 	return profile, nil
 }
 
 func (m *memoryRepo) SavePlan(r *http.Request, plan domain.Plan) (domain.Plan, error) {
-	m.plans[mustUserID(r.Context())+"|"+plan.ID] = plan
+	m.plans[m.familyID(mustUserID(r.Context()))+"|"+plan.ID] = plan
 	return plan, nil
 }
 
 func (m *memoryRepo) GetCurrentPlan(r *http.Request) (domain.Plan, error) {
-	prefix := mustUserID(r.Context()) + "|"
+	prefix := m.familyID(mustUserID(r.Context())) + "|"
 	for key, plan := range m.plans {
 		if strings.HasPrefix(key, prefix) {
+			return plan, nil
+		}
+	}
+	legacyPrefix := mustUserID(r.Context()) + "|"
+	for key, plan := range m.plans {
+		if strings.HasPrefix(key, legacyPrefix) {
 			return plan, nil
 		}
 	}
@@ -109,11 +143,120 @@ func (m *memoryRepo) GetCurrentPlan(r *http.Request) (domain.Plan, error) {
 }
 
 func (m *memoryRepo) GetPlan(r *http.Request, id string) (domain.Plan, error) {
-	plan, ok := m.plans[mustUserID(r.Context())+"|"+id]
+	plan, ok := m.plans[m.familyID(mustUserID(r.Context()))+"|"+id]
+	if !ok {
+		plan, ok = m.plans[mustUserID(r.Context())+"|"+id]
+	}
 	if !ok {
 		return domain.Plan{}, store.ErrNotFound
 	}
 	return plan, nil
+}
+
+func (m *memoryRepo) GetFamily(r *http.Request) (domain.FamilySummary, error) {
+	familyID := m.familyID(mustUserID(r.Context()))
+	return domain.FamilySummary{ID: familyID, Name: "Familie", MemberCount: len(m.familyMembers[familyID]), Personal: len(m.familyMembers[familyID]) == 1}, nil
+}
+
+func (m *memoryRepo) CreateFamilyInvite(r *http.Request, emailHash string, ttl time.Duration) (domain.FamilyInvite, string, error) {
+	token := "invite-token"
+	familyID := m.familyID(mustUserID(r.Context()))
+	expiresAt := time.Now().Add(ttl)
+	m.invites[token] = memoryInvite{targetFamilyID: familyID, emailHash: emailHash, token: token, expiresAt: expiresAt}
+	return domain.FamilyInvite{ID: "invite-1", EmailHash: emailHash, ExpiresAt: expiresAt, WarningText: "persoenlicher Account"}, token, nil
+}
+
+func (m *memoryRepo) AcceptFamilyInvite(r *http.Request, token string, mergedProfile domain.Profile) (domain.FamilySummary, error) {
+	invite, ok := m.invites[token]
+	if !ok || time.Now().After(invite.expiresAt) || m.emailHashes[mustUserID(r.Context())] != invite.emailHash {
+		return domain.FamilySummary{}, store.ErrNotFound
+	}
+	userID := mustUserID(r.Context())
+	m.profiles[invite.targetFamilyID] = mergedProfile
+	m.activeFamilies[userID] = invite.targetFamilyID
+	if m.familyMembers[invite.targetFamilyID] == nil {
+		m.familyMembers[invite.targetFamilyID] = map[string]bool{}
+	}
+	m.familyMembers[invite.targetFamilyID][userID] = true
+	return m.GetFamily(r)
+}
+
+func (m *memoryRepo) UserEmailHash(r *http.Request) (string, error) {
+	return m.emailHashes[mustUserID(r.Context())], nil
+}
+
+func (m *memoryRepo) GetProfileByFamily(_ *http.Request, familyID string) (domain.Profile, error) {
+	if m.profiles[familyID].HouseholdName == "" {
+		return domain.DefaultProfile(), nil
+	}
+	return m.profiles[familyID], nil
+}
+
+func (m *memoryRepo) InviteTargetFamily(_ *http.Request, token string) (string, error) {
+	invite, ok := m.invites[token]
+	if !ok || time.Now().After(invite.expiresAt) {
+		return "", store.ErrNotFound
+	}
+	return invite.targetFamilyID, nil
+}
+
+func (m *memoryRepo) ListFavorites(r *http.Request) ([]domain.FavoriteRecipe, error) {
+	return append([]domain.FavoriteRecipe(nil), m.favorites[m.familyID(mustUserID(r.Context()))]...), nil
+}
+
+func (m *memoryRepo) SaveFavorite(r *http.Request, meal domain.Meal) (domain.FavoriteRecipe, error) {
+	familyID := m.familyID(mustUserID(r.Context()))
+	favorite := domain.FavoriteRecipe{ID: "favorite-" + meal.ID, Meal: meal, CreatedAt: time.Now()}
+	m.favorites[familyID] = append(m.favorites[familyID], favorite)
+	return favorite, nil
+}
+
+func (m *memoryRepo) DeleteFavorite(r *http.Request, id string) error {
+	familyID := m.familyID(mustUserID(r.Context()))
+	next := m.favorites[familyID][:0]
+	deleted := false
+	for _, favorite := range m.favorites[familyID] {
+		if favorite.ID == id {
+			deleted = true
+			continue
+		}
+		next = append(next, favorite)
+	}
+	m.favorites[familyID] = next
+	if !deleted {
+		return store.ErrNotFound
+	}
+	return nil
+}
+
+func (m *memoryRepo) SavePromptDebug(r *http.Request, entry domain.PromptDebugEntry) error {
+	entry.CreatedAt = time.Now()
+	m.prompts[m.familyID(mustUserID(r.Context()))] = entry
+	return nil
+}
+
+func (m *memoryRepo) LatestPromptDebug(r *http.Request) (domain.PromptDebugEntry, error) {
+	entry := m.prompts[m.familyID(mustUserID(r.Context()))]
+	if entry.Operation == "" {
+		return domain.PromptDebugEntry{}, store.ErrNotFound
+	}
+	return entry, nil
+}
+
+func (m *memoryRepo) familyID(userID string) string {
+	m.ensureFamily(userID)
+	return m.activeFamilies[userID]
+}
+
+func (m *memoryRepo) ensureFamily(userID string) {
+	if m.activeFamilies[userID] == "" {
+		m.activeFamilies[userID] = "family-" + userID
+	}
+	familyID := m.activeFamilies[userID]
+	if m.familyMembers[familyID] == nil {
+		m.familyMembers[familyID] = map[string]bool{}
+	}
+	m.familyMembers[familyID][userID] = true
 }
 
 func (m *memoryRepo) GetPlanByID(_ *http.Request, id string) (domain.Plan, error) {
@@ -228,6 +371,29 @@ func TestBringExport(t *testing.T) {
 	handler.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("expected public signed export 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestBringExportPrefersStoredShoppingListForWeek(t *testing.T) {
+	repo := newMemoryRepo()
+	repo.plans["user-1|plan-1"] = domain.Plan{
+		ID:        "plan-1",
+		WeekStart: "2026-04-20",
+		ShoppingList: []domain.ShoppingItem{
+			{Name: "Direkte Liste", Amount: 2, Unit: "Stk"},
+		},
+		Days: []domain.DayPlan{{Date: "2026-04-20", Meals: []domain.Meal{{ID: "meal-1", Title: "Pasta", Ingredients: []domain.Ingredient{{Name: "Nicht nutzen", Amount: 1}}}}}},
+	}
+	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "test-secret", nil, nil)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/plans/plan-1/bring-export", nil)
+	setAuth(repo, req, "user-1")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	body := rec.Body.String()
+	if rec.Code != http.StatusOK || !strings.Contains(body, "2 Stk Direkte Liste") || strings.Contains(body, "Nicht nutzen") {
+		t.Fatalf("expected stored shopping list to be used, status=%d body=%s", rec.Code, body)
 	}
 }
 
@@ -445,6 +611,109 @@ func TestInternalWeeklyPlanUsesAPISecret(t *testing.T) {
 	}
 	if !strings.Contains(rec.Body.String(), `"users":1`) {
 		t.Fatalf("unexpected weekly response: %s", rec.Body.String())
+	}
+}
+
+func TestFavoritesAPIStoresAndDeletesPerFamily(t *testing.T) {
+	repo := newMemoryRepo()
+	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil)
+	meal := domain.Meal{ID: "meal-1", Slot: "dinner", Title: "Lieblingspasta", Description: "Schnell"}
+	raw, _ := json.Marshal(domain.CreateFavoriteRequest{Meal: meal})
+
+	req := httptest.NewRequest(http.MethodPost, "/api/favorites", bytes.NewReader(raw))
+	setAuth(repo, req, "user-1")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	req = httptest.NewRequest(http.MethodGet, "/api/favorites", nil)
+	setAuth(repo, req, "user-1")
+	rec = httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "Lieblingspasta") {
+		t.Fatalf("expected user favorite, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	req = httptest.NewRequest(http.MethodGet, "/api/favorites", nil)
+	setAuth(repo, req, "user-2")
+	rec = httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK || strings.Contains(rec.Body.String(), "Lieblingspasta") {
+		t.Fatalf("expected favorites to be family scoped, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	req = httptest.NewRequest(http.MethodDelete, "/api/favorites/favorite-meal-1", nil)
+	setAuth(repo, req, "user-1")
+	rec = httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("expected 204, got %d: %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestFamilyInviteMergesProfileOnlyWithMatchingEmailHash(t *testing.T) {
+	repo := newMemoryRepo()
+	repo.profiles["family-user-1"] = domain.Profile{HouseholdName: "Familie A", Members: []domain.Member{{ID: "a", Name: "A"}}, Defaults: domain.MealDefaults{}, Presets: []string{"schnell"}}
+	repo.profiles["family-user-2"] = domain.Profile{HouseholdName: "Familie B", Members: []domain.Member{{ID: "b", Name: "B"}}, Defaults: domain.MealDefaults{}, Presets: []string{"gemuese"}}
+	authService := testAuth()
+	handler := New(repo, planner.New(provider.NewMockGenerator()), authService, "", nil, nil)
+	email := "person@example.test"
+	emailHash := authService.Hash("email:" + email)
+	repo.emailHashes["user-2"] = emailHash
+
+	req := httptest.NewRequest(http.MethodPost, "/api/family/invites", bytes.NewBufferString(`{"email":"`+email+`"}`))
+	setAuth(repo, req, "user-1")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("expected invite 201, got %d: %s", rec.Code, rec.Body.String())
+	}
+	if strings.Contains(rec.Body.String(), email) || !strings.Contains(rec.Body.String(), "persoenlicher Account") {
+		t.Fatalf("invite should not echo raw email and should include warning: %s", rec.Body.String())
+	}
+
+	req = httptest.NewRequest(http.MethodPost, "/api/family/invites/accept", bytes.NewBufferString(`{"token":"invite-token"}`))
+	setAuth(repo, req, "user-2")
+	rec = httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected accept 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+	merged := repo.profiles["family-user-1"]
+	if len(merged.Members) != 2 || repo.activeFamilies["user-2"] != "family-user-1" {
+		t.Fatalf("expected merged profile and active family switch, profile=%+v active=%s", merged, repo.activeFamilies["user-2"])
+	}
+}
+
+func TestPromptDebugEndpointOnlyWhenEnabled(t *testing.T) {
+	repo := newMemoryRepo()
+	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/debug/prompts/latest", nil)
+	setAuth(repo, req, "user-1")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("expected disabled debug 404, got %d", rec.Code)
+	}
+
+	t.Setenv("PROMPT_DEBUG", "true")
+	handler = New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil)
+	req = httptest.NewRequest(http.MethodPost, "/api/plans", bytes.NewBufferString(`{"weekStart":"2026-04-20"}`))
+	setAuth(repo, req, "user-1")
+	rec = httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("expected plan 201, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	req = httptest.NewRequest(http.MethodGet, "/api/debug/prompts/latest", nil)
+	setAuth(repo, req, "user-1")
+	rec = httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "generate_week") || !strings.Contains(rec.Body.String(), "Familienprofil") {
+		t.Fatalf("expected prompt debug entry, got %d: %s", rec.Code, rec.Body.String())
 	}
 }
 

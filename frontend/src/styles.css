@@ -576,6 +576,56 @@ a:focus-visible {
   font-size: 0.86rem;
 }
 
+.invite-result,
+.prompt-debug-panel,
+.invite-accept {
+  display: grid;
+  gap: 12px;
+}
+
+.invite-result {
+  min-width: 0;
+  padding: 14px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.invite-result a {
+  overflow-wrap: anywhere;
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.prompt-debug {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 40;
+  display: grid;
+  justify-items: end;
+  gap: 10px;
+}
+
+.prompt-debug-panel {
+  width: min(680px, calc(100vw - 32px));
+  max-height: min(620px, calc(100vh - 96px));
+  overflow: auto;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: var(--shadow-strong);
+}
+
+.prompt-debug-panel pre {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
 .panel-feedback {
   margin: 0;
   padding: 0 18px 12px;

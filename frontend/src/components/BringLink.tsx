@@ -45,6 +45,8 @@ export function BringLink({ planId, scope = {}, label, className, disabled }: Br
     <a
       className={classes}
       href={url || undefined}
+      target="_blank"
+      rel="noopener noreferrer"
       aria-disabled={state !== 'ready'}
       data-state={state}
       onClick={(event) => {

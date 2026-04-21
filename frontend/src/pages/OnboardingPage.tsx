@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { getProfile, saveProfile } from '../api';
+import { createFamilyInvite, getProfile, saveProfile } from '../api';
 import { formToProfile, profileToForm } from '../lib/profile-form';
 import type { ProfileFormState } from '../types';
 
@@ -28,6 +28,7 @@ export function OnboardingPage() {
   });
   const [form, setForm] = useState<ProfileFormState>(EMPTY_FORM);
   const [hasEdited, setHasEdited] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
 
   useEffect(() => {
     if (profileQuery.data) {
@@ -45,6 +46,10 @@ export function OnboardingPage() {
       setHasEdited(false);
       await queryClient.invalidateQueries({ queryKey: ['profile'] });
     },
+  });
+
+  const inviteMutation = useMutation({
+    mutationFn: createFamilyInvite,
   });
 
   const update = (key: keyof ProfileFormState, value: string) => {
@@ -142,9 +147,48 @@ export function OnboardingPage() {
               </div>
             </section>
 
-            <section className="profile-section" aria-labelledby="taste-section">
+            <section className="profile-section" aria-labelledby="family-section">
               <div className="profile-section-copy">
                 <span className="section-index">02</span>
+                <h2 id="family-section">Familienkonto</h2>
+                <p>Erstelle einen Einladungslink für eine Person. Beim Annehmen geht ihr persönlicher Account im Familienkonto auf.</p>
+              </div>
+              <div className="profile-section-fields">
+                <p className="panel-feedback" role="note">
+                  Hinweis: Beim Erstellen und Annehmen der Einladung wird der persönliche Account der eingeladenen Person in dieses Familienkonto überführt. Das Profil wird sinnvoll zusammengeführt.
+                </p>
+                <label className="field">
+                  <span className="field-label">E-Mail-Adresse für Einladung</span>
+                  <input
+                    className="input"
+                    type="email"
+                    value={inviteEmail}
+                    onChange={(event) => setInviteEmail(event.target.value)}
+                    placeholder="name@example.com"
+                  />
+                </label>
+                <button
+                  type="button"
+                  className="button button-secondary"
+                  onClick={() => inviteMutation.mutate(inviteEmail)}
+                  disabled={inviteMutation.isPending || inviteEmail.trim() === ''}
+                >
+                  {inviteMutation.isPending ? 'Einladung entsteht' : 'Einladungslink erstellen'}
+                </button>
+                {inviteMutation.data?.inviteLink ? (
+                  <div className="invite-result">
+                    <strong>Einladungslink</strong>
+                    <a href={inviteMutation.data.inviteLink}>{inviteMutation.data.inviteLink}</a>
+                    <p>{inviteMutation.data.warningText}</p>
+                  </div>
+                ) : null}
+                {inviteMutation.isError ? <p className="error-copy">{errorMessage(inviteMutation.error)}</p> : null}
+              </div>
+            </section>
+
+            <section className="profile-section" aria-labelledby="taste-section">
+              <div className="profile-section-copy">
+                <span className="section-index">03</span>
                 <h2 id="taste-section">Geschmack</h2>
                 <p>Küchen, Kochstil und Zutaten, die draußen bleiben.</p>
               </div>
@@ -196,7 +240,7 @@ export function OnboardingPage() {
 
             <section className="profile-section" aria-labelledby="preset-section">
               <div className="profile-section-copy">
-                <span className="section-index">03</span>
+                <span className="section-index">04</span>
                 <h2 id="preset-section">Mahlzeiten</h2>
                 <p>Lieblingsgerichte und feste Ideen für Frühstück, Mittag, Abendessen und Snacks.</p>
               </div>
