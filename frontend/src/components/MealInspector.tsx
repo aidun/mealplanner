@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import type { Meal } from '../types';
 import { formatNutrition, formatNutritionPerPortion, scaleNutrition } from '../lib/format';
+import { detectCriticalAllergens, inferSelectionReason } from '../lib/meal-insights';
 import { BringLink } from './BringLink';
+import { HeartIcon, InfoIcon, RefreshIcon, ShieldIcon, SparkIcon } from './icons';
 
 interface MealInspectorProps {
   planId?: string;
@@ -29,9 +31,15 @@ export function MealInspector({
   isFavoriteBusy,
 }: MealInspectorProps) {
   const [note, setNote] = useState('');
+  const [showRecipeContext, setShowRecipeContext] = useState(false);
+  const [showSelectionReason, setShowSelectionReason] = useState(false);
+  const allergens = meal ? detectCriticalAllergens(meal.ingredients) : [];
+  const selectionReason = meal ? inferSelectionReason(meal) : '';
 
   useEffect(() => {
     setNote('');
+    setShowRecipeContext(false);
+    setShowSelectionReason(false);
   }, [meal?.id]);
 
   if (!meal) {
@@ -50,9 +58,9 @@ export function MealInspector({
 
   return (
     <section className="surface inspector">
-      <div className="surface-header">
-        <div>
-          <h2>{meal.title}</h2>
+        <div className="surface-header">
+          <div>
+            <h2>{meal.title}</h2>
           <p>
             {meal.slot ?? 'Mahlzeit'}
             {dayDate ? ` fuer ${dayDate}` : ''}
@@ -62,12 +70,24 @@ export function MealInspector({
         <div className="surface-actions">
           <button
             type="button"
-            className="button button-secondary compact-action"
+            className={`icon-button${favoriteId ? ' icon-button-active' : ''}`}
             onClick={() => onToggleFavorite?.(meal, favoriteId)}
             disabled={!onToggleFavorite || isFavoriteBusy}
             aria-pressed={Boolean(favoriteId)}
+            aria-label={favoriteId ? 'Favorit entfernen' : 'Als Favorit merken'}
+            title={favoriteId ? 'Favorit entfernen' : 'Als Favorit merken'}
           >
-            {favoriteId ? 'Favorit entfernen' : 'Als Favorit merken'}
+            <HeartIcon className="action-icon" />
+          </button>
+          <button
+            type="button"
+            className={`icon-button${showRecipeContext ? ' icon-button-active' : ''}`}
+            onClick={() => setShowRecipeContext((current) => !current)}
+            aria-pressed={showRecipeContext}
+            aria-label="Rezeptkontext anzeigen"
+            title="Rezeptkontext anzeigen"
+          >
+            <InfoIcon className="action-icon" />
           </button>
           <BringLink
             planId={planId}
@@ -80,26 +100,37 @@ export function MealInspector({
       </div>
 
       {meal.description ? <p className="inspector-copy">{meal.description}</p> : null}
-      <p className="inspector-note" role="note">
-        Herkunft: {mealOriginLabel(meal)}
-      </p>
-      {meal.meta?.favoriteReuse ? (
-        <p className="inspector-note" role="note">
-          {meal.meta.favoriteReuse === 'variant'
-            ? 'Dieses Gericht lehnt sich an einen vorhandenen Favoriten an.'
-            : 'Dieses Gericht wurde aus eurer Favoriten-Sammlung wieder aufgegriffen.'}
-          {meal.meta.favoriteTitle ? ` Bezug: ${meal.meta.favoriteTitle}.` : ''}
-        </p>
+      <div className="inspector-inline-actions">
+        <button
+          type="button"
+          className={`button button-secondary compact-action action-pill${showSelectionReason ? ' action-pill-active' : ''}`}
+          onClick={() => setShowSelectionReason((current) => !current)}
+        >
+          <SparkIcon className="pill-icon" />
+          Warum gewaehlt?
+        </button>
+      </div>
+      {showRecipeContext ? (
+        <div className="inspector-info-panel" role="note">
+          <p>
+            <strong>Herkunft:</strong> {mealOriginLabel(meal)}
+          </p>
+          {meal.meta?.favoriteReuse ? (
+            <p>
+              {meal.meta.favoriteReuse === 'variant'
+                ? 'Dieses Gericht lehnt sich an einen vorhandenen Favoriten an.'
+                : 'Dieses Gericht wurde aus eurer Favoriten-Sammlung wieder aufgegriffen.'}
+              {meal.meta.favoriteTitle ? ` Bezug: ${meal.meta.favoriteTitle}.` : ''}
+            </p>
+          ) : null}
+          {meal.regenerationNote ? <p>Beruecksichtigt: {meal.regenerationNote}</p> : null}
+          {!canActOnMeal ? <p>Dieses Rezept liegt gerade in eurer Sammlung. Aktionen greifen wieder im aktiven Wochenplan.</p> : null}
+        </div>
       ) : null}
-      {meal.regenerationNote ? (
-        <p className="inspector-note" role="note">
-          Berücksichtigt: {meal.regenerationNote}
-        </p>
-      ) : null}
-      {!canActOnMeal ? (
-        <p className="inspector-note" role="note">
-          Dieses Rezept kommt gerade aus eurer Sammlung. Bring und Regeneration stehen im aktiven Wochenplan bereit.
-        </p>
+      {showSelectionReason ? (
+        <div className="inspector-info-panel" role="note">
+          <p>{selectionReason}</p>
+        </div>
       ) : null}
 
       <div className="inspector-summary-grid">
@@ -187,13 +218,37 @@ export function MealInspector({
           />
           <button
             type="button"
-            className="button button-primary full-width"
+            className="button button-primary full-width regenerate-button"
             onClick={() => onRegenerate(note)}
             disabled={isRegenerating || !canActOnMeal}
+            aria-label="Gericht austauschen"
           >
-            {isRegenerating ? 'Wir suchen ein anderes Gericht' : 'Gericht austauschen'}
+            <RefreshIcon className="pill-icon" />
+            {isRegenerating ? 'Wir suchen ein anderes Gericht' : 'Neu generieren'}
           </button>
         </section>
+        {meal.warnings?.length || allergens.length > 0 ? (
+          <section className="inspector-section">
+            <h3>Hinweise</h3>
+            {meal.warnings?.map((warning, index) => (
+              <p key={`${meal.id}-warning-${index}`} className="inspector-warning">
+                {warning}
+              </p>
+            ))}
+            {allergens.length > 0 ? (
+              <div className="allergy-warning" role="note">
+                <div className="allergy-warning-title">
+                  <ShieldIcon className="pill-icon" />
+                  <strong>Kritische Produkte erkannt</strong>
+                </div>
+                <p>
+                  Moeglicherweise enthalten: {allergens.join(', ')}. Dieser Hinweis wird automatisch aus den Zutaten
+                  abgeleitet und ersetzt keine manuelle Allergiepruefung.
+                </p>
+              </div>
+            ) : null}
+          </section>
+        ) : null}
       </div>
 
       {meal.tags.length > 0 ? (

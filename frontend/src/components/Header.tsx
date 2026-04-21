@@ -1,4 +1,5 @@
 import { Link, NavLink } from 'react-router-dom';
+import { AppLogo } from './AppLogo';
 import { formatWeekRange } from '../lib/format';
 
 interface HeaderProps {
@@ -20,7 +21,7 @@ export function Header({
     <header className="app-header">
       <div className="brand-block">
         <Link to="/" className="brand-mark" aria-label="Mealplanner Startseite">
-          Familienküche
+          <AppLogo />
         </Link>
         <p className="brand-subtitle">Der Familienplan für jeden Tag</p>
       </div>

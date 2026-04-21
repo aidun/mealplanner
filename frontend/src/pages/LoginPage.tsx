@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { getAuthProviders } from '../api';
+import { AppLogo } from '../components/AppLogo';
 
 export function LoginPage() {
   const providersQuery = useQuery({
@@ -19,7 +20,9 @@ export function LoginPage() {
       <main className="login-panel" aria-labelledby="login-title">
         <div className="login-copy">
           <p className="eyebrow">Privater Zugang</p>
-          <h1 id="login-title">Mealplanner</h1>
+          <h1 id="login-title" aria-label="Mealplanner">
+            <AppLogo />
+          </h1>
           <p>
             Melde dich mit einem erlaubten Social Login an. Der Zugang schützt euren privaten Planungsbereich, ohne
             unnötige Login-Profildaten in die App zu ziehen.

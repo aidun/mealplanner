@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { BringLink } from './BringLink';
 import type { ShoppingList, ShoppingListItem } from '../types';
+import { ShieldIcon } from './icons';
 
 interface ShoppingListPanelProps {
   planId?: string;
@@ -12,6 +13,9 @@ export function ShoppingListPanel({ planId, shoppingList, loading }: ShoppingLis
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
   const items = useMemo(() => flattenShoppingList(shoppingList), [shoppingList]);
   const categories = useMemo(() => uniqueCategories(items), [items]);
+  const groupedItems = useMemo(() => groupByCategory(items), [items]);
+  const prominentCategories = categories.slice(0, 3);
+  const summary = !Array.isArray(shoppingList) ? shoppingList?.summary : undefined;
   const canExport = Boolean(planId && items.length > 0);
 
   const copyList = async () => {
@@ -60,45 +64,45 @@ export function ShoppingListPanel({ planId, shoppingList, loading }: ShoppingLis
       ) : null}
 
       {shoppingList ? (
-        <div className="stack">
-          {Array.isArray(shoppingList) ? (
-            <ul className="list">
-              {shoppingList.map((item) => (
-                <li key={`${item.category}-${item.name}`}>
-                  <strong>{item.name}</strong>
-                  {formatAmount(item)}
-                  {item.category ? ` · ${item.category}` : ''}
-                </li>
+        <div className="stack shopping-list-stack">
+          {summary ? <p className="inspector-copy">{summary}</p> : null}
+          {prominentCategories.length > 0 ? (
+            <div className="shopping-category-row" aria-label="Schnelle Bereiche">
+              {prominentCategories.map((category) => (
+                <span key={category} className="shopping-category-pill">
+                  {category}
+                </span>
               ))}
-            </ul>
-          ) : shoppingList.summary ? (
-            <p className="inspector-copy">{shoppingList.summary}</p>
+            </div>
           ) : null}
-          {!Array.isArray(shoppingList) && (shoppingList.sections ?? []).length > 0 ? (
-            shoppingList.sections?.map((section) => (
-              <div key={section.title}>
-                <h3>{section.title}</h3>
-                <ul className="list">
-                  {section.items.map((item) => (
-                    <li key={`${section.title}-${item.name}`}>
-                      <strong>{item.name}</strong>
-                      {formatAmount(item)}
-                      {item.category ? ` · ${item.category}` : ''}
+          <div className="shopping-list-groups">
+            {groupedItems.map((group) => (
+              <section key={group.title} className="shopping-list-group">
+                <h3>{group.title}</h3>
+                <ul className="list ingredient-list shopping-list-items">
+                  {group.items.map((item, index) => (
+                    <li key={`${group.title}-${item.name}-${index}`} className="ingredient-row shopping-list-row">
+                      <span className="ingredient-amount">{item.amount ? `${item.amount}${item.unit ? ` ${item.unit}` : ''}` : 'offen'}</span>
+                      <div className="ingredient-copy">
+                        <strong>{item.name}</strong>
+                        {item.note ? <span>{item.note}</span> : null}
+                      </div>
                     </li>
                   ))}
                 </ul>
-              </div>
-            ))
-          ) : !Array.isArray(shoppingList) ? (
-            <ul className="list">
-              {shoppingList.items?.map((item) => (
-                <li key={item.name}>
-                  <strong>{item.name}</strong>
-                  {formatAmount(item)}
-                </li>
-              ))}
-            </ul>
-          ) : null}
+              </section>
+            ))}
+          </div>
+          <div className="allergy-warning shopping-list-warning" role="note">
+            <div className="allergy-warning-title">
+              <ShieldIcon className="pill-icon" />
+              <strong>Vor dem Einkauf pruefen</strong>
+            </div>
+            <p>
+              Mengen und Zutaten stammen aus dem Wochenplan. Bei Allergien, Unvertraeglichkeiten und Markenprodukten
+              bitte jede Position noch einmal manuell bestaetigen.
+            </p>
+          </div>
         </div>
       ) : null}
     </section>
@@ -125,6 +129,15 @@ function flattenShoppingList(shoppingList?: ShoppingList | null): ShoppingListIt
 
 function uniqueCategories(items: ShoppingListItem[]) {
   return Array.from(new Set(items.map((item) => item.category).filter(Boolean)));
+}
+
+function groupByCategory(items: ShoppingListItem[]) {
+  const groups = new Map<string, ShoppingListItem[]>();
+  for (const item of items) {
+    const title = item.category?.trim() || 'Alles weitere';
+    groups.set(title, [...(groups.get(title) ?? []), item]);
+  }
+  return Array.from(groups.entries()).map(([title, groupItems]) => ({ title, items: groupItems }));
 }
 
 async function writeClipboard(text: string) {

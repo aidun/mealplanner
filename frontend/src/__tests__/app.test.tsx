@@ -365,9 +365,12 @@ describe('Mealplanner app', () => {
     expect(mealButton).toBeInTheDocument();
     expect(within(mealButton).queryByText('Familienfreundlich und schnell.')).not.toBeInTheDocument();
     expect(await screen.findByText('Familienfreundlich und schnell.')).toBeInTheDocument();
-    expect(screen.getAllByText('Aus Sammlung').length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: 'Rezeptkontext anzeigen' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Rezeptkontext anzeigen' }));
     expect(screen.getByText(/wurde aus eurer Favoriten-Sammlung wieder aufgegriffen/i)).toBeInTheDocument();
-    expect(screen.getByText(/Herkunft: Direkt aus eurer Sammlung/)).toBeInTheDocument();
+    expect(screen.getByText(/Herkunft:/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Warum gewaehlt?' }));
+    expect(screen.getByText(/Es wurde aus eurer gespeicherten Sammlung wieder aufgenommen./)).toBeInTheDocument();
     expect(await screen.findByText('Einkaufsliste')).toBeInTheDocument();
     expect(await screen.findByRole('link', { name: 'Woche zu Bring' })).toBeInTheDocument();
     expect(await screen.findByRole('link', { name: 'Tag zu Bring' })).toHaveAttribute(
@@ -384,6 +387,7 @@ describe('Mealplanner app', () => {
     expect(screen.getByRole('button', { name: 'Liste kopieren' })).toBeInTheDocument();
     expect(screen.getByText('1 Artikel · 1 Bereiche')).toBeInTheDocument();
     expect(screen.getByText('Zucchini')).toBeInTheDocument();
+    expect(screen.getByText(/Vor dem Einkauf pruefen/)).toBeInTheDocument();
   });
 
   it('renders the Bring export as a direct link without opening a popup', async () => {
@@ -428,13 +432,13 @@ describe('Mealplanner app', () => {
     renderApp('/');
 
     expect(await screen.findByText('Wieder gern kochen')).toBeInTheDocument();
-    expect(screen.getByText('liegen fuer die naechste Woche bereit')).toBeInTheDocument();
+    expect(screen.getByText(/gespeicherte Rezepte/)).toBeInTheDocument();
     expect(screen.getAllByText('Fruehstueck').length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: 'Alle' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Beeren-Porridge' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Beeren-Porridge/ }));
     expect(await screen.findByText(/Favorit aus eurer Sammlung/)).toBeInTheDocument();
-    expect(screen.getByText(/Herkunft: Neu fuer diese Woche geplant/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Rezeptkontext anzeigen' }));
+    expect(screen.getByText(/Herkunft:/)).toBeInTheDocument();
   });
 
   it('keeps the weekly Bring link stable when shopping list contents change', async () => {
@@ -789,5 +793,12 @@ describe('Mealplanner app', () => {
 
     expect(await screen.findByText('Planen, auswählen, kochen.')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Prompt prüfen' })).not.toBeInTheDocument();
+  });
+
+  it('shows allergy guidance in the profile settings', async () => {
+    renderApp('/onboarding');
+
+    expect(await screen.findByText(/Allergien und Unvertraeglichkeiten werden in Rezepten nicht verbindlich geprueft/)).toBeInTheDocument();
+    expect(screen.getByText(/Mealplanner Rezepte nicht als rechtssicheren Allergie-Check/)).toBeInTheDocument();
   });
 });

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { Header } from '../components/Header';
+import { HeartIcon } from '../components/icons';
 import { MealBoard } from '../components/MealBoard';
 import { MealInspector } from '../components/MealInspector';
 import { PlanBackdrop } from '../components/PlanBackdrop';
@@ -143,7 +144,6 @@ export function DashboardPage() {
     [favoriteSlotFilter, favorites]
   );
   const favoriteSlots = useMemo(() => summarizeFavoriteSlots(favorites), [favorites]);
-  const favoriteTags = useMemo(() => summarizeFavoriteTags(favorites), [favorites]);
   const inspectedMeal = selectedFavorite?.meal ?? selectedMeal;
   const selectedDay = useMemo(
     () => currentPlanQuery.data?.days.find((day) => day.meals.some((meal) => meal.id === inspectedMeal?.id)),
@@ -281,77 +281,58 @@ export function DashboardPage() {
         ) : null}
 
         {favorites.length > 0 ? (
-          <section className="favorites-rail" aria-labelledby="favorites-title">
-            <div className="favorites-rail-copy">
-              <span className="eyebrow">Favoriten</span>
+          <section className="favorites-band" aria-labelledby="favorites-title">
+            <div className="favorites-band-copy">
+              <span className="eyebrow">Sammlung</span>
               <h2 id="favorites-title">Wieder gern kochen</h2>
-              <p>Rezepte, die zu euch passen und bei neuen Wochen bewusst wieder auftauchen dürfen.</p>
+              <p>
+                {favorites.length} gespeicherte Rezepte. Beim Planen pruefen wir zuerst {favoriteSlots.join(', ') || 'eure Favoriten'}.
+              </p>
             </div>
-            <div className="favorites-rail-summary" aria-label="Favoriten wirken auf neue Wochen">
-              <div className="favorites-rail-stat">
-                <strong>{favorites.length}</strong>
-                <span>liegen fuer die naechste Woche bereit</span>
-              </div>
-              <div className="favorites-rail-stat">
-                <strong>{favoriteSlots.join(', ') || 'alle Mahlzeiten'}</strong>
-                <span>werden beim Planen zuerst geprueft</span>
-              </div>
-              <div className="favorites-rail-stat">
-                <strong>{favoriteTags[0] ?? 'euer Stil'}</strong>
-                <span>taucht bevorzugt als Richtung wieder auf</span>
-              </div>
-            </div>
-            <div className="favorites-filter-row" aria-label="Favoriten filtern">
-              <button
-                type="button"
-                className={`tag-button${favoriteSlotFilter === 'all' ? ' tag-button-active' : ''}`}
-                onClick={() => setFavoriteSlotFilter('all')}
-              >
-                Alle
-              </button>
-              {Array.from(new Set(favorites.map((favorite) => favorite.meal.slot).filter(Boolean))).map((slot) => (
+            <div className="favorites-band-toolbar">
+              <div className="favorites-filter-row" aria-label="Favoriten filtern">
                 <button
-                  key={slot}
                   type="button"
-                  className={`tag-button${favoriteSlotFilter === slot ? ' tag-button-active' : ''}`}
-                  onClick={() => setFavoriteSlotFilter(slot)}
+                  className={`tag-button${favoriteSlotFilter === 'all' ? ' tag-button-active' : ''}`}
+                  onClick={() => setFavoriteSlotFilter('all')}
                 >
-                  {slotLabel(slot)}
+                  Alle
                 </button>
-              ))}
+                {Array.from(new Set(favorites.map((favorite) => favorite.meal.slot).filter(Boolean))).map((slot) => (
+                  <button
+                    key={slot}
+                    type="button"
+                    className={`tag-button${favoriteSlotFilter === slot ? ' tag-button-active' : ''}`}
+                    onClick={() => setFavoriteSlotFilter(slot)}
+                  >
+                    {slotLabel(slot)}
+                  </button>
+                ))}
+              </div>
             </div>
-            <div className="favorites-rail-list">
+            <div className="favorites-band-scroller">
               {filteredFavorites.map((favorite) => {
                 const active = selectedFavoriteId === favorite.id;
                 return (
                   <button
                     key={favorite.id}
                     type="button"
-                    className={`favorite-rail-item${active ? ' favorite-rail-item-active' : ''}`}
+                    className={`favorite-pill${active ? ' favorite-pill-active' : ''}`}
                     onClick={() => selectFavorite(favorite)}
                   >
-                    <strong>{favorite.meal.title}</strong>
-                    <span>{favorite.meal.slot || 'Mahlzeit'}</span>
+                    <span className="favorite-pill-icon" aria-hidden="true">
+                      <HeartIcon className="meal-favorite-icon" />
+                    </span>
+                    <span className="favorite-pill-copy">
+                      <strong>{favorite.meal.title}</strong>
+                      <span>
+                        {slotLabel(favorite.meal.slot || 'Mahlzeit')}
+                        {favorite.meal.tags?.[0] ? ` · ${favorite.meal.tags[0]}` : ''}
+                      </span>
+                    </span>
                   </button>
                 );
               })}
-            </div>
-            <div className="favorites-collection">
-              {filteredFavorites.slice(0, 6).map((favorite) => (
-                <article key={`collection-${favorite.id}`} className="favorite-collection-card">
-                  <div>
-                    <span className="eyebrow">{slotLabel(favorite.meal.slot || 'Mahlzeit')}</span>
-                    <h3>{favorite.meal.title}</h3>
-                    <p>{favorite.meal.description || 'Bleibt in eurer Sammlung und darf wieder auftauchen.'}</p>
-                  </div>
-                  <div className="favorite-collection-meta">
-                    <span>{favorite.meal.tags?.[0] ?? 'familientauglich'}</span>
-                    <button type="button" className="button button-secondary compact-action" onClick={() => selectFavorite(favorite)}>
-                      Ansehen
-                    </button>
-                  </div>
-                </article>
-              ))}
             </div>
           </section>
         ) : null}
@@ -549,21 +530,6 @@ function summarizeFavoriteSlots(favorites: FavoriteRecipe[]) {
         .map((slot) => slotLabel(slot))
     )
   ).slice(0, 3);
-}
-
-function summarizeFavoriteTags(favorites: FavoriteRecipe[]) {
-  const counts = new Map<string, number>();
-  for (const favorite of favorites) {
-    for (const tag of favorite.meal.tags ?? []) {
-      const value = tag.trim();
-      if (!value) continue;
-      counts.set(value, (counts.get(value) ?? 0) + 1);
-    }
-  }
-  return Array.from(counts.entries())
-    .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
-    .map(([tag]) => tag)
-    .slice(0, 3);
 }
 
 function slotLabel(slot?: string) {

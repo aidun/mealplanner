@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { Day, Meal } from '../types';
 import { formatDate, formatNutritionPerPortion } from '../lib/format';
 import { BringLink } from './BringLink';
+import { HeartIcon } from './icons';
 
 interface MealBoardProps {
   planId?: string;
@@ -107,20 +108,17 @@ export function MealBoard({ planId, days = [], selectedMealId, favoriteMealIDs, 
                       onClick={() => onSelectMeal(meal)}
                     >
                       <div className="meal-row-topline">
-                        <span className="slot-label">{meal.slot ?? 'Mahlzeit'}</span>
+                        <div className="meal-row-heading">
+                          <span className="slot-label">{meal.slot ?? 'Mahlzeit'}</span>
+                          {favoriteMealIDs?.has(meal.id) ? (
+                            <span className="meal-favorite-mark" aria-label="Favorit">
+                              <HeartIcon className="meal-favorite-icon" />
+                            </span>
+                          ) : null}
+                        </div>
                         <span className="meal-title">{meal.title}</span>
                       </div>
                       <div className="meal-row-meta">
-                        <div className="meal-row-badges">
-                          {favoriteMealIDs?.has(meal.id) ? <span className="meal-inline-badge">Favorit</span> : null}
-                          {meal.meta?.favoriteReuse ? (
-                            <span className="meal-inline-badge meal-inline-badge-accent">
-                              {meal.meta.favoriteReuse === 'variant' ? 'Variante' : 'Aus Sammlung'}
-                            </span>
-                          ) : (
-                            <span className="meal-inline-badge meal-inline-badge-muted">Neu geplant</span>
-                          )}
-                        </div>
                         <div className="nutrition-line">
                           {formatNutritionPerPortion(meal.nutrition)}
                           {meal.estimatedNutrition ? ' · geschaetzt' : ''}

@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { AppLogo } from '../components/AppLogo';
 
 interface LegalPageProps {
   kind: 'privacy' | 'imprint';
@@ -19,7 +20,7 @@ export function LegalPage({ kind }: LegalPageProps) {
       <header className="app-header compact-header">
         <div className="brand-block">
           <Link to="/" className="brand-mark" aria-label="Mealplanner Startseite">
-            Mealplanner
+            <AppLogo />
           </Link>
           <p className="brand-subtitle">Rechtliche Angaben</p>
         </div>

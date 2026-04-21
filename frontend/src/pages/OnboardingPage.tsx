@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { AppLogo } from '../components/AppLogo';
 import {
   createFamilyInvite,
   getFamily,
@@ -153,7 +154,7 @@ export function OnboardingPage() {
       <header className="app-header compact-header">
         <div className="brand-block">
           <button type="button" className="brand-mark brand-button" onClick={() => navigate('/')}>
-            Familienküche
+            <AppLogo />
           </button>
           <p className="brand-subtitle">Mitglieder, Aliase und Regeln für kommende Wochen.</p>
         </div>
@@ -320,6 +321,10 @@ export function OnboardingPage() {
                             placeholder="Kein Gluten, keine Tomaten"
                           />
                         </label>
+                        <p className="profile-inline-note member-grid-wide">
+                          Allergien und Unvertraeglichkeiten werden in Rezepten nicht verbindlich geprueft. Bitte jede
+                          Zutat vor dem Kochen noch einmal kontrollieren.
+                        </p>
                       </div>
                     </article>
                   ))}
@@ -533,6 +538,10 @@ export function OnboardingPage() {
                     placeholder="Unter der Woche maximal 30 Minuten, freitags etwas Besonderes"
                   />
                 </label>
+                <p className="profile-inline-note two-column-note">
+                  Hinweis: Auch bei klaren Regeln und Ausschluessen prueft Mealplanner Rezepte nicht als rechtssicheren
+                  Allergie-Check. Kritische Zutaten muessen vor dem Einkauf und Kochen manuell bestaetigt werden.
+                </p>
               </div>
             </section>
 
