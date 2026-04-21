@@ -25,6 +25,7 @@ Last updated: 2026-04-21
 - Seit 2026-04-21 ist die Mail-Integration auf Resend ausgebaut: `user_settings` steuern pro Login `weeklyPlanEmailEnabled` und `recipeEmailEnabled`, Familien-Einladungen bleiben davon unberuehrt, Premium gilt familienweit sobald ein Familienlogin in `premium_users` liegt.
 - Admin kann Mail-Templates fuer `family_invite`, `premium_invite` und `weekly_plan_ready` direkt in der App pflegen; die Vorlagen werden in `mail_templates` gespeichert und zur Laufzeit mit festen Platzhaltern wie `{{family_name}}`, `{{invite_link}}`, `{{week_start}}`, `{{plan_url}}`, `{{app_url}}` und `{{support_email}}` gerendert.
 - Test-Deployments aktivieren Mail jetzt standardmaessig ueber `EMAIL_ENABLED=true` und `EMAIL_PROVIDER=resend`; fuer echte Zustellung werden weiterhin ein gueltiger `RESEND_API_KEY` und eine bei Resend verifizierte Sender-Domain fuer `markushartmann.dev` benoetigt.
+- Seit 2026-04-21 gibt es eine zentrale Architekturseite unter `docs/ARCHITECTURE.md`, die Frontend, API, Postgres, Traefik/Entrypoint, Cloudflare Tunnel, OpenAI, Google OIDC, Resend, Bring, Monitoring, GitOps und Umgebungen zusammenfasst.
 
 ## Wichtige Arbeitsregeln
 

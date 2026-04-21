@@ -8,6 +8,7 @@ Private Familien-Webapp fuer Wochen-Essensplaene. Der aktuelle produktive Zugang
 - `backend/api`: Go API mit Postgres, Migrationen und Provider-Abstraktion fuer Mock/OpenAI.
 - `frontend`: React/Vite UI im Premium-Food-App-Stil.
 - `deploy`: Kustomize-Manifeste fuer Test/Production, Cloudflare Tunnel und ArgoCD.
+- `docs/ARCHITECTURE.md`: Gesamtübersicht über Services, SaaS-Dienste und Betriebs-Komponenten.
 - `docs/security.md`: Security-, Pentest- und Betriebs-Runbook.
 
 ## Lokal starten
