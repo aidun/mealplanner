@@ -100,6 +100,7 @@
   - Markdown-Dokumente in GitHub müssen das Niveau technischer Dokumentation haben
   - Quellcode-Dokumentation muss professionell, präzise und wartbar sein
   - das Backend muss eine gepflegte API-Dokumentation besitzen
+  - Architektur- und Systemdokumentation müssen laufend mit dem Ist-Zustand gepflegt werden
 
 ### 10. Data & Admin Insights
 
@@ -171,6 +172,7 @@
   - technische Markdown-Dokumentation auf professionellem Niveau
   - Quellcode-Dokumentation an den geänderten Stellen
   - Backend-API-Dokumentation bei neuen oder geänderten Endpunkten, Payloads, Auth- oder Fehlerverträgen
+  - Architektur- und Systemdokumentation bei Änderungen an Services, Datenflüssen, SaaS-Abhängigkeiten, Deployments oder Betriebsverhalten
 - Review Gate blockiert Rollouts, wenn fachlich notwendige Doku oder API-Doku fehlt oder offenkundig veraltet ist
 - Für alle UI-Änderungen gilt ab sofort verbindlich:
   - Desktop prüfen
