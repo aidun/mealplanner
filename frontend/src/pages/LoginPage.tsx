@@ -11,7 +11,7 @@ export function LoginPage() {
   const providers = providersQuery.data?.providers ?? [];
   const google = providers.find((provider) => provider.id === 'google');
   const apple = providers.find((provider) => provider.id === 'apple');
-  const googleEnabled = google?.enabled ?? true;
+  const googleEnabled = google?.enabled ?? false;
   const googleStartUrl = safeAuthStartUrl(google?.startUrl, '/api/auth/google/start');
   const appleStartUrl = safeAuthStartUrl(apple?.startUrl, '/api/auth/apple/start');
 
@@ -31,9 +31,11 @@ export function LoginPage() {
 
         <div className="login-actions" aria-label="Login-Anbieter">
           {googleEnabled ? (
-            <a className="button button-primary login-button" href={googleStartUrl}>
-              Mit Google anmelden
-            </a>
+            <form action={googleStartUrl} method="post">
+              <button type="submit" className="button button-primary login-button">
+                Mit Google anmelden
+              </button>
+            </form>
           ) : (
             <button type="button" className="button button-primary login-button" disabled>
               Mit Google anmelden

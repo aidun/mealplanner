@@ -1036,9 +1036,20 @@ func TestAuthProvidersEndpoint(t *testing.T) {
 	}
 }
 
-func TestGoogleStartSetsSecureStateCookie(t *testing.T) {
+func TestGoogleStartRejectsGetRequests(t *testing.T) {
 	handler := New(newMemoryRepo(), planner.New(provider.NewMockGenerator()), configuredTestAuth(), "", nil, nil, nil)
 	req := httptest.NewRequest(http.MethodGet, "/api/auth/google/start", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("expected 405, got %d: %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestGoogleStartSetsSecureStateCookie(t *testing.T) {
+	handler := New(newMemoryRepo(), planner.New(provider.NewMockGenerator()), configuredTestAuth(), "", nil, nil, nil)
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/google/start", nil)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 

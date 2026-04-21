@@ -152,7 +152,7 @@ test('login and invite acceptance stay on guarded production paths', async ({ pa
   });
 
   await page.goto('/');
-  await expect(page.getByRole('link', { name: 'Mit Google anmelden' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Mit Google anmelden' })).toBeVisible();
   await expect(page.getByText('Mealplanner')).toBeVisible();
 
   authenticated = true;

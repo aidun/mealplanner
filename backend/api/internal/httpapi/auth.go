@@ -79,6 +79,12 @@ func (h *Handler) googleCallback(w http.ResponseWriter, r *http.Request) {
 	var saved oauthState
 	cookie, err := r.Cookie(auth.StateCookieName)
 	if err != nil || decodeCookie(cookie.Value, &saved) != nil || saved.State == "" || saved.State != r.URL.Query().Get("state") {
+		h.logger.Warn(
+			"oauth state validation failed",
+			"path", r.URL.Path,
+			"has_cookie", err == nil,
+			"has_query_state", strings.TrimSpace(r.URL.Query().Get("state")) != "",
+		)
 		writeError(w, http.StatusBadRequest, auth.ErrInvalidState.Error())
 		return
 	}

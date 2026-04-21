@@ -322,10 +322,11 @@ describe('Mealplanner app', () => {
     renderApp('/');
 
     expect(await screen.findByRole('heading', { name: 'Mealplanner' })).toBeInTheDocument();
-    expect(await screen.findByRole('link', { name: 'Mit Google anmelden' })).toHaveAttribute(
-      'href',
-      '/api/auth/google/start'
-    );
+    await screen.findByRole('button', { name: 'Mit Google anmelden' });
+    await waitFor(() => expect(document.querySelector('form[action="/api/auth/google/start"]')).not.toBeNull());
+    const googleForm = document.querySelector('form[action="/api/auth/google/start"]');
+    expect(googleForm).toHaveAttribute('action', '/api/auth/google/start');
+    expect(googleForm).toHaveAttribute('method', 'post');
     expect(screen.queryByRole('link', { name: 'Mit Apple anmelden' })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Datenschutz' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Impressum' })).toBeInTheDocument();
@@ -379,10 +380,11 @@ describe('Mealplanner app', () => {
 
     renderApp('/');
 
-    expect(await screen.findByRole('link', { name: 'Mit Google anmelden' })).toHaveAttribute(
-      'href',
-      '/api/auth/google/start'
-    );
+    await screen.findByRole('button', { name: 'Mit Google anmelden' });
+    await waitFor(() => expect(document.querySelector('form[action="/api/auth/google/start"]')).not.toBeNull());
+    const googleForm = document.querySelector('form[action="/api/auth/google/start"]');
+    expect(googleForm).toHaveAttribute('action', '/api/auth/google/start');
+    expect(googleForm).toHaveAttribute('method', 'post');
     expect(await screen.findByRole('link', { name: 'Mit Apple anmelden' })).toHaveAttribute(
       'href',
       '/api/auth/apple/start'
@@ -766,7 +768,9 @@ describe('Mealplanner app', () => {
         })
       );
     });
-    expect(await screen.findByRole('link', { name: 'Mit Google anmelden' })).toBeInTheDocument();
+    const googleForm = (await screen.findByRole('button', { name: 'Mit Google anmelden' })).closest('form');
+    expect(googleForm).toHaveAttribute('action', '/api/auth/google/start');
+    expect(googleForm).toHaveAttribute('method', 'post');
   });
 
   it('keeps the dashboard visible when logout fails', async () => {

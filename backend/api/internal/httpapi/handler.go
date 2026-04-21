@@ -228,7 +228,7 @@ func New(repo Repository, planner planner.Planner, authService auth.Service, api
 	mux.HandleFunc("GET /health", h.health)
 	mux.Handle("GET /metrics", h.metrics)
 	mux.HandleFunc("GET /api/auth/providers", h.getAuthProviders)
-	mux.HandleFunc("GET /api/auth/google/start", h.startGoogle)
+	mux.HandleFunc("POST /api/auth/google/start", h.startGoogle)
 	mux.HandleFunc("GET /api/auth/google/callback", h.googleCallback)
 	mux.HandleFunc("GET /api/auth/apple/start", h.appleNotConfigured)
 	mux.HandleFunc("GET /api/auth/apple/callback", h.appleNotConfigured)
