@@ -946,6 +946,8 @@ a:focus-visible {
 .workspace-side {
   display: grid;
   gap: 20px;
+  min-width: 0;
+  align-content: start;
 }
 
 .workspace-main {
@@ -1261,8 +1263,8 @@ a:focus-visible {
 }
 
 .shopping-list-panel {
-  position: sticky;
-  top: var(--header-offset);
+  position: static;
+  align-self: start;
 }
 
 .shopping-list-panel .stack {
@@ -1685,6 +1687,13 @@ a:focus-visible {
 .inspector {
   position: sticky;
   top: var(--header-offset);
+}
+
+@media (min-width: 1400px) {
+  .shopping-list-panel {
+    position: sticky;
+    top: var(--header-offset);
+  }
 }
 
 .list {
@@ -2537,26 +2546,47 @@ a:focus-visible {
   }
 
   .plan-stage {
-    padding: 18px;
-    gap: 14px;
+    padding: 16px;
+    gap: 12px;
   }
 
   .plan-stage-copy h1 {
-    font-size: 2.2rem;
-    line-height: 0.98;
+    max-width: 10ch;
+    font-size: 1.92rem;
+    line-height: 1;
   }
 
-  .plan-stage-actions {
-    display: grid;
-    grid-template-columns: 1fr;
-  }
-
-  .plan-stage-meta {
-    grid-template-columns: 1fr;
+  .plan-stage-copy p {
+    max-width: none;
+    font-size: 0.94rem;
   }
 
   .plan-stage-context {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .plan-focus-item,
+  .stage-stat {
+    padding: 10px 12px;
+  }
+
+  .plan-focus-item strong {
+    font-size: 0.88rem;
+    line-height: 1.3;
+  }
+
+  .plan-stage-meta {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .stage-stat strong {
+    font-size: 1.08rem;
+  }
+
+  .stage-stat span {
+    font-size: 0.74rem;
   }
 
   .home-hero {
@@ -2658,6 +2688,10 @@ a:focus-visible {
     padding-bottom: 12px;
   }
 
+  .meal-board-surface .surface-header p {
+    font-size: 0.9rem;
+  }
+
   .carousel-actions {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -2665,6 +2699,22 @@ a:focus-visible {
 
   .day-tabs {
     padding-inline: 14px;
+    gap: 8px;
+  }
+
+  .day-tab {
+    min-width: 88px;
+    min-height: 56px;
+    padding: 9px 10px;
+  }
+
+  .day-tab span {
+    font-size: 0.86rem;
+  }
+
+  .day-tab strong,
+  .day-tab small {
+    font-size: 0.7rem;
   }
 
   .family-roster,
@@ -2683,6 +2733,14 @@ a:focus-visible {
 
   .day-header {
     padding: 12px;
+  }
+
+  .day-header h3 {
+    font-size: 0.95rem;
+  }
+
+  .day-header p {
+    font-size: 0.82rem;
   }
 
   .meal-stack {
@@ -2709,15 +2767,79 @@ a:focus-visible {
   }
 
   .meal-row {
-    gap: 10px;
+    gap: 8px;
     min-height: 0;
-    padding: 14px;
+    padding: 12px 13px;
+  }
+
+  .meal-row-topline {
+    gap: 6px;
+  }
+
+  .meal-title {
+    font-size: 0.95rem;
+    line-height: 1.2;
+  }
+
+  .slot-label,
+  .nutrition-line {
+    font-size: 0.78rem;
   }
 
   .meal-row-meta {
     align-items: flex-start;
     flex-direction: column;
+    gap: 6px;
+  }
+
+  .meal-row-state {
+    min-height: 22px;
+    font-size: 0.72rem;
+  }
+
+  .inspector-header-copy h2 {
+    font-size: 1.35rem;
+    line-height: 1.1;
+  }
+
+  .inspector-description {
+    font-size: 0.92rem;
+  }
+
+  .inspector-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
+  }
+
+  .inspector-actions .button {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .inspector-summary-card {
+    padding: 10px 12px;
+  }
+
+  .inspector-summary-card strong {
+    font-size: 0.95rem;
+  }
+
+  .ingredient-row,
+  .step-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .ingredient-amount,
+  .step-index {
+    min-width: 0;
+    width: fit-content;
+  }
+
+  .ingredient-copy strong,
+  .step-row span:last-child {
+    font-size: 0.93rem;
   }
 
   .auth-shell {
