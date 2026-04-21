@@ -3,6 +3,7 @@ package planner
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/aidun/mealplanner/backend/api/internal/domain"
@@ -43,6 +44,7 @@ func (p Planner) GenerateWeek(ctx context.Context, profile domain.Profile, weekS
 	plan.WeekStart = start.Format("2006-01-02")
 	plan.Status = "planned"
 	plan.Days = normalizeDays(plan.Days, start)
+	annotateFavoriteReusePlan(&plan, favorites)
 	plan.ShoppingList = domain.ConsolidateShoppingList(plan)
 	return plan, nil
 }
@@ -62,6 +64,7 @@ func (p Planner) RegenerateMeal(ctx context.Context, profile domain.Profile, pla
 				original := plan.Days[dayIndex].Meals[mealIndex]
 				meal.ID = mealID
 				meal.Slot = original.Slot
+				annotateFavoriteReuseMeal(&meal, favorites)
 				plan.Days[dayIndex].Meals[mealIndex] = meal
 				found = true
 			}
@@ -163,4 +166,75 @@ func normalizeDays(days []domain.DayPlan, weekStart time.Time) []domain.DayPlan 
 		out = append(out, day)
 	}
 	return out
+}
+
+func annotateFavoriteReusePlan(plan *domain.Plan, favorites []domain.FavoriteRecipe) {
+	for dayIndex := range plan.Days {
+		for mealIndex := range plan.Days[dayIndex].Meals {
+			annotateFavoriteReuseMeal(&plan.Days[dayIndex].Meals[mealIndex], favorites)
+		}
+	}
+}
+
+func annotateFavoriteReuseMeal(meal *domain.Meal, favorites []domain.FavoriteRecipe) {
+	if meal == nil {
+		return
+	}
+	matched := favoriteMatch(*meal, favorites)
+	if matched == nil {
+		if meal.Meta != nil {
+			delete(meal.Meta, "favoriteReuse")
+			delete(meal.Meta, "favoriteTitle")
+			if len(meal.Meta) == 0 {
+				meal.Meta = nil
+			}
+		}
+		return
+	}
+	if meal.Meta == nil {
+		meal.Meta = map[string]string{}
+	}
+	meal.Meta["favoriteReuse"] = "direct"
+	meal.Meta["favoriteTitle"] = matched.Meal.Title
+}
+
+func favoriteMatch(meal domain.Meal, favorites []domain.FavoriteRecipe) *domain.FavoriteRecipe {
+	title := normalizeMealTitle(meal.Title)
+	if title == "" {
+		return nil
+	}
+	for index := range favorites {
+		favoriteTitle := normalizeMealTitle(favorites[index].Meal.Title)
+		if favoriteTitle != "" && favoriteTitle == title {
+			return &favorites[index]
+		}
+	}
+	return nil
+}
+
+func normalizeMealTitle(value string) string {
+	value = strings.TrimSpace(strings.ToLower(value))
+	if value == "" {
+		return ""
+	}
+	replacer := strings.NewReplacer(
+		"ä", "ae",
+		"ö", "oe",
+		"ü", "ue",
+		"ß", "ss",
+	)
+	value = replacer.Replace(value)
+	value = strings.Map(func(r rune) rune {
+		switch {
+		case r >= 'a' && r <= 'z':
+			return r
+		case r >= '0' && r <= '9':
+			return r
+		case r == ' ':
+			return r
+		default:
+			return -1
+		}
+	}, value)
+	return strings.Join(strings.Fields(value), " ")
 }

@@ -24,6 +24,21 @@ func (fakeGenerator) MergeProfiles(_ context.Context, target domain.Profile, inc
 	return target, nil
 }
 
+type fakeGeneratorWithFavoriteMatch struct{}
+
+func (fakeGeneratorWithFavoriteMatch) GenerateWeek(context.Context, domain.Profile, time.Time, []domain.FavoriteRecipe) (domain.Plan, error) {
+	return domain.Plan{ID: "plan-1", Days: []domain.DayPlan{{Date: "2026-04-20", Meals: []domain.Meal{{ID: "meal-1", Slot: "breakfast", Title: "Lieblings Porridge", Ingredients: []domain.Ingredient{{Name: "Hafer", Amount: 100, Unit: "g"}}}}}}}, nil
+}
+
+func (fakeGeneratorWithFavoriteMatch) RegenerateMeal(_ context.Context, _ domain.Profile, _ domain.Plan, mealID string, note string, _ []domain.FavoriteRecipe) (domain.Meal, error) {
+	return domain.Meal{ID: mealID, Slot: "breakfast", Title: "Neu", RegenerationNote: note, Ingredients: []domain.Ingredient{{Name: "Joghurt", Amount: 500, Unit: "g"}}}, nil
+}
+
+func (fakeGeneratorWithFavoriteMatch) MergeProfiles(_ context.Context, target domain.Profile, incoming domain.Profile) (domain.Profile, error) {
+	target.Members = append(target.Members, incoming.Members...)
+	return target, nil
+}
+
 func TestGenerateWeekUsesExplicitWeekMonday(t *testing.T) {
 	p := New(fakeGenerator{})
 	plan, err := p.GenerateWeek(context.Background(), domain.DefaultProfile(), "2026-04-22", nil)
@@ -35,6 +50,19 @@ func TestGenerateWeekUsesExplicitWeekMonday(t *testing.T) {
 	}
 	if len(plan.ShoppingList) != 1 {
 		t.Fatalf("expected shopping list")
+	}
+}
+
+func TestGenerateWeekMarksMealsReusedFromFavorites(t *testing.T) {
+	p := New(fakeGeneratorWithFavoriteMatch{})
+	plan, err := p.GenerateWeek(context.Background(), domain.DefaultProfile(), "2026-04-20", []domain.FavoriteRecipe{{
+		Meal: domain.Meal{Title: "Lieblings Porridge"},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := plan.Days[0].Meals[0].Meta["favoriteReuse"]; got != "direct" {
+		t.Fatalf("expected direct favorite marker, got %#v", plan.Days[0].Meals[0].Meta)
 	}
 }
 
@@ -50,6 +78,20 @@ func TestRegenerateMealReplacesMealAndStoresNote(t *testing.T) {
 	}
 	if !strings.Contains(updated.Days[0].Meals[0].RegenerationNote, "Tomaten") {
 		t.Fatalf("note not kept")
+	}
+}
+
+func TestRegenerateMealMarksFavoriteReuseOnMatch(t *testing.T) {
+	p := New(fakeGenerator{})
+	plan := domain.Plan{ID: "plan-1", Days: []domain.DayPlan{{Meals: []domain.Meal{{ID: "meal-1", Slot: "breakfast"}}}}}
+	updated, err := p.RegenerateMeal(context.Background(), domain.DefaultProfile(), plan, "meal-1", "ohne Tomaten", []domain.FavoriteRecipe{{
+		Meal: domain.Meal{Title: "Neu"},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if updated.Days[0].Meals[0].Meta["favoriteReuse"] != "direct" {
+		t.Fatalf("expected favorite marker on regenerated meal, got %#v", updated.Days[0].Meals[0].Meta)
 	}
 }
 

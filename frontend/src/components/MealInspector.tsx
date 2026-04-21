@@ -80,6 +80,12 @@ export function MealInspector({
       </div>
 
       {meal.description ? <p className="inspector-copy">{meal.description}</p> : null}
+      {meal.meta?.favoriteReuse ? (
+        <p className="inspector-note" role="note">
+          Dieses Gericht wurde aus eurer Favoriten-Sammlung wieder aufgegriffen.
+          {meal.meta.favoriteTitle ? ` Bezug: ${meal.meta.favoriteTitle}.` : ''}
+        </p>
+      ) : null}
       {meal.regenerationNote ? (
         <p className="inspector-note" role="note">
           Berücksichtigt: {meal.regenerationNote}

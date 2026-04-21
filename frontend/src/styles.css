@@ -1106,6 +1106,17 @@ a:focus-visible {
   font-weight: 700;
 }
 
+.meal-inline-badge-accent {
+  background: rgba(255, 238, 214, 0.92);
+  color: #9a5b00;
+}
+
+.meal-row-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .meal-row-meta {
   display: flex;
   align-items: center;
@@ -1532,10 +1543,27 @@ a:focus-visible {
   font-weight: 700;
 }
 
+.account-warning-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 8px;
+  border-radius: 8px;
+  background: rgba(255, 237, 232, 0.94);
+  color: #b42318;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
 .member-editor-header p,
 .family-account-row p {
   margin: 4px 0 0;
   color: var(--muted);
+}
+
+.family-account-row-unassigned {
+  border-color: rgba(180, 35, 24, 0.18);
+  background: linear-gradient(180deg, rgba(255, 248, 246, 0.92), rgba(255, 252, 250, 0.8));
 }
 
 .member-grid {

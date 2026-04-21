@@ -121,6 +121,7 @@ export function OnboardingPage() {
       return {
         ...account,
         linkedLabel: linked ? linked.alias.trim() || linked.name.trim() : '',
+        unassigned: !linked,
       };
     });
   }, [familyQuery.data?.accounts, form.members]);
@@ -135,6 +136,7 @@ export function OnboardingPage() {
     [form.members, linkedMembers]
   );
   const linkedAccountsCount = linkedMembers.filter((account) => account.linkedMemberId).length;
+  const unassignedAccountsCount = linkedMembers.filter((account) => account.unassigned).length;
 
   const statusMessage = useMemo(() => {
     if (saveMutation.isPending) return 'Profil wird gespeichert.';
@@ -192,7 +194,7 @@ export function OnboardingPage() {
 
           {joinedFamily ? (
             <div className="status-strip status-strip-success" role="status" aria-live="polite">
-              <span>Familienkonto aktiv. Das gemeinsame Profil wurde geladen.</span>
+              <span>Familienkonto aktiv. Das gemeinsame Profil wurde geladen und die Logins koennen jetzt sauber Personen zugeordnet werden.</span>
             </div>
           ) : null}
 
@@ -353,6 +355,7 @@ export function OnboardingPage() {
                   <div className="family-summary-row">
                     <span>{linkedAccountsCount} von {linkedMembers.length} Logins zugeordnet</span>
                     <span>{memberOptions.length} Profilmitglieder aktiv</span>
+                    {unassignedAccountsCount > 0 ? <span>{unassignedAccountsCount} Logins brauchen noch eine Zuordnung</span> : null}
                   </div>
                 </div>
 
@@ -381,13 +384,17 @@ export function OnboardingPage() {
                 <div className="family-account-list">
                   {linkedMembers.length > 0 ? (
                     linkedMembers.map((account) => (
-                      <article key={account.userId} className="family-account-row">
+                      <article
+                        key={account.userId}
+                        className={`family-account-row${account.unassigned ? ' family-account-row-unassigned' : ''}`}
+                      >
                         <div className="family-account-copy">
                           <div className="family-account-head">
                             <strong>{account.email || 'Keine Mail verfügbar'}</strong>
                             <span className="account-role-badge">
                               {account.role === 'owner' ? 'Eigentümer' : 'Mitglied'}
                             </span>
+                            {account.unassigned ? <span className="account-warning-badge">Zuordnung offen</span> : null}
                           </div>
                           <p>
                             {account.linkedLabel

@@ -111,7 +111,10 @@ export function MealBoard({ planId, days = [], selectedMealId, favoriteMealIDs, 
                         <span className="meal-title">{meal.title}</span>
                       </div>
                       <div className="meal-row-meta">
-                        {favoriteMealIDs?.has(meal.id) ? <span className="meal-inline-badge">Favorit</span> : null}
+                        <div className="meal-row-badges">
+                          {favoriteMealIDs?.has(meal.id) ? <span className="meal-inline-badge">Favorit</span> : null}
+                          {meal.meta?.favoriteReuse ? <span className="meal-inline-badge meal-inline-badge-accent">Aus Sammlung</span> : null}
+                        </div>
                         <div className="nutrition-line">
                           {formatNutritionPerPortion(meal.nutrition)}
                           {meal.estimatedNutrition ? ' · geschaetzt' : ''}

@@ -45,6 +45,7 @@ const plan = {
           nutrition: { calories: 560, proteinG: 24, carbsG: 72, fatG: 14 },
           estimatedNutrition: true,
           tags: ['schnell', 'vegetarisch'],
+          meta: { favoriteReuse: 'direct', favoriteTitle: 'Pasta mit Gemüse' },
         },
       ],
     },
@@ -143,8 +144,9 @@ beforeEach(() => {
   vi.stubGlobal('fetch', createFetchMock());
 });
 
-function createFetchMock(options: { authenticated?: boolean } = {}) {
+function createFetchMock(options: { authenticated?: boolean; familyOverride?: typeof family } = {}) {
   const authenticated = options.authenticated ?? true;
+  const activeFamily = options.familyOverride ?? family;
 
   return vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
@@ -174,7 +176,7 @@ function createFetchMock(options: { authenticated?: boolean } = {}) {
     }
 
     if (url.endsWith('/api/family') && (!init || !init.method || init.method === 'GET')) {
-      return new Response(JSON.stringify(family), { status: 200 });
+      return new Response(JSON.stringify(activeFamily), { status: 200 });
     }
 
     if (url.endsWith('/api/favorites') && (!init || !init.method || init.method === 'GET')) {
@@ -202,11 +204,11 @@ function createFetchMock(options: { authenticated?: boolean } = {}) {
     }
 
     if (url.endsWith('/api/family/invites/accept') && init?.method === 'POST') {
-      return new Response(JSON.stringify(family), { status: 200 });
+      return new Response(JSON.stringify(activeFamily), { status: 200 });
     }
 
     if (url.endsWith('/api/family/member-links') && init?.method === 'PUT') {
-      return new Response(JSON.stringify(family), { status: 200 });
+      return new Response(JSON.stringify(activeFamily), { status: 200 });
     }
 
     if (url.endsWith('/api/debug/prompts/latest')) {
@@ -346,6 +348,8 @@ describe('Mealplanner app', () => {
     expect(mealButton).toBeInTheDocument();
     expect(within(mealButton).queryByText('Familienfreundlich und schnell.')).not.toBeInTheDocument();
     expect(await screen.findByText('Familienfreundlich und schnell.')).toBeInTheDocument();
+    expect(screen.getAllByText('Aus Sammlung').length).toBeGreaterThan(0);
+    expect(screen.getByText(/wurde aus eurer Favoriten-Sammlung wieder aufgegriffen/i)).toBeInTheDocument();
     expect(await screen.findByText('Einkaufsliste')).toBeInTheDocument();
     expect(await screen.findByRole('link', { name: 'Woche zu Bring' })).toBeInTheDocument();
     expect(await screen.findByRole('link', { name: 'Tag zu Bring' })).toHaveAttribute(
@@ -551,6 +555,23 @@ describe('Mealplanner app', () => {
     expect(screen.getAllByText('ben@example.test').length).toBeGreaterThan(0);
   });
 
+  it('highlights unassigned family accounts', async () => {
+    vi.stubGlobal(
+      'fetch',
+      createFetchMock({
+        familyOverride: {
+          ...family,
+          accounts: [{ userId: 'user-3', email: 'alex@example.test', role: 'member', linkedMemberId: '' }],
+        },
+      })
+    );
+
+    renderApp('/onboarding');
+
+    expect(await screen.findByText(/Logins brauchen noch eine Zuordnung/i)).toBeInTheDocument();
+    expect(screen.getByText('Zuordnung offen')).toBeInTheDocument();
+  });
+
   it('copies the invite link from onboarding', async () => {
     renderApp('/onboarding');
 
@@ -573,7 +594,7 @@ describe('Mealplanner app', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Einladung annehmen' }));
 
-    expect(await screen.findByText('Familienkonto aktiv. Das gemeinsame Profil wurde geladen.')).toBeInTheDocument();
+    expect(await screen.findByText(/Familienkonto aktiv\./)).toBeInTheDocument();
     expect(await screen.findByText('Familienkonto pflegen')).toBeInTheDocument();
   });
 

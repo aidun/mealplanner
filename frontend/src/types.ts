@@ -40,6 +40,7 @@ export interface Meal {
   tags: string[];
   warnings?: string[];
   regenerationNote?: string;
+  meta?: Record<string, string>;
 }
 
 export interface FavoriteRecipe {
