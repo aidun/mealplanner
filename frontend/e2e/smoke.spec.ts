@@ -76,7 +76,6 @@ test('planner smoke path', async ({ page, context }) => {
   await page.goto('/');
 
   await expect(page.getByText('Planen, auswählen, kochen.')).toBeVisible();
-  await expect(page.getByText('Wieder gern kochen')).toBeVisible();
 
   await page.getByLabel('Primäre Aktionen').getByRole('link', { name: 'Profil' }).click();
   await expect(page.getByText('Familienkonto pflegen')).toBeVisible();
@@ -92,7 +91,6 @@ test('planner smoke path', async ({ page, context }) => {
   await expect(page.getByRole('heading', { name: 'Cremige Gemüsepasta' })).toBeVisible();
 
   await page.getByRole('button', { name: 'Als Favorit merken' }).click();
-  await expect(page.getByText('Wieder gern kochen')).toBeVisible();
 
   const bringLink = page.getByRole('link', { name: 'Rezept zu Bring' });
   await expect(bringLink).toHaveAttribute('href', /bring-export/);
@@ -103,6 +101,10 @@ test('planner smoke path', async ({ page, context }) => {
   ]);
   await newPage.waitForLoadState();
   expect(newPage.url()).toContain('/api/plans/plan-1/bring-export?token=test-token');
+
+  await page.getByLabel('Primäre Aktionen').getByRole('link', { name: 'Profil' }).click();
+  await page.getByRole('button', { name: 'Favoriten' }).click();
+  await expect(page.getByText('2 gespeicherte Rezepte')).toBeVisible();
 });
 
 test('login and invite acceptance stay on guarded production paths', async ({ page }) => {

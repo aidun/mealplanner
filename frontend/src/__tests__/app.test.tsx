@@ -388,6 +388,8 @@ describe('Mealplanner app', () => {
     expect(screen.getByRole('button', { name: 'Liste kopieren' })).toBeInTheDocument();
     expect(screen.getByText('1 Artikel · 1 Bereiche')).toBeInTheDocument();
     expect(screen.getByText('Zucchini')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Liste aufklappen' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Liste aufklappen' }));
     expect(screen.getByText(/Vor dem Einkauf pruefen/)).toBeInTheDocument();
   });
 
@@ -429,17 +431,13 @@ describe('Mealplanner app', () => {
     );
   });
 
-  it('shows favorites as a reusable rail on the dashboard', async () => {
-    renderApp('/');
+  it('shows favorites inside the profile area', async () => {
+    renderApp('/onboarding');
 
-    expect(await screen.findByText('Wieder gern kochen')).toBeInTheDocument();
-    expect(screen.getByText(/gespeicherte Rezepte/)).toBeInTheDocument();
-    expect(screen.getAllByText('Fruehstueck').length).toBeGreaterThan(0);
-    expect(screen.getByRole('button', { name: 'Alle' })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /Beeren-Porridge/ }));
-    expect(await screen.findByText(/Favorit aus eurer Sammlung/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Rezeptkontext anzeigen' }));
-    expect(screen.getByText(/Herkunft:/)).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('button', { name: 'Favoriten' }));
+    expect(await screen.findByText(/1 gespeicherte Rezepte|gespeicherte Rezepte/)).toBeInTheDocument();
+    expect(screen.getByText('Beeren-Porridge')).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Entfernen' }).length).toBeGreaterThan(0);
   });
 
   it('keeps the weekly Bring link stable when shopping list contents change', async () => {
@@ -552,7 +550,8 @@ describe('Mealplanner app', () => {
   it('creates a family invite link from onboarding', async () => {
     renderApp('/onboarding');
 
-    expect(await screen.findByText('Familienkonto')).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('button', { name: 'Einladungen' }));
+    expect(await screen.findByRole('heading', { name: 'Einladungen' })).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('E-Mail-Adresse für Einladung'), {
       target: { value: 'person@example.test' },
     });
@@ -612,6 +611,7 @@ describe('Mealplanner app', () => {
   it('copies the invite link from onboarding', async () => {
     renderApp('/onboarding');
 
+    fireEvent.click(await screen.findByRole('button', { name: 'Einladungen' }));
     fireEvent.change(await screen.findByLabelText('E-Mail-Adresse für Einladung'), {
       target: { value: 'person@example.test' },
     });

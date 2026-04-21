@@ -2,9 +2,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AppLogo } from '../components/AppLogo';
+import { HeartIcon } from '../components/icons';
 import {
   createFamilyInvite,
+  deleteFavorite,
   getFamily,
+  getFavorites,
   getProfile,
   saveProfile,
   updateFamilyMemberLink,
@@ -37,6 +40,7 @@ export function OnboardingPage() {
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteCopyState, setInviteCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
   const [lastLinkedAccountEmail, setLastLinkedAccountEmail] = useState('');
+  const [activeTab, setActiveTab] = useState<'family' | 'rules' | 'favorites' | 'invites'>('family');
 
   const profileQuery = useQuery({
     queryKey: ['profile'],
@@ -45,6 +49,10 @@ export function OnboardingPage() {
   const familyQuery = useQuery({
     queryKey: ['family'],
     queryFn: getFamily,
+  });
+  const favoritesQuery = useQuery({
+    queryKey: ['favorites'],
+    queryFn: getFavorites,
   });
 
   useEffect(() => {
@@ -76,6 +84,12 @@ export function OnboardingPage() {
     mutationFn: updateFamilyMemberLink,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['family'] });
+    },
+  });
+  const deleteFavoriteMutation = useMutation({
+    mutationFn: deleteFavorite,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['favorites'] });
     },
   });
 
@@ -140,6 +154,7 @@ export function OnboardingPage() {
   );
   const linkedAccountsCount = linkedMembers.filter((account) => account.linkedMemberId).length;
   const unassignedAccountsCount = linkedMembers.filter((account) => account.unassigned).length;
+  const favorites = favoritesQuery.data ?? [];
 
   const statusMessage = useMemo(() => {
     if (saveMutation.isPending) return 'Profil wird gespeichert.';
@@ -182,6 +197,37 @@ export function OnboardingPage() {
             </div>
           </div>
 
+          <nav className="profile-tab-nav" aria-label="Profilbereiche">
+            <button
+              type="button"
+              className={`profile-tab-button${activeTab === 'family' ? ' profile-tab-button-active' : ''}`}
+              onClick={() => setActiveTab('family')}
+            >
+              Familie
+            </button>
+            <button
+              type="button"
+              className={`profile-tab-button${activeTab === 'rules' ? ' profile-tab-button-active' : ''}`}
+              onClick={() => setActiveTab('rules')}
+            >
+              Planungsregeln
+            </button>
+            <button
+              type="button"
+              className={`profile-tab-button${activeTab === 'favorites' ? ' profile-tab-button-active' : ''}`}
+              onClick={() => setActiveTab('favorites')}
+            >
+              Favoriten
+            </button>
+            <button
+              type="button"
+              className={`profile-tab-button${activeTab === 'invites' ? ' profile-tab-button-active' : ''}`}
+              onClick={() => setActiveTab('invites')}
+            >
+              Einladungen
+            </button>
+          </nav>
+
           <div
             className={`status-strip${saveMutation.isError ? ' status-strip-error' : ''}${saveMutation.isSuccess && !hasEdited ? ' status-strip-success' : ''}`}
             role={saveMutation.isError ? 'alert' : 'status'}
@@ -208,7 +254,7 @@ export function OnboardingPage() {
               saveMutation.mutate(formToProfile(form));
             }}
           >
-            <section className="profile-section" aria-labelledby="household-section">
+            <section className={`profile-section${activeTab !== 'family' ? ' profile-section-hidden' : ''}`} aria-labelledby="household-section">
               <div className="profile-section-copy">
                 <span className="section-index">01</span>
                 <h2 id="household-section">Haushalt</h2>
@@ -349,7 +395,7 @@ export function OnboardingPage() {
               </div>
             </section>
 
-            <section className="profile-section" aria-labelledby="family-section">
+            <section className={`profile-section${activeTab !== 'family' ? ' profile-section-hidden' : ''}`} aria-labelledby="family-section">
               <div className="profile-section-copy">
                 <span className="section-index">02</span>
                 <h2 id="family-section">Familienkonto</h2>
@@ -443,55 +489,10 @@ export function OnboardingPage() {
                   </p>
                 ) : null}
 
-                <p className="panel-feedback" role="note">
-                  Hinweis: Beim Erstellen und Annehmen der Einladung wird der persönliche Account der eingeladenen Person
-                  in dieses Familienkonto überführt. Das Profil wird sinnvoll zusammengeführt.
-                </p>
-                <label className="field">
-                  <span className="field-label">E-Mail-Adresse für Einladung</span>
-                  <input
-                    className="input"
-                    type="email"
-                    value={inviteEmail}
-                    onChange={(event) => setInviteEmail(event.target.value)}
-                    placeholder="name@example.com"
-                  />
-                </label>
-                <button
-                  type="button"
-                  className="button button-secondary"
-                  onClick={() => inviteMutation.mutate(inviteEmail)}
-                  disabled={inviteMutation.isPending || inviteEmail.trim() === ''}
-                >
-                  {inviteMutation.isPending ? 'Einladung entsteht' : 'Einladungslink erstellen'}
-                </button>
-                {inviteMutation.data?.inviteLink ? (
-                  <div className="invite-result">
-                    <strong>Einladungslink</strong>
-                    <a href={inviteMutation.data.inviteLink}>{inviteMutation.data.inviteLink}</a>
-                    <button
-                      type="button"
-                      className="button button-secondary compact-action"
-                      onClick={async () => {
-                        try {
-                          await navigator.clipboard.writeText(inviteMutation.data!.inviteLink);
-                          setInviteCopyState('copied');
-                        } catch {
-                          setInviteCopyState('failed');
-                        }
-                      }}
-                    >
-                      {inviteCopyState === 'copied' ? 'Link kopiert' : 'Link kopieren'}
-                    </button>
-                    <p>{inviteMutation.data.warningText}</p>
-                    {inviteCopyState === 'failed' ? <p className="error-copy">Link konnte nicht kopiert werden.</p> : null}
-                  </div>
-                ) : null}
-                {inviteMutation.isError ? <p className="error-copy">{readableApiError(inviteMutation.error)}</p> : null}
               </div>
             </section>
 
-            <section className="profile-section" aria-labelledby="taste-section">
+            <section className={`profile-section${activeTab !== 'rules' ? ' profile-section-hidden' : ''}`} aria-labelledby="taste-section">
               <div className="profile-section-copy">
                 <span className="section-index">03</span>
                 <h2 id="taste-section">Planungsstil</h2>
@@ -545,7 +546,7 @@ export function OnboardingPage() {
               </div>
             </section>
 
-            <section className="profile-section" aria-labelledby="defaults-section">
+            <section className={`profile-section${activeTab !== 'rules' ? ' profile-section-hidden' : ''}`} aria-labelledby="defaults-section">
               <div className="profile-section-copy">
                 <span className="section-index">04</span>
                 <h2 id="defaults-section">Mahlzeiten-Defaults</h2>
@@ -592,6 +593,105 @@ export function OnboardingPage() {
                     placeholder="Nur wenn sinnvoll für Alltag oder Kalorienziel"
                   />
                 </label>
+              </div>
+            </section>
+
+            <section className={`profile-section${activeTab !== 'favorites' ? ' profile-section-hidden' : ''}`} aria-labelledby="favorites-section">
+              <div className="profile-section-copy">
+                <span className="section-index">05</span>
+                <h2 id="favorites-section">Favoriten</h2>
+                <p>Gespeicherte Gerichte liegen hier gesammelt und koennen direkt bereinigt werden.</p>
+              </div>
+              <div className="profile-section-fields">
+                <div className="family-overview" aria-label="Favoriten Übersicht">
+                  <strong>{favorites.length} gespeicherte Rezepte</strong>
+                  <p>Diese Sammlung wird beim Planen als bevorzugte Richtung wiederverwendet.</p>
+                </div>
+                {favorites.length > 0 ? (
+                  <div className="favorite-settings-list">
+                    {favorites.map((favorite) => (
+                      <article key={favorite.id} className="favorite-settings-row">
+                        <div className="favorite-settings-copy">
+                          <div className="favorite-settings-head">
+                            <span className="favorite-pill-icon" aria-hidden="true">
+                              <HeartIcon className="meal-favorite-icon" />
+                            </span>
+                            <strong>{favorite.meal.title}</strong>
+                          </div>
+                          <p>
+                            {favorite.meal.slot || 'Mahlzeit'}
+                            {favorite.meal.tags?.[0] ? ` · ${favorite.meal.tags[0]}` : ''}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          className="button button-secondary compact-action"
+                          onClick={() => deleteFavoriteMutation.mutate(favorite.id)}
+                          disabled={deleteFavoriteMutation.isPending}
+                        >
+                          Entfernen
+                        </button>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="muted">Noch keine Favoriten gespeichert.</p>
+                )}
+              </div>
+            </section>
+
+            <section className={`profile-section${activeTab !== 'invites' ? ' profile-section-hidden' : ''}`} aria-labelledby="invites-section">
+              <div className="profile-section-copy">
+                <span className="section-index">06</span>
+                <h2 id="invites-section">Einladungen</h2>
+                <p>Neue Logins ins Familienkonto holen und sauber zusammenführen.</p>
+              </div>
+              <div className="profile-section-fields">
+                <p className="panel-feedback" role="note">
+                  Hinweis: Beim Erstellen und Annehmen der Einladung wird der persönliche Account der eingeladenen Person
+                  in dieses Familienkonto überführt. Das Profil wird sinnvoll zusammengeführt.
+                </p>
+                <label className="field">
+                  <span className="field-label">E-Mail-Adresse für Einladung</span>
+                  <input
+                    className="input"
+                    type="email"
+                    value={inviteEmail}
+                    onChange={(event) => setInviteEmail(event.target.value)}
+                    placeholder="name@example.com"
+                  />
+                </label>
+                <button
+                  type="button"
+                  className="button button-secondary"
+                  onClick={() => inviteMutation.mutate(inviteEmail)}
+                  disabled={inviteMutation.isPending || inviteEmail.trim() === ''}
+                >
+                  {inviteMutation.isPending ? 'Einladung entsteht' : 'Einladungslink erstellen'}
+                </button>
+                {inviteMutation.data?.inviteLink ? (
+                  <div className="invite-result">
+                    <strong>Einladungslink</strong>
+                    <a href={inviteMutation.data.inviteLink}>{inviteMutation.data.inviteLink}</a>
+                    <button
+                      type="button"
+                      className="button button-secondary compact-action"
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(inviteMutation.data!.inviteLink);
+                          setInviteCopyState('copied');
+                        } catch {
+                          setInviteCopyState('failed');
+                        }
+                      }}
+                    >
+                      {inviteCopyState === 'copied' ? 'Link kopiert' : 'Link kopieren'}
+                    </button>
+                    <p>{inviteMutation.data.warningText}</p>
+                    {inviteCopyState === 'failed' ? <p className="error-copy">Link konnte nicht kopiert werden.</p> : null}
+                  </div>
+                ) : null}
+                {inviteMutation.isError ? <p className="error-copy">{readableApiError(inviteMutation.error)}</p> : null}
               </div>
             </section>
 

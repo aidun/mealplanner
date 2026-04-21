@@ -11,6 +11,7 @@ interface ShoppingListPanelProps {
 
 export function ShoppingListPanel({ planId, shoppingList, loading }: ShoppingListPanelProps) {
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
+  const [expanded, setExpanded] = useState(false);
   const items = useMemo(() => flattenShoppingList(shoppingList), [shoppingList]);
   const categories = useMemo(() => uniqueCategories(items), [items]);
   const groupedItems = useMemo(() => groupByCategory(items), [items]);
@@ -65,44 +66,71 @@ export function ShoppingListPanel({ planId, shoppingList, loading }: ShoppingLis
 
       {shoppingList ? (
         <div className="stack shopping-list-stack">
-          {summary ? <p className="inspector-copy">{summary}</p> : null}
-          {prominentCategories.length > 0 ? (
-            <div className="shopping-category-row" aria-label="Schnelle Bereiche">
-              {prominentCategories.map((category) => (
-                <span key={category} className="shopping-category-pill">
-                  {category}
-                </span>
-              ))}
+          <div className="shopping-list-preview">
+            {summary ? <p className="shopping-list-summary">{summary}</p> : null}
+            <div className="shopping-list-preview-grid" aria-label="Einkaufslisten Übersicht">
+              <div className="shopping-list-preview-card">
+                <strong>{items.length}</strong>
+                <span>Produkte</span>
+              </div>
+              <div className="shopping-list-preview-card">
+                <strong>{categories.length}</strong>
+                <span>Bereiche</span>
+              </div>
+              <div className="shopping-list-preview-card">
+                <strong>{items.slice(0, 3).map((item) => item.name).join(', ') || 'Noch leer'}</strong>
+                <span>Erste Produkte</span>
+              </div>
             </div>
+            {prominentCategories.length > 0 ? (
+              <div className="shopping-category-row" aria-label="Schnelle Bereiche">
+                {prominentCategories.map((category) => (
+                  <span key={category} className="shopping-category-pill">
+                    {category}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+            <button
+              type="button"
+              className="button button-secondary shopping-toggle"
+              onClick={() => setExpanded((current) => !current)}
+            >
+              {expanded ? 'Liste einklappen' : 'Liste aufklappen'}
+            </button>
+          </div>
+          {expanded ? (
+            <>
+              <div className="shopping-list-groups">
+                {groupedItems.map((group) => (
+                  <section key={group.title} className="shopping-list-group">
+                    <h3>{group.title}</h3>
+                    <ul className="list ingredient-list shopping-list-items">
+                      {group.items.map((item, index) => (
+                        <li key={`${group.title}-${item.name}-${index}`} className="ingredient-row shopping-list-row">
+                          <span className="ingredient-amount">{item.amount ? `${item.amount}${item.unit ? ` ${item.unit}` : ''}` : 'offen'}</span>
+                          <div className="ingredient-copy">
+                            <strong>{item.name}</strong>
+                            {item.note ? <span>{item.note}</span> : null}
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                ))}
+              </div>
+              <div className="allergy-warning shopping-list-warning" role="note">
+                <div className="allergy-warning-title">
+                  <ShieldIcon className="pill-icon" />
+                  <strong>Vor dem Einkauf pruefen</strong>
+                </div>
+                <p>
+                  Mengen und Zutaten stammen aus dem Wochenplan. Bei Allergien, Unvertraeglichkeiten und Markenprodukten
+                  bitte jede Position noch einmal manuell bestaetigen.
+                </p>
+              </div>
+            </>
           ) : null}
-          <div className="shopping-list-groups">
-            {groupedItems.map((group) => (
-              <section key={group.title} className="shopping-list-group">
-                <h3>{group.title}</h3>
-                <ul className="list ingredient-list shopping-list-items">
-                  {group.items.map((item, index) => (
-                    <li key={`${group.title}-${item.name}-${index}`} className="ingredient-row shopping-list-row">
-                      <span className="ingredient-amount">{item.amount ? `${item.amount}${item.unit ? ` ${item.unit}` : ''}` : 'offen'}</span>
-                      <div className="ingredient-copy">
-                        <strong>{item.name}</strong>
-                        {item.note ? <span>{item.note}</span> : null}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            ))}
-          </div>
-          <div className="allergy-warning shopping-list-warning" role="note">
-            <div className="allergy-warning-title">
-              <ShieldIcon className="pill-icon" />
-              <strong>Vor dem Einkauf pruefen</strong>
-            </div>
-            <p>
-              Mengen und Zutaten stammen aus dem Wochenplan. Bei Allergien, Unvertraeglichkeiten und Markenprodukten
-              bitte jede Position noch einmal manuell bestaetigen.
-            </p>
-          </div>
         </div>
       ) : null}
     </section>

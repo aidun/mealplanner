@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { Header } from '../components/Header';
-import { HeartIcon } from '../components/icons';
 import { MealBoard } from '../components/MealBoard';
 import { MealInspector } from '../components/MealInspector';
 import { PlanBackdrop } from '../components/PlanBackdrop';
@@ -20,7 +19,7 @@ import {
   logout,
   regenerateMeal,
 } from '../api';
-import type { FavoriteRecipe, Meal, PromptDebugSnapshot } from '../types';
+import type { Meal, PromptDebugSnapshot } from '../types';
 
 function promptDebugEnabled() {
   if (import.meta.env.VITE_PROMPT_DEBUG !== 'true') {
@@ -33,9 +32,7 @@ export function DashboardPage() {
   const queryClient = useQueryClient();
   const promptDebug = promptDebugEnabled();
   const [selectedMealId, setSelectedMealId] = useState<string | undefined>();
-  const [selectedFavoriteId, setSelectedFavoriteId] = useState<string | undefined>();
   const [activeWorkspacePane, setActiveWorkspacePane] = useState<'plan' | 'detail' | 'shopping'>('plan');
-  const [favoriteSlotFilter, setFavoriteSlotFilter] = useState<'all' | string>('all');
   const [loggedOut, setLoggedOut] = useState(false);
 
   const currentPlanQuery = useQuery({
@@ -63,7 +60,6 @@ export function DashboardPage() {
   const createPlanMutation = useMutation({
     mutationFn: () => createPlan({}),
     onSuccess: async () => {
-      setSelectedFavoriteId(undefined);
       setActiveWorkspacePane('plan');
       await queryClient.invalidateQueries({ queryKey: ['current-plan'] });
       await queryClient.invalidateQueries({ queryKey: ['shopping-list'] });
@@ -77,7 +73,6 @@ export function DashboardPage() {
       if (updatedPlan) {
         queryClient.setQueryData(['current-plan'], updatedPlan);
       }
-      setSelectedFavoriteId(undefined);
       setActiveWorkspacePane('detail');
       await queryClient.invalidateQueries({ queryKey: ['shopping-list'] });
     },
@@ -134,17 +129,7 @@ export function DashboardPage() {
   const favoriteMealIDs = useMemo(() => new Set((favoritesQuery.data ?? []).map((favorite) => favorite.meal.id).filter(Boolean)), [
     favoritesQuery.data,
   ]);
-  const selectedFavorite = useMemo(
-    () => (favoritesQuery.data ?? []).find((favorite) => favorite.id === selectedFavoriteId),
-    [favoritesQuery.data, selectedFavoriteId]
-  );
-  const favorites = favoritesQuery.data ?? [];
-  const filteredFavorites = useMemo(
-    () => favorites.filter((favorite) => favoriteSlotFilter === 'all' || favorite.meal.slot === favoriteSlotFilter),
-    [favoriteSlotFilter, favorites]
-  );
-  const favoriteSlots = useMemo(() => summarizeFavoriteSlots(favorites), [favorites]);
-  const inspectedMeal = selectedFavorite?.meal ?? selectedMeal;
+  const inspectedMeal = selectedMeal;
   const selectedDay = useMemo(
     () => currentPlanQuery.data?.days.find((day) => day.meals.some((meal) => meal.id === inspectedMeal?.id)),
     [currentPlanQuery.data?.days, inspectedMeal?.id]
@@ -166,12 +151,6 @@ export function DashboardPage() {
     }
   }, [allMeals, selectedMealId]);
 
-  useEffect(() => {
-    if (selectedFavoriteId && !(favoritesQuery.data ?? []).some((favorite) => favorite.id === selectedFavoriteId)) {
-      setSelectedFavoriteId(undefined);
-    }
-  }, [favoritesQuery.data, selectedFavoriteId]);
-
   const handleRegenerate = (note: string) => {
     const plan = currentPlanQuery.data;
     if (!plan || !inspectedMeal || !inspectedMealInPlan) return;
@@ -185,9 +164,6 @@ export function DashboardPage() {
 
   const handleToggleFavorite = (meal: Meal, favoriteId?: string) => {
     if (favoriteId) {
-      if (selectedFavoriteId === favoriteId) {
-        setSelectedFavoriteId(undefined);
-      }
       deleteFavoriteMutation.mutate(favoriteId);
       return;
     }
@@ -195,13 +171,7 @@ export function DashboardPage() {
   };
 
   const selectMeal = (meal: Meal) => {
-    setSelectedFavoriteId(undefined);
     setSelectedMealId(meal.id);
-    setActiveWorkspacePane('detail');
-  };
-
-  const selectFavorite = (favorite: FavoriteRecipe) => {
-    setSelectedFavoriteId(favorite.id);
     setActiveWorkspacePane('detail');
   };
 
@@ -239,7 +209,7 @@ export function DashboardPage() {
           <div className="plan-stage-copy plan-stage-copy-compact">
             <span className="eyebrow">Diese Woche</span>
             <h1 id="home-title">Planen, auswählen, kochen.</h1>
-            <p>Der Wochenplan steht im Mittelpunkt: Gerichte wählen, feinjustieren und ohne Umwege in den Alltag bringen.</p>
+            <p>Euer Plan für entspannte Familienküche.</p>
           </div>
           <div className="plan-stage-actions">
             <button
@@ -278,63 +248,6 @@ export function DashboardPage() {
           >
             <span>{planMessage || regenerateMessage || logoutMessage}</span>
           </div>
-        ) : null}
-
-        {favorites.length > 0 ? (
-          <section className="favorites-band" aria-labelledby="favorites-title">
-            <div className="favorites-band-copy">
-              <span className="eyebrow">Sammlung</span>
-              <h2 id="favorites-title">Wieder gern kochen</h2>
-              <p>
-                {favorites.length} gespeicherte Rezepte. Beim Planen pruefen wir zuerst {favoriteSlots.join(', ') || 'eure Favoriten'}.
-              </p>
-            </div>
-            <div className="favorites-band-toolbar">
-              <div className="favorites-filter-row" aria-label="Favoriten filtern">
-                <button
-                  type="button"
-                  className={`tag-button${favoriteSlotFilter === 'all' ? ' tag-button-active' : ''}`}
-                  onClick={() => setFavoriteSlotFilter('all')}
-                >
-                  Alle
-                </button>
-                {Array.from(new Set(favorites.map((favorite) => favorite.meal.slot).filter(Boolean))).map((slot) => (
-                  <button
-                    key={slot}
-                    type="button"
-                    className={`tag-button${favoriteSlotFilter === slot ? ' tag-button-active' : ''}`}
-                    onClick={() => setFavoriteSlotFilter(slot)}
-                  >
-                    {slotLabel(slot)}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="favorites-band-scroller">
-              {filteredFavorites.map((favorite) => {
-                const active = selectedFavoriteId === favorite.id;
-                return (
-                  <button
-                    key={favorite.id}
-                    type="button"
-                    className={`favorite-pill${active ? ' favorite-pill-active' : ''}`}
-                    onClick={() => selectFavorite(favorite)}
-                  >
-                    <span className="favorite-pill-icon" aria-hidden="true">
-                      <HeartIcon className="meal-favorite-icon" />
-                    </span>
-                    <span className="favorite-pill-copy">
-                      <strong>{favorite.meal.title}</strong>
-                      <span>
-                        {slotLabel(favorite.meal.slot || 'Mahlzeit')}
-                        {favorite.meal.tags?.[0] ? ` · ${favorite.meal.tags[0]}` : ''}
-                      </span>
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
         ) : null}
 
         <div className="workspace-pane-switch" aria-label="Bereiche wechseln">
@@ -377,8 +290,7 @@ export function DashboardPage() {
                 planId={currentPlanQuery.data?.id}
                 dayDate={selectedDay?.date}
                 meal={inspectedMeal}
-                favoriteId={selectedFavorite ? selectedFavorite.id : inspectedMeal ? favoriteByMealID.get(inspectedMeal.id) : undefined}
-                contextNote={selectedFavorite ? 'Favorit aus eurer Sammlung' : undefined}
+                favoriteId={inspectedMeal ? favoriteByMealID.get(inspectedMeal.id) : undefined}
                 canActOnMeal={inspectedMealInPlan}
                 onToggleFavorite={handleToggleFavorite}
                 onRegenerate={handleRegenerate}
@@ -519,32 +431,6 @@ function PromptDebugOverlay({
       ) : null}
     </div>
   );
-}
-
-function summarizeFavoriteSlots(favorites: FavoriteRecipe[]) {
-  return Array.from(
-    new Set(
-      favorites
-        .map((favorite) => favorite.meal.slot)
-        .filter(Boolean)
-        .map((slot) => slotLabel(slot))
-    )
-  ).slice(0, 3);
-}
-
-function slotLabel(slot?: string) {
-  switch (slot) {
-    case 'breakfast':
-      return 'Fruehstueck';
-    case 'lunch':
-      return 'Mittag';
-    case 'dinner':
-      return 'Abendessen';
-    case 'snack':
-      return 'Snack';
-    default:
-      return slot || '';
-  }
 }
 
 function formatPromptTimestamp(value: string) {
