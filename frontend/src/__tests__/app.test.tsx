@@ -362,6 +362,7 @@ describe('Mealplanner app', () => {
     renderApp('/');
 
     expect(await screen.findByText('Diese Woche auf dem Tisch')).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Wochenplan erstellen' })).toHaveLength(1);
     const mealButton = await screen.findByRole('button', { name: /Pasta mit Gemüse/ });
     expect(mealButton).toBeInTheDocument();
     expect(within(mealButton).queryByText('Familienfreundlich und schnell.')).not.toBeInTheDocument();
@@ -648,7 +649,7 @@ describe('Mealplanner app', () => {
 
     renderApp('/');
 
-    fireEvent.click((await screen.findAllByRole('button', { name: 'Wochenplan erstellen' }))[0]!);
+    fireEvent.click(await screen.findByRole('button', { name: 'Wochenplan erstellen' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Das hat gerade nicht geklappt. Bitte versuche es erneut. Fehler-ID: req-123'
@@ -680,7 +681,7 @@ describe('Mealplanner app', () => {
   it('covers the main planner smoke path', async () => {
     renderApp('/');
 
-    fireEvent.click((await screen.findAllByRole('button', { name: 'Wochenplan erstellen' }))[0]!);
+    fireEvent.click(await screen.findByRole('button', { name: 'Wochenplan erstellen' }));
     await screen.findByRole('button', { name: /Pasta mit Gemüse/ });
 
     fireEvent.click(screen.getByRole('button', { name: /Pasta mit Gemüse/ }));

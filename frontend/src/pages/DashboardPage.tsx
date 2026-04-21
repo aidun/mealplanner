@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { Header } from '../components/Header';
-import { RefreshIcon, SparkIcon, UserIcon, CheckIcon } from '../components/icons';
+import { RefreshIcon, SparkIcon, UserIcon } from '../components/icons';
 import { MealBoard } from '../components/MealBoard';
 import { MealInspector } from '../components/MealInspector';
 import { PlanBackdrop } from '../components/PlanBackdrop';
@@ -213,15 +213,6 @@ export function DashboardPage() {
             <p>Euer Plan für entspannte Familienküche.</p>
           </div>
           <div className="plan-stage-actions">
-            <button
-              type="button"
-              className="button button-primary"
-              onClick={() => createPlanMutation.mutate()}
-              disabled={createPlanMutation.isPending}
-            >
-              <CheckIcon className="action-icon" />
-              {createPlanMutation.isPending ? 'Wochenplan wird erstellt' : 'Wochenplan erstellen'}
-            </button>
             <Link to="/onboarding" className="button button-secondary">
               <UserIcon className="action-icon" />
               Profil

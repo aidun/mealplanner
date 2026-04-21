@@ -855,13 +855,11 @@ a:focus-visible {
 .inline-banner p,
 .surface-header p,
 .empty-state p,
-.muted,
-.inspector-copy {
+.muted {
   margin: 4px 0 0;
   color: var(--muted);
 }
 
-.inspector-copy,
 .shopping-list-summary {
   padding: 0 18px;
   line-height: 1.55;
@@ -1517,6 +1515,13 @@ a:focus-visible {
   font-size: 0.8rem;
 }
 
+.inspector-summary-copy {
+  margin: 2px 0 0;
+  color: var(--ink-soft);
+  line-height: 1.55;
+  font-size: 0.93rem;
+}
+
 .inspector-section {
   display: grid;
   gap: 10px;
@@ -1614,8 +1619,7 @@ a:focus-visible {
 }
 
 .step-index {
-  justify-content: center;
-  min-width: 44px;
+  min-width: 88px;
 }
 
 .ingredient-copy {

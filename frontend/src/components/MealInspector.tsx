@@ -34,6 +34,7 @@ export function MealInspector({
   const [showRecipeContext, setShowRecipeContext] = useState(false);
   const [showSelectionReason, setShowSelectionReason] = useState(false);
   const allergens = meal ? detectCriticalAllergens(meal.ingredients) : [];
+  const visibleWarnings = meal ? filterVisibleWarnings(meal.warnings) : [];
   const selectionReason = meal ? inferSelectionReason(meal) : '';
 
   useEffect(() => {
@@ -63,7 +64,6 @@ export function MealInspector({
             <h2>{meal.title}</h2>
           <p>
             {slotLabel(meal.slot)}
-            {dayDate ? ` für ${dayDate}` : ''}
             {contextNote ? ` · ${contextNote}` : ''}
           </p>
         </div>
@@ -109,7 +109,6 @@ export function MealInspector({
         </div>
       </div>
 
-      {meal.description ? <p className="inspector-copy">{meal.description}</p> : null}
       {showRecipeContext ? (
         <div className="inspector-info-panel" role="note">
           <p>
@@ -140,6 +139,7 @@ export function MealInspector({
             {hasUnevenServings(meal) ? 'Basisportion' : 'Nährwerte pro Portion'}
             {meal.meta?.nutritionSource === 'ingredients' ? ' · aus Zutaten' : ''}
           </span>
+          {meal.description ? <p className="inspector-summary-copy">{meal.description}</p> : null}
         </div>
       </div>
 
@@ -198,10 +198,10 @@ export function MealInspector({
           </section>
         ) : null}
 
-        {meal.warnings?.length || allergens.length > 0 ? (
+        {visibleWarnings.length > 0 || allergens.length > 0 ? (
           <section className="inspector-section">
             <h3>Hinweise</h3>
-            {meal.warnings?.map((warning, index) => (
+            {visibleWarnings.map((warning, index) => (
               <p key={`${meal.id}-warning-${index}`} className="inspector-warning">
                 {warning}
               </p>
@@ -284,6 +284,23 @@ function mealOriginLabel(meal: Meal) {
     return 'Direkt aus eurer Sammlung';
   }
   return 'Neu für diese Woche geplant';
+}
+
+function filterVisibleWarnings(warnings?: string[]) {
+  if (!warnings?.length) return [];
+  return warnings.filter((warning) => {
+    const value = warning.toLowerCase();
+    return (
+      value.includes('vorlieb') ||
+      value.includes('einschr') ||
+      value.includes('abweich') ||
+      value.includes('konflikt') ||
+      value.includes('passt nicht') ||
+      value.includes('ungeeignet') ||
+      value.includes('unvertraeg') ||
+      value.includes('unverträg')
+    );
+  });
 }
 
 function slotLabel(slot?: string) {
