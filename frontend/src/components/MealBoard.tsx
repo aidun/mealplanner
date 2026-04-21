@@ -41,7 +41,7 @@ export function MealBoard({ planId, days = [], selectedMealId, favoriteMealIDs, 
       <div className="surface-header">
         <div>
           <h2>Diese Woche auf dem Tisch</h2>
-          <p>Ein Tag nach dem anderen. Erst wählen, dann darunter weiterlesen.</p>
+          <p>Tage prüfen, Gericht auswählen und danach rechts die Details anpassen.</p>
         </div>
         {days.length > 0 ? (
           <div className="carousel-actions" aria-label="Tage wechseln">
@@ -82,7 +82,7 @@ export function MealBoard({ planId, days = [], selectedMealId, favoriteMealIDs, 
             <header className="day-header">
               <div>
                 <h3>{activeDay.label ?? formatDate(activeDay.date)}</h3>
-                <p>{formatDate(activeDay.date)}</p>
+                <p>{formatDate(activeDay.date)} · {activeDay.meals.length} Mahlzeiten</p>
               </div>
               <BringLink
                 planId={planId}
@@ -99,6 +99,7 @@ export function MealBoard({ planId, days = [], selectedMealId, favoriteMealIDs, 
               ) : (
                 activeDay.meals.map((meal) => {
                   const active = meal.id === selectedMealId;
+                  const servingsLabel = meal.servings.length > 0 ? `${meal.servings.length} Portionen` : 'Portion offen';
                   return (
                     <button
                       key={meal.id}
@@ -120,9 +121,12 @@ export function MealBoard({ planId, days = [], selectedMealId, favoriteMealIDs, 
                       </div>
                       <div className="meal-row-meta">
                         <div className="nutrition-line">
+                          {servingsLabel}
+                          {formatNutritionPerPortion(meal.nutrition) ? ' · ' : ''}
                           {formatNutritionPerPortion(meal.nutrition)}
                           {meal.estimatedNutrition ? ' · geschätzt' : ''}
                         </div>
+                        {active ? <span className="meal-row-state">Aktiv</span> : null}
                       </div>
                     </button>
                   );

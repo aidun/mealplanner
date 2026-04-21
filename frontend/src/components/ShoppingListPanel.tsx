@@ -36,7 +36,7 @@ export function ShoppingListPanel({ planId, shoppingList, loading }: ShoppingLis
         ) : null}
       </div>
 
-      {loading ? <p className="muted">Lädt ...</p> : null}
+      {loading ? <p className="muted shopping-list-loading">Lädt…</p> : null}
 
       {!loading && !shoppingList ? (
         <div className="empty-state compact">
@@ -49,18 +49,18 @@ export function ShoppingListPanel({ planId, shoppingList, loading }: ShoppingLis
         <div className="stack shopping-list-stack">
           <div className="shopping-list-preview">
             {summary ? <p className="shopping-list-summary">{summary}</p> : null}
-            <div className="shopping-list-preview-grid" aria-label="Einkaufslisten Übersicht">
-              <div className="shopping-list-preview-card">
+            <div className="shopping-list-glance" aria-label="Einkaufslisten Übersicht">
+              <div className="shopping-list-metric">
                 <strong>{items.length}</strong>
                 <span>Produkte</span>
               </div>
-              <div className="shopping-list-preview-card">
+              <div className="shopping-list-metric">
                 <strong>{categories.length}</strong>
                 <span>Bereiche</span>
               </div>
-              <div className="shopping-list-preview-card">
-                <strong>{items.slice(0, 3).map((item) => item.name).join(', ') || 'Noch leer'}</strong>
-                <span>Erste Produkte</span>
+              <div className="shopping-list-metric shopping-list-metric-wide">
+                <strong>{items.slice(0, 4).map((item) => item.name).join(', ') || 'Noch leer'}</strong>
+                <span>Als Erstes prüfen</span>
               </div>
             </div>
             {prominentCategories.length > 0 ? (
@@ -77,6 +77,8 @@ export function ShoppingListPanel({ planId, shoppingList, loading }: ShoppingLis
               className="button button-secondary shopping-toggle"
               onClick={() => setExpanded((current) => !current)}
               aria-expanded={expanded}
+              aria-label={expanded ? 'Liste einklappen' : 'Liste aufklappen'}
+              title={expanded ? 'Liste einklappen' : 'Liste aufklappen'}
             >
               {expanded ? <ChevronUpIcon className="action-icon" /> : <ChevronDownIcon className="action-icon" />}
               {expanded ? 'Liste einklappen' : 'Liste aufklappen'}

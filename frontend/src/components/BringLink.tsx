@@ -8,9 +8,10 @@ interface BringLinkProps {
   label: string;
   className?: string;
   disabled?: boolean;
+  hideLabel?: boolean;
 }
 
-export function BringLink({ planId, scope = {}, label, className, disabled }: BringLinkProps) {
+export function BringLink({ planId, scope = {}, label, className, disabled, hideLabel = false }: BringLinkProps) {
   const [state, setState] = useState<'idle' | 'loading' | 'ready' | 'failed'>('idle');
   const [url, setUrl] = useState('');
   const scopeKey = useMemo(() => `${scope.day ?? ''}|${scope.meal ?? ''}`, [scope.day, scope.meal]);
@@ -57,7 +58,7 @@ export function BringLink({ planId, scope = {}, label, className, disabled }: Br
       title={state === 'failed' ? 'Bring nicht verfügbar' : label}
     >
       <BringIcon className="action-icon" />
-      <span className="sr-only">{state === 'failed' ? 'Bring nicht verfügbar' : label}</span>
+      <span className={hideLabel ? 'sr-only' : undefined}>{state === 'failed' ? 'Bring nicht verfügbar' : label}</span>
     </a>
   );
 }

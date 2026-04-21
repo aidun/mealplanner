@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { startTransition, useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Header } from '../components/Header';
 import { RefreshIcon, SparkIcon } from '../components/icons';
@@ -7,6 +7,7 @@ import { MealInspector } from '../components/MealInspector';
 import { PlanBackdrop } from '../components/PlanBackdrop';
 import { ShoppingListPanel } from '../components/ShoppingListPanel';
 import { readableApiError } from '../lib/api-error';
+import { formatDate } from '../lib/format';
 import { LoginPage } from './LoginPage';
 import {
   createPlan,
@@ -65,7 +66,9 @@ export function DashboardPage() {
   const createPlanMutation = useMutation({
     mutationFn: () => createPlan({}),
     onSuccess: async () => {
-      setActiveWorkspacePane('plan');
+      startTransition(() => {
+        setActiveWorkspacePane('plan');
+      });
       await queryClient.invalidateQueries({ queryKey: ['current-plan'] });
       await queryClient.invalidateQueries({ queryKey: ['shopping-list'] });
     },
@@ -78,7 +81,9 @@ export function DashboardPage() {
       if (updatedPlan) {
         queryClient.setQueryData(['current-plan'], updatedPlan);
       }
-      setActiveWorkspacePane('detail');
+      startTransition(() => {
+        setActiveWorkspacePane('detail');
+      });
       await queryClient.invalidateQueries({ queryKey: ['shopping-list'] });
     },
   });
@@ -176,8 +181,10 @@ export function DashboardPage() {
   };
 
   const selectMeal = (meal: Meal) => {
-    setSelectedMealId(meal.id);
-    setActiveWorkspacePane('detail');
+    startTransition(() => {
+      setSelectedMealId(meal.id);
+      setActiveWorkspacePane('detail');
+    });
   };
 
   const planMessage = createPlanMutation.isPending
@@ -213,9 +220,19 @@ export function DashboardPage() {
         <section className="plan-stage" aria-labelledby="home-title">
           <PlanBackdrop />
           <div className="plan-stage-copy plan-stage-copy-compact">
-            <span className="eyebrow">Diese Woche</span>
+            <span className="eyebrow">Wochenplan</span>
             <h1 id="home-title">Planen, auswählen, kochen.</h1>
-            <p>Euer Plan für entspannte Familienküche.</p>
+            <p>Alles für diese Woche an einem ruhigen Ort: Auswahl, Detailansicht und Einkaufsliste.</p>
+          </div>
+          <div className="plan-stage-context" aria-label="Aktueller Fokus">
+            <div className="plan-focus-item">
+              <span>Aktiver Tag</span>
+              <strong>{selectedDay?.label ?? (selectedDay?.date ? formatDate(selectedDay.date) : 'Noch kein Tag gewählt')}</strong>
+            </div>
+            <div className="plan-focus-item">
+              <span>Ausgewähltes Gericht</span>
+              <strong>{inspectedMeal?.title ?? 'Noch kein Gericht gewählt'}</strong>
+            </div>
           </div>
           <div className="plan-stage-meta" aria-label="Planstatus">
             <div className="stage-stat">
@@ -247,21 +264,36 @@ export function DashboardPage() {
           <button
             type="button"
             className={`workspace-pane-button${activeWorkspacePane === 'plan' ? ' workspace-pane-button-active' : ''}`}
-            onClick={() => setActiveWorkspacePane('plan')}
+            onClick={() =>
+              startTransition(() => {
+                setActiveWorkspacePane('plan');
+              })
+            }
+            aria-pressed={activeWorkspacePane === 'plan'}
           >
-            Plan
+            Woche
           </button>
           <button
             type="button"
             className={`workspace-pane-button${activeWorkspacePane === 'detail' ? ' workspace-pane-button-active' : ''}`}
-            onClick={() => setActiveWorkspacePane('detail')}
+            onClick={() =>
+              startTransition(() => {
+                setActiveWorkspacePane('detail');
+              })
+            }
+            aria-pressed={activeWorkspacePane === 'detail'}
           >
-            Details
+            Gericht
           </button>
           <button
             type="button"
             className={`workspace-pane-button${activeWorkspacePane === 'shopping' ? ' workspace-pane-button-active' : ''}`}
-            onClick={() => setActiveWorkspacePane('shopping')}
+            onClick={() =>
+              startTransition(() => {
+                setActiveWorkspacePane('shopping');
+              })
+            }
+            aria-pressed={activeWorkspacePane === 'shopping'}
           >
             Einkauf
           </button>

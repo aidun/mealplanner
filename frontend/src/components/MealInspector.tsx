@@ -36,6 +36,25 @@ export function MealInspector({
   const allergens = meal ? detectCriticalAllergens(meal.ingredients) : [];
   const visibleWarnings = meal ? filterVisibleWarnings(meal.warnings) : [];
   const selectionReason = meal ? inferSelectionReason(meal) : '';
+  const summaryFacts = meal
+    ? [
+        {
+          label: hasUnevenServings(meal) ? 'Basisportion' : 'Nährwerte',
+          value: formatNutritionPerPortion(meal.nutrition) || 'Keine Angaben',
+          hint: meal.meta?.nutritionSource === 'ingredients' ? 'Aus Zutaten abgeleitet' : 'Pro Portion berechnet',
+        },
+        {
+          label: 'Portionen',
+          value: meal.servings.length > 0 ? String(meal.servings.length) : '0',
+          hint: meal.servings.length > 0 ? meal.servings.map((serving) => serving.name || serving.memberId).join(', ') : 'Noch nicht verteilt',
+        },
+        {
+          label: 'Hinweise',
+          value: String(visibleWarnings.length + allergens.length),
+          hint: visibleWarnings.length + allergens.length > 0 ? 'Bitte vor dem Kochen prüfen' : 'Keine kritischen Hinweise erkannt',
+        },
+      ]
+    : [];
 
   useEffect(() => {
     setNote('');
@@ -59,35 +78,39 @@ export function MealInspector({
 
   return (
     <section className="surface inspector">
-        <div className="surface-header">
-          <div>
-            <h2>{meal.title}</h2>
+      <div className="surface-header">
+        <div className="inspector-header-copy">
+          <span className="eyebrow">Gericht im Fokus</span>
+          <h2>{meal.title}</h2>
           <p>
             {slotLabel(meal.slot)}
+            {dayDate ? ` · ${formatDateLabel(dayDate)}` : ''}
             {contextNote ? ` · ${contextNote}` : ''}
           </p>
+          {meal.description ? <p className="inspector-description">{meal.description}</p> : null}
         </div>
-        <div className="surface-actions">
+        <div className="surface-actions inspector-actions">
           <button
             type="button"
-            className={`icon-button${showSelectionReason ? ' icon-button-active' : ''}`}
+            className={`button button-secondary compact-action inspector-action-button${showSelectionReason ? ' inspector-action-button-active' : ''}`}
             onClick={() => setShowSelectionReason((current) => !current)}
             aria-pressed={showSelectionReason}
             aria-label="Warum ausgewählt anzeigen"
             title="Warum ausgewählt anzeigen"
           >
             <SparkIcon className="action-icon" />
+            Auswahlgrund
           </button>
           <BringLink
             planId={planId}
             scope={{ day: dayDate, meal: meal.id }}
             label="Rezept zu Bring"
-            className="button button-secondary bring-export-button compact-action icon-button"
+            className="button button-secondary bring-export-button compact-action"
             disabled={!canActOnMeal}
           />
           <button
             type="button"
-            className={`icon-button${favoriteId ? ' icon-button-active' : ''}`}
+            className={`button button-secondary compact-action inspector-action-button${favoriteId ? ' inspector-action-button-active' : ''}`}
             onClick={() => onToggleFavorite?.(meal, favoriteId)}
             disabled={!onToggleFavorite || isFavoriteBusy}
             aria-pressed={Boolean(favoriteId)}
@@ -95,16 +118,18 @@ export function MealInspector({
             title={favoriteId ? 'Favorit entfernen' : 'Als Favorit merken'}
           >
             <HeartIcon className="action-icon" />
+            {favoriteId ? 'Favorit' : 'Merken'}
           </button>
           <button
             type="button"
-            className={`icon-button${showRecipeContext ? ' icon-button-active' : ''}`}
+            className={`button button-secondary compact-action inspector-action-button${showRecipeContext ? ' inspector-action-button-active' : ''}`}
             onClick={() => setShowRecipeContext((current) => !current)}
             aria-pressed={showRecipeContext}
             aria-label="Rezeptkontext anzeigen"
             title="Rezeptkontext anzeigen"
           >
             <InfoIcon className="action-icon" />
+            Herkunft
           </button>
         </div>
       </div>
@@ -133,14 +158,13 @@ export function MealInspector({
       ) : null}
 
       <div className="inspector-summary-grid">
-        <div className="inspector-summary-card">
-          <strong>{formatNutritionPerPortion(meal.nutrition) || 'Keine Angaben'}</strong>
-          <span>
-            {hasUnevenServings(meal) ? 'Basisportion' : 'Nährwerte pro Portion'}
-            {meal.meta?.nutritionSource === 'ingredients' ? ' · aus Zutaten' : ''}
-          </span>
-          {meal.description ? <p className="inspector-summary-copy">{meal.description}</p> : null}
-        </div>
+        {summaryFacts.map((fact) => (
+          <div key={fact.label} className="inspector-summary-card">
+            <span>{fact.label}</span>
+            <strong>{fact.value}</strong>
+            <p className="inspector-summary-copy">{fact.hint}</p>
+          </div>
+        ))}
       </div>
 
       <div className="stack inspector-stack">
@@ -243,7 +267,7 @@ export function MealInspector({
             aria-label="Gericht austauschen"
           >
             <RefreshIcon className="pill-icon" />
-            {isRegenerating ? 'Gericht wird neu generiert' : 'Gericht neu generieren'}
+            {isRegenerating ? 'Gericht wird neu generiert…' : 'Gericht neu generieren'}
           </button>
         </section>
       </div>
@@ -259,6 +283,17 @@ export function MealInspector({
       ) : null}
     </section>
   );
+}
+
+function formatDateLabel(value?: string) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat('de-DE', {
+    weekday: 'long',
+    day: '2-digit',
+    month: '2-digit',
+  }).format(date);
 }
 
 function hasUnevenServings(meal: Meal) {
