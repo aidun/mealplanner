@@ -571,15 +571,15 @@ describe('Mealplanner app', () => {
     });
   });
 
-  it('shows the admin tab only for the configured admin account', async () => {
+  it('shows the admin link in the header only for the configured admin account', async () => {
     vi.stubGlobal('fetch', createFetchMock({ isAdmin: true }));
 
-    renderApp('/onboarding');
+    renderApp('/');
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Admin' }));
+    fireEvent.click(await screen.findByRole('link', { name: 'Admin' }));
     expect(await screen.findByRole('heading', { name: 'Admin' })).toBeInTheDocument();
-    expect(screen.getByText('premium@example.test')).toBeInTheDocument();
-    expect(screen.getByText('weekly_cron')).toBeInTheDocument();
+    expect(await screen.findByText('premium@example.test')).toBeInTheDocument();
+    expect(await screen.findByText('weekly_cron')).toBeInTheDocument();
   });
 
   it('creates a family invite link from onboarding', async () => {

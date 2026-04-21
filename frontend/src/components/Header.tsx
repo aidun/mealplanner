@@ -1,22 +1,26 @@
 import { Link, NavLink } from 'react-router-dom';
 import { AppLogo } from './AppLogo';
-import { LogoutIcon, PlusIcon, UserIcon } from './icons';
+import { LogoutIcon, PlusIcon, ShieldIcon, UserIcon } from './icons';
 import { formatWeekRange } from '../lib/format';
 
 interface HeaderProps {
   weekStart?: string;
-  onCreatePlan: () => void;
-  creatingPlan: boolean;
+  onCreatePlan?: () => void;
+  creatingPlan?: boolean;
   onLogout: () => void;
   loggingOut: boolean;
+  isAdmin?: boolean;
+  showCreatePlan?: boolean;
 }
 
 export function Header({
   weekStart,
   onCreatePlan,
-  creatingPlan,
+  creatingPlan = false,
   onLogout,
   loggingOut,
+  isAdmin = false,
+  showCreatePlan = true,
 }: HeaderProps) {
   return (
     <header className="app-header">
@@ -39,10 +43,18 @@ export function Header({
           <UserIcon className="action-icon" />
           Profil
         </NavLink>
-        <button type="button" className="button button-primary" onClick={onCreatePlan} disabled={creatingPlan}>
-          <PlusIcon className="action-icon" />
-          {creatingPlan ? 'Wochenplan wird erstellt' : 'Wochenplan erstellen'}
-        </button>
+        {isAdmin ? (
+          <NavLink to="/admin" className="button button-secondary">
+            <ShieldIcon className="action-icon" />
+            Admin
+          </NavLink>
+        ) : null}
+        {showCreatePlan ? (
+          <button type="button" className="button button-primary" onClick={onCreatePlan} disabled={creatingPlan}>
+            <PlusIcon className="action-icon" />
+            {creatingPlan ? 'Wochenplan wird erstellt' : 'Wochenplan erstellen'}
+          </button>
+        ) : null}
         <button type="button" className="button button-secondary" onClick={onLogout} disabled={loggingOut}>
           <LogoutIcon className="action-icon" />
           {loggingOut ? 'Abmeldung läuft' : 'Abmelden'}

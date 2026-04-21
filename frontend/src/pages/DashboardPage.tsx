@@ -15,6 +15,7 @@ import {
   getCurrentPlan,
   getFavorites,
   getLatestPromptDebug,
+  getSession,
   getShoppingList,
   logout,
   regenerateMeal,
@@ -55,6 +56,10 @@ export function DashboardPage() {
     queryKey: ['prompt-debug'],
     queryFn: getLatestPromptDebug,
     enabled: promptDebug,
+  });
+  const sessionQuery = useQuery({
+    queryKey: ['session'],
+    queryFn: getSession,
   });
 
   const createPlanMutation = useMutation({
@@ -201,6 +206,7 @@ export function DashboardPage() {
         creatingPlan={createPlanMutation.isPending}
         onLogout={() => logoutMutation.mutate()}
         loggingOut={logoutMutation.isPending}
+        isAdmin={Boolean(sessionQuery.data?.isAdmin)}
       />
 
       <main className="app-main">

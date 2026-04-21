@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { acceptFamilyInvite, getSession } from './api';
 import { readableApiError } from './lib/api-error';
 import { DashboardPage } from './pages/DashboardPage';
+import { AdminPage } from './pages/AdminPage';
 import { LegalPage } from './pages/LegalPage';
 import { LoginPage } from './pages/LoginPage';
 import { OnboardingPage } from './pages/OnboardingPage';
@@ -15,6 +16,7 @@ export function App() {
       <Route path="/impressum" element={<LegalPage kind="imprint" />} />
       <Route path="/" element={<AuthenticatedRoute element={<DashboardPage />} />} />
       <Route path="/onboarding" element={<AuthenticatedRoute element={<OnboardingPage />} />} />
+      <Route path="/admin" element={<AuthenticatedRoute element={<AdminPage />} />} />
       <Route path="/family/invites/accept" element={<AuthenticatedRoute element={<AcceptInvitePage />} />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

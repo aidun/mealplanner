@@ -4,15 +4,11 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { AppLogo } from '../components/AppLogo';
 import { CheckIcon, CopyIcon, HeartIcon, MailIcon, PlusIcon, SaveIcon, TrashIcon } from '../components/icons';
 import {
-  createPremiumUser,
   createFamilyInvite,
-  deletePremiumUser,
-  getAdminOverview,
   deleteFavorite,
   getFamily,
   getFavorites,
   getProfile,
-  getSession,
   saveProfile,
   updateFamilyMemberLink,
 } from '../api';
@@ -43,15 +39,9 @@ export function OnboardingPage() {
   const [form, setForm] = useState<ProfileFormState>(EMPTY_FORM);
   const [hasEdited, setHasEdited] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
-  const [premiumEmail, setPremiumEmail] = useState('');
   const [inviteCopyState, setInviteCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
   const [lastLinkedAccountEmail, setLastLinkedAccountEmail] = useState('');
-  const [activeTab, setActiveTab] = useState<'family' | 'rules' | 'favorites' | 'invites' | 'admin'>('family');
-
-  const sessionQuery = useQuery({
-    queryKey: ['session'],
-    queryFn: getSession,
-  });
+  const [activeTab, setActiveTab] = useState<'family' | 'rules' | 'favorites' | 'invites'>('family');
 
   const profileQuery = useQuery({
     queryKey: ['profile'],
@@ -64,11 +54,6 @@ export function OnboardingPage() {
   const favoritesQuery = useQuery({
     queryKey: ['favorites'],
     queryFn: getFavorites,
-  });
-  const adminOverviewQuery = useQuery({
-    queryKey: ['admin-overview'],
-    queryFn: getAdminOverview,
-    enabled: Boolean(sessionQuery.data?.isAdmin),
   });
 
   useEffect(() => {
@@ -106,19 +91,6 @@ export function OnboardingPage() {
     mutationFn: deleteFavorite,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['favorites'] });
-    },
-  });
-  const createPremiumMutation = useMutation({
-    mutationFn: createPremiumUser,
-    onSuccess: async () => {
-      setPremiumEmail('');
-      await queryClient.invalidateQueries({ queryKey: ['admin-overview'] });
-    },
-  });
-  const deletePremiumMutation = useMutation({
-    mutationFn: deletePremiumUser,
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['admin-overview'] });
     },
   });
 
@@ -207,8 +179,6 @@ export function OnboardingPage() {
   const linkedAccountsCount = linkedMembers.filter((account) => account.linkedMemberId).length;
   const unassignedAccountsCount = linkedMembers.filter((account) => account.unassigned).length;
   const favorites = favoritesQuery.data ?? [];
-  const isAdmin = Boolean(sessionQuery.data?.isAdmin);
-  const adminOverview = adminOverviewQuery.data;
   const inviteSentByEmail = Boolean((inviteMutation.data as { emailSent?: boolean } | undefined)?.emailSent);
 
   const statusMessage = useMemo(() => {
@@ -281,15 +251,6 @@ export function OnboardingPage() {
             >
               Einladungen
             </button>
-            {isAdmin ? (
-              <button
-                type="button"
-                className={`profile-tab-button${activeTab === 'admin' ? ' profile-tab-button-active' : ''}`}
-                onClick={() => setActiveTab('admin')}
-              >
-                Admin
-              </button>
-            ) : null}
           </nav>
 
           <div
@@ -775,134 +736,9 @@ export function OnboardingPage() {
               </div>
             </section>
 
-            {isAdmin ? (
-              <section className={`profile-section${activeTab !== 'admin' ? ' profile-section-hidden' : ''}`} aria-labelledby="admin-section">
-                <div className="profile-section-copy">
-                  <span className="section-index">06</span>
-                  <h2 id="admin-section">Admin</h2>
-                  <p>Premium-Freigaben und anonymisierte Kennzahlen für den Produktbetrieb.</p>
-                </div>
-                <div className="profile-section-fields">
-                  <div className="family-overview" aria-label="Premium Übersicht">
-                    <strong>{adminOverview?.premiumUsers?.length ?? 0} Premium-Freigaben</strong>
-                    <p>Diese E-Mail-Adressen dürfen sich anmelden und ersetzen die bisherige Freigabe über Konfiguration.</p>
-                  </div>
-
-                  <div className="premium-entry-row">
-                    <label className="field">
-                      <span className="field-label">Premium-Mail freigeben</span>
-                      <input
-                        className="input"
-                        type="email"
-                        value={premiumEmail}
-                        onChange={(event) => setPremiumEmail(event.target.value)}
-                        placeholder="nutzer@example.com"
-                      />
-                    </label>
-                    <button
-                      type="button"
-                      className="button button-primary"
-                      onClick={() => createPremiumMutation.mutate(premiumEmail)}
-                      disabled={createPremiumMutation.isPending || premiumEmail.trim() === ''}
-                    >
-                      <PlusIcon className="action-icon" />
-                      Freigeben
-                    </button>
-                  </div>
-                  {createPremiumMutation.isError ? <p className="error-copy">{readableApiError(createPremiumMutation.error)}</p> : null}
-
-                  <div className="family-account-list">
-                    {(adminOverview?.premiumUsers ?? []).map((premiumUser) => (
-                      <article key={premiumUser.id} className="family-account-row">
-                        <div className="family-account-copy">
-                          <div className="family-account-head">
-                            <strong>{premiumUser.email}</strong>
-                            <span className="account-role-badge">Premium</span>
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          className="icon-button"
-                          onClick={() => deletePremiumMutation.mutate(premiumUser.id)}
-                          aria-label={`${premiumUser.email} entfernen`}
-                          title="Premium-Freigabe entfernen"
-                        >
-                          <TrashIcon className="action-icon" />
-                        </button>
-                      </article>
-                    ))}
-                  </div>
-
-                  <div className="admin-stats-grid" aria-label="Admin Statistiken">
-                    <article className="profile-overview-card">
-                      <strong>{(adminOverview?.stats.averageActiveAccountsPerFamily ?? 0).toFixed(1)}</strong>
-                      <span>Ø aktive Accounts pro Familie</span>
-                    </article>
-                    <article className="profile-overview-card">
-                      <strong>{(adminOverview?.stats.averageProfileMembersPerFamily ?? 0).toFixed(1)}</strong>
-                      <span>Ø eingetragene Personen pro Familie</span>
-                    </article>
-                  </div>
-
-                  <div className="admin-bucket-grid">
-                    <article className="member-editor-card">
-                      <div className="member-editor-header">
-                        <div>
-                          <strong>Familien nach aktiven Accounts</strong>
-                          <p>Anonymisierte Verteilung über alle Familien.</p>
-                        </div>
-                      </div>
-                      <div className="admin-bucket-list">
-                        {(adminOverview?.stats.familyDistributionByAccounts ?? []).map((bucket) => (
-                          <div key={`accounts-${bucket.label}`} className="admin-bucket-row">
-                            <span>{bucket.label}</span>
-                            <strong>{bucket.count}</strong>
-                          </div>
-                        ))}
-                      </div>
-                    </article>
-
-                    <article className="member-editor-card">
-                      <div className="member-editor-header">
-                        <div>
-                          <strong>Familien nach eingetragenen Personen</strong>
-                          <p>Gezählt aus den gespeicherten Profilmitgliedern.</p>
-                        </div>
-                      </div>
-                      <div className="admin-bucket-list">
-                        {(adminOverview?.stats.familyDistributionByMembers ?? []).map((bucket) => (
-                          <div key={`members-${bucket.label}`} className="admin-bucket-row">
-                            <span>{bucket.label}</span>
-                            <strong>{bucket.count}</strong>
-                          </div>
-                        ))}
-                      </div>
-                    </article>
-                  </div>
-
-                  <article className="member-editor-card">
-                    <div className="member-editor-header">
-                      <div>
-                        <strong>Generierungen nach Kategorie</strong>
-                        <p>Cron-Läufe und Neugenerierungen nach Art, anonym aggregiert.</p>
-                      </div>
-                    </div>
-                    <div className="admin-bucket-list">
-                      {(adminOverview?.stats.generations ?? []).map((item) => (
-                        <div key={item.category} className="admin-bucket-row">
-                          <span>{item.category}</span>
-                          <strong>{item.count}</strong>
-                        </div>
-                      ))}
-                    </div>
-                  </article>
-                </div>
-              </section>
-            ) : null}
-
             <section className={`profile-section${activeTab !== 'invites' ? ' profile-section-hidden' : ''}`} aria-labelledby="invites-section">
               <div className="profile-section-copy">
-                <span className="section-index">{isAdmin ? '07' : '06'}</span>
+                <span className="section-index">06</span>
                 <h2 id="invites-section">Einladungen</h2>
                 <p>Neue Logins ins Familienkonto holen und sauber zusammenführen.</p>
               </div>
