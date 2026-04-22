@@ -40,6 +40,13 @@ func TestStoreRoundtrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	family, err := s.GetFamily(ctx, userID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(family.Accounts) != 1 {
+		t.Fatalf("expected one family account without user settings, got %+v", family.Accounts)
+	}
 	profile, err := s.SaveProfile(ctx, userID, domain.DefaultProfile())
 	if err != nil {
 		t.Fatal(err)

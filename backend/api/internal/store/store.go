@@ -536,6 +536,7 @@ func (s Store) GetFamily(ctx context.Context, userID string) (domain.FamilySumma
 	defer rows.Close()
 	for rows.Next() {
 		var account domain.FamilyAccount
+		var settingsUpdatedAt *time.Time
 		if err := rows.Scan(
 			&account.UserID,
 			&account.Email,
@@ -543,9 +544,12 @@ func (s Store) GetFamily(ctx context.Context, userID string) (domain.FamilySumma
 			&account.LinkedMemberID,
 			&account.Settings.WeeklyPlanEmailEnabled,
 			&account.Settings.RecipeEmailEnabled,
-			&account.Settings.UpdatedAt,
+			&settingsUpdatedAt,
 		); err != nil {
 			return domain.FamilySummary{}, err
+		}
+		if settingsUpdatedAt != nil {
+			account.Settings.UpdatedAt = *settingsUpdatedAt
 		}
 		summary.Accounts = append(summary.Accounts, account)
 	}
