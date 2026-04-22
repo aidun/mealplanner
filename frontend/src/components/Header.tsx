@@ -26,15 +26,15 @@ export function Header({
     <header className="app-header">
       <div className="header-overview">
         <div className="brand-block">
-          <Link to="/" className="brand-mark" aria-label="Mealplanner Startseite">
-            <AppLogo />
+          <Link to="/" className="brand-mark" aria-label="Familienküche Startseite">
+            <AppLogo compact />
           </Link>
-          <p className="brand-subtitle">Gemeinsam planen, entspannt kochen, den Einkauf im Blick behalten.</p>
+          <p className="brand-subtitle">Familienküche für Woche, Rezepte und Einkauf.</p>
         </div>
 
         <div className="header-meta">
           <div className="week-chip">
-            <span className="week-chip-label">Aktuelle Woche</span>
+            <span className="week-chip-label">Woche</span>
             <strong className="week-chip-value week-chip-value-default">{formatWeekRange(weekStart)}</strong>
             <strong className="week-chip-value week-chip-value-compact">{formatWeekRangeCompact(weekStart)}</strong>
           </div>
@@ -43,15 +43,24 @@ export function Header({
 
       <nav className="header-actions" aria-label="Primäre Aktionen">
         {showCreatePlan ? (
-          <button type="button" className="button button-primary header-primary-action" onClick={onCreatePlan} disabled={creatingPlan}>
+          <button
+            type="button"
+            className="button button-primary header-primary-action"
+            aria-label={creatingPlan ? 'Wochenplan wird erstellt…' : 'Wochenplan erstellen'}
+            onClick={onCreatePlan}
+            disabled={creatingPlan}
+          >
             <PlusIcon className="action-icon" />
-            {creatingPlan ? 'Wochenplan wird erstellt…' : 'Wochenplan erstellen'}
+            <span className="header-primary-label-default">
+              {creatingPlan ? 'Wochenplan wird erstellt…' : 'Wochenplan erstellen'}
+            </span>
+            <span className="header-primary-label-compact">{creatingPlan ? 'Plan läuft…' : 'Plan erstellen'}</span>
           </button>
         ) : null}
         <div className="header-secondary-actions">
           <NavLink to="/onboarding" className="button button-secondary">
             <UserIcon className="action-icon" />
-            Profil
+            Haushalt
           </NavLink>
           {isAdmin ? (
             <NavLink to="/admin" className="button button-secondary">

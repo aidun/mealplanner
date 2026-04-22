@@ -19,7 +19,7 @@ export function LegalPage({ kind }: LegalPageProps) {
     <div className="app-shell legal-shell">
       <header className="app-header compact-header">
         <div className="brand-block">
-          <Link to="/" className="brand-mark" aria-label="Mealplanner Startseite">
+          <Link to="/" className="brand-mark" aria-label="Familienküche Startseite">
             <AppLogo />
           </Link>
           <p className="brand-subtitle">Rechtliche Angaben</p>

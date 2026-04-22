@@ -21,12 +21,12 @@ export function AppLogo({ compact = false, className = '', ...props }: AppLogoPr
           </linearGradient>
         </defs>
       </svg>
-      {!compact ? (
+      {compact ? <span className="app-logo-wordmark">Familienküche</span> : (
         <span className="app-logo-type">
           <strong>Familienküche</strong>
           <small>Mealplanner</small>
         </span>
-      ) : null}
+      )}
     </span>
   );
 }

@@ -47,7 +47,7 @@ export function MealBoard({
       <div className="surface-header">
         <div>
           <h2>Diese Woche auf dem Tisch</h2>
-          <p>Tage prüfen, Gericht auswählen und danach rechts die Details anpassen.</p>
+          <p>Tag wählen, Gericht öffnen und Details direkt daneben anpassen.</p>
         </div>
         {days.length > 0 ? (
           <div className="carousel-actions" aria-label="Tage wechseln">
