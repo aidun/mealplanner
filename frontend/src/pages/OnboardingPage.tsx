@@ -189,33 +189,60 @@ export function OnboardingPage() {
     setHasEdited(true);
   };
 
-  const memberOptions = form.members
-    .filter((member) => member.name.trim() !== '')
-    .map((member) => ({
-      id: member.id.trim() || member.alias.trim() || member.name.trim(),
-      label: member.alias.trim() || member.name.trim(),
-    }));
+  const familyMembersForAssignments = useMemo(() => {
+    const merged = new Map<string, { id: string; name: string; alias?: string; role?: string }>();
+    for (const member of form.members) {
+      const id = member.id.trim();
+      const name = member.name.trim();
+      if (!id || !name) continue;
+      merged.set(id, {
+        id,
+        name,
+        alias: member.alias.trim() || undefined,
+        role: member.role.trim() || undefined,
+      });
+    }
+    for (const member of familyQuery.data?.members ?? []) {
+      const id = member.id.trim();
+      const name = member.name.trim();
+      if (!id || !name) continue;
+      const current = merged.get(id);
+      merged.set(id, {
+        id,
+        name,
+        alias: member.alias?.trim() || current?.alias,
+        role: current?.role,
+      });
+    }
+    return Array.from(merged.values());
+  }, [familyQuery.data?.members, form.members]);
+
+  const memberOptions = familyMembersForAssignments.map((member) => ({
+    id: member.id,
+    label: member.alias?.trim() || member.name,
+  }));
 
   const linkedMembers = useMemo(() => {
-    const byId = new Map(form.members.map((member) => [member.id.trim(), member]));
+    const byId = new Map(familyMembersForAssignments.map((member) => [member.id, member]));
     return (familyQuery.data?.accounts ?? []).map((account) => {
       const linked = account.linkedMemberId ? byId.get(account.linkedMemberId) : undefined;
       return {
         ...account,
-        linkedLabel: linked ? linked.alias.trim() || linked.name.trim() : '',
-        unassigned: !linked,
+        linkedLabel: linked ? linked.alias?.trim() || linked.name.trim() : account.linkedMemberId || '',
+        unassigned: !account.linkedMemberId,
+        unresolvedLink: Boolean(account.linkedMemberId && !linked),
       };
     });
-  }, [familyQuery.data?.accounts, form.members]);
+  }, [familyMembersForAssignments, familyQuery.data?.accounts]);
   const familyRoster = useMemo(
     () =>
-      form.members.map((member, index) => ({
+      familyMembersForAssignments.map((member, index) => ({
         id: member.id,
-        label: member.alias.trim() || member.name.trim() || `Mitglied ${index + 1}`,
-        role: member.role.trim() || 'Profilmitglied',
+        label: member.alias?.trim() || member.name.trim() || `Mitglied ${index + 1}`,
+        role: member.role?.trim() || 'Profilmitglied',
         accounts: linkedMembers.filter((account) => account.linkedMemberId === member.id),
       })),
-    [form.members, linkedMembers]
+    [familyMembersForAssignments, linkedMembers]
   );
   const linkedAccountsCount = linkedMembers.filter((account) => account.linkedMemberId).length;
   const unassignedAccountsCount = linkedMembers.filter((account) => account.unassigned).length;
@@ -535,6 +562,9 @@ export function OnboardingPage() {
                               ? `Verknüpft mit ${account.linkedLabel}`
                               : 'Noch keinem Profilmitglied zugeordnet'}
                           </p>
+                          {account.unresolvedLink ? (
+                            <p className="muted">Gespeicherte Zuordnung vorhanden, aber die Person ist im aktuellen Profil noch nicht sichtbar.</p>
+                          ) : null}
                         </div>
                         <label className="field">
                           <span className="field-label">Zugeordnetes Profilmitglied</span>

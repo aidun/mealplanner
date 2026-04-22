@@ -206,11 +206,13 @@ beforeEach(() => {
 function createFetchMock(options: {
   authenticated?: boolean;
   familyOverride?: typeof family;
+  profileOverride?: typeof profile;
   isAdmin?: boolean;
   inviteEmailSent?: boolean;
 } = {}) {
   const authenticated = options.authenticated ?? true;
   const activeFamily = options.familyOverride ?? family;
+  const activeProfile = options.profileOverride ?? profile;
 
   return vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
@@ -244,7 +246,7 @@ function createFetchMock(options: {
     }
 
     if (url.endsWith('/api/profile') && (!init || !init.method || init.method === 'GET')) {
-      return new Response(JSON.stringify(profile), { status: 200 });
+      return new Response(JSON.stringify(activeProfile), { status: 200 });
     }
 
     if (url.endsWith('/api/plans/current')) {
@@ -774,6 +776,23 @@ describe('Mealplanner app', () => {
     expect(await screen.findByLabelText('Wer gehört zum Familienkonto')).toBeInTheDocument();
     expect(await screen.findAllByText('anna@example.test')).not.toHaveLength(0);
     expect(screen.getAllByText('ben@example.test').length).toBeGreaterThan(0);
+  });
+
+  it('keeps family assignments visible when family members arrive from family summary', async () => {
+    vi.stubGlobal(
+      'fetch',
+      createFetchMock({
+        profileOverride: {
+          ...profile,
+          members: [],
+        },
+      })
+    );
+
+    renderApp('/onboarding');
+
+    expect(await screen.findByText('Verknüpft mit Mama')).toBeInTheDocument();
+    expect(screen.getByText('Verknüpft mit Ben')).toBeInTheDocument();
   });
 
   it('highlights unassigned family accounts', async () => {
