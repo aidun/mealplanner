@@ -402,6 +402,14 @@ func (h *Handler) createFamilyInvite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	invite, token, err := h.repo.CreateFamilyInvite(r, emailHash, 7*24*time.Hour)
+	if errors.Is(err, store.ErrAccountAlreadyInFamily) {
+		writeError(w, http.StatusConflict, "Dieses Konto gehört bereits zu diesem Familienkonto.")
+		return
+	}
+	if errors.Is(err, store.ErrAccountInDifferentFamily) {
+		writeError(w, http.StatusConflict, "Dieses Konto gehört bereits zu einem anderen Familienkonto.")
+		return
+	}
 	if err != nil {
 		h.serverError(w, r, err)
 		return
@@ -486,6 +494,14 @@ func (h *Handler) acceptFamilyInvite(w http.ResponseWriter, r *http.Request) {
 	family, err := h.repo.AcceptFamilyInvite(r, token, merged)
 	if errors.Is(err, store.ErrNotFound) {
 		writeError(w, http.StatusForbidden, "Einladung ist ungueltig oder abgelaufen.")
+		return
+	}
+	if errors.Is(err, store.ErrAccountAlreadyInFamily) {
+		writeError(w, http.StatusConflict, "Dieses Konto gehört bereits zu diesem Familienkonto.")
+		return
+	}
+	if errors.Is(err, store.ErrAccountInDifferentFamily) {
+		writeError(w, http.StatusConflict, "Dieses Konto gehört bereits zu einem anderen Familienkonto.")
 		return
 	}
 	if err != nil {
@@ -605,6 +621,10 @@ func (h *Handler) createPremiumUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	premiumUser, err := h.repo.SavePremiumUser(r, email, h.auth.Hash("email:"+email))
+	if errors.Is(err, store.ErrAlreadyPremium) {
+		writeError(w, http.StatusConflict, "Diese E-Mail hat bereits Premium-Zugriff.")
+		return
+	}
 	if err != nil {
 		h.serverError(w, r, err)
 		return

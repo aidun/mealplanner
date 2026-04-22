@@ -18,12 +18,28 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-var ErrNotFound = errors.New("not found")
+var (
+	ErrNotFound                 = errors.New("not found")
+	ErrAlreadyPremium           = errors.New("already premium")
+	ErrAccountAlreadyInFamily   = errors.New("account already in family")
+	ErrAccountInDifferentFamily = errors.New("account belongs to different family")
+)
 
 const adminEmail = "markush1986@gmail.com"
 
 type Store struct {
 	pool *pgxpool.Pool
+}
+
+type familyMembershipState struct {
+	userID      string
+	familyID    string
+	ownerUserID string
+	memberCount int
+}
+
+func (s familyMembershipState) isPersonal() bool {
+	return strings.TrimSpace(s.userID) != "" && s.userID == s.ownerUserID && s.memberCount <= 1
 }
 
 func New(pool *pgxpool.Pool) Store {
@@ -544,6 +560,18 @@ func (s Store) CreateFamilyInvite(ctx context.Context, userID string, emailHash 
 	if err != nil {
 		return domain.FamilyInvite{}, "", err
 	}
+	invitedAccount, found, err := s.findUserFamilyStateByEmailHash(ctx, emailHash)
+	if err != nil {
+		return domain.FamilyInvite{}, "", err
+	}
+	if found {
+		switch {
+		case invitedAccount.familyID == familyID:
+			return domain.FamilyInvite{}, "", ErrAccountAlreadyInFamily
+		case !invitedAccount.isPersonal():
+			return domain.FamilyInvite{}, "", ErrAccountInDifferentFamily
+		}
+	}
 	token, err := randomToken(32)
 	if err != nil {
 		return domain.FamilyInvite{}, "", err
@@ -590,6 +618,18 @@ func (s Store) AcceptFamilyInvite(ctx context.Context, userID string, token stri
 	}
 	if err != nil {
 		return domain.FamilySummary{}, err
+	}
+	switch {
+	case targetFamilyID == sourceFamilyID:
+		return domain.FamilySummary{}, ErrAccountAlreadyInFamily
+	default:
+		sourceState, err := queryFamilyState(ctx, tx, userID, sourceFamilyID)
+		if err != nil {
+			return domain.FamilySummary{}, err
+		}
+		if !sourceState.isPersonal() {
+			return domain.FamilySummary{}, ErrAccountInDifferentFamily
+		}
 	}
 	data, err := json.Marshal(mergedProfile)
 	if err != nil {
@@ -819,13 +859,46 @@ func (s Store) ListPremiumUsers(ctx context.Context) ([]domain.PremiumUser, erro
 
 func (s Store) SavePremiumUser(ctx context.Context, grantedByUserID string, email string, emailHash string) (domain.PremiumUser, error) {
 	email = normalizeEmail(email)
+	emailHash = strings.TrimSpace(emailHash)
+	if email == adminEmail {
+		return domain.PremiumUser{}, ErrAlreadyPremium
+	}
+	var directPremium bool
+	if err := s.pool.QueryRow(ctx, `
+		SELECT EXISTS(
+			SELECT 1
+			FROM premium_users
+			WHERE email = $1 OR email_hash = $2
+		)
+	`, email, emailHash).Scan(&directPremium); err != nil {
+		return domain.PremiumUser{}, err
+	}
+	if directPremium {
+		return domain.PremiumUser{}, ErrAlreadyPremium
+	}
+	userState, found, err := s.findUserFamilyStateByEmailHash(ctx, emailHash)
+	if err != nil {
+		return domain.PremiumUser{}, err
+	}
+	if found {
+		familyPremium, err := s.IsPremiumUser(ctx, userState.userID)
+		if err != nil {
+			return domain.PremiumUser{}, err
+		}
+		if familyPremium {
+			return domain.PremiumUser{}, ErrAlreadyPremium
+		}
+	}
 	var user domain.PremiumUser
-	err := s.pool.QueryRow(ctx, `
+	err = s.pool.QueryRow(ctx, `
 		INSERT INTO premium_users(email, email_hash, granted_by_user_id)
 		VALUES ($1, $2, $3::uuid)
-		ON CONFLICT (email) DO UPDATE SET email_hash = EXCLUDED.email_hash
+		ON CONFLICT DO NOTHING
 		RETURNING id::text, email, created_at
-	`, email, strings.TrimSpace(emailHash), grantedByUserID).Scan(&user.ID, &user.Email, &user.CreatedAt)
+	`, email, emailHash, grantedByUserID).Scan(&user.ID, &user.Email, &user.CreatedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return domain.PremiumUser{}, ErrAlreadyPremium
+	}
 	return user, err
 }
 
@@ -1041,6 +1114,65 @@ func (s Store) activeFamilyID(ctx context.Context, userID string) (string, error
 		return "", ErrNotFound
 	}
 	return familyID, err
+}
+
+func (s Store) findUserFamilyStateByEmailHash(ctx context.Context, emailHash string) (familyMembershipState, bool, error) {
+	emailHash = strings.TrimSpace(emailHash)
+	if emailHash == "" {
+		return familyMembershipState{}, false, nil
+	}
+	var state familyMembershipState
+	err := s.pool.QueryRow(ctx, `
+		SELECT
+			u.id::text,
+			COALESCE(u.active_family_id::text, ''),
+			COALESCE(f.owner_user_id::text, ''),
+			COALESCE(member_counts.member_count, 0)
+		FROM users u
+		LEFT JOIN families f ON f.id = u.active_family_id
+		LEFT JOIN LATERAL (
+			SELECT COUNT(*)::int AS member_count
+			FROM family_members fm
+			WHERE fm.family_id = u.active_family_id
+		) AS member_counts ON true
+		WHERE u.email_hash = $1
+		ORDER BY u.created_at ASC
+		LIMIT 1
+	`, emailHash).Scan(&state.userID, &state.familyID, &state.ownerUserID, &state.memberCount)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return familyMembershipState{}, false, nil
+	}
+	if err != nil {
+		return familyMembershipState{}, false, err
+	}
+	return state, true, nil
+}
+
+func queryFamilyState(ctx context.Context, querier interface {
+	QueryRow(context.Context, string, ...any) pgx.Row
+}, userID string, familyID string) (familyMembershipState, error) {
+	var state familyMembershipState
+	err := querier.QueryRow(ctx, `
+		SELECT
+			$2::text,
+			f.id::text,
+			COALESCE(f.owner_user_id::text, ''),
+			COALESCE(member_counts.member_count, 0)
+		FROM families f
+		LEFT JOIN LATERAL (
+			SELECT COUNT(*)::int AS member_count
+			FROM family_members fm
+			WHERE fm.family_id = f.id
+		) AS member_counts ON true
+		WHERE f.id = $1::uuid
+	`, familyID, userID).Scan(&state.userID, &state.familyID, &state.ownerUserID, &state.memberCount)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return familyMembershipState{}, ErrNotFound
+	}
+	if err != nil {
+		return familyMembershipState{}, err
+	}
+	return state, nil
 }
 
 func (s Store) ensurePersonalFamily(ctx context.Context, userID string) error {

@@ -301,6 +301,15 @@ func (m *memoryRepo) GetFamily(r *http.Request) (domain.FamilySummary, error) {
 func (m *memoryRepo) CreateFamilyInvite(r *http.Request, emailHash string, ttl time.Duration) (domain.FamilyInvite, string, error) {
 	token := "invite-token"
 	familyID := m.familyID(mustUserID(r.Context()))
+	if invitedUserID, ok := m.userIDByEmailHash(emailHash); ok {
+		invitedFamilyID := m.familyID(invitedUserID)
+		switch {
+		case invitedFamilyID == familyID:
+			return domain.FamilyInvite{}, "", store.ErrAccountAlreadyInFamily
+		case !m.isPersonalFamily(invitedUserID):
+			return domain.FamilyInvite{}, "", store.ErrAccountInDifferentFamily
+		}
+	}
 	expiresAt := time.Now().Add(ttl)
 	m.invites[token] = memoryInvite{targetFamilyID: familyID, emailHash: emailHash, token: token, expiresAt: expiresAt}
 	return domain.FamilyInvite{ID: "invite-1", EmailHash: emailHash, ExpiresAt: expiresAt, WarningText: "persoenlicher Account"}, token, nil
@@ -312,6 +321,13 @@ func (m *memoryRepo) AcceptFamilyInvite(r *http.Request, token string, mergedPro
 		return domain.FamilySummary{}, store.ErrNotFound
 	}
 	userID := mustUserID(r.Context())
+	currentFamilyID := m.familyID(userID)
+	switch {
+	case currentFamilyID == invite.targetFamilyID:
+		return domain.FamilySummary{}, store.ErrAccountAlreadyInFamily
+	case !m.isPersonalFamily(userID):
+		return domain.FamilySummary{}, store.ErrAccountInDifferentFamily
+	}
 	m.profiles[invite.targetFamilyID] = mergedProfile
 	m.activeFamilies[userID] = invite.targetFamilyID
 	if m.familyMembers[invite.targetFamilyID] == nil {
@@ -425,8 +441,23 @@ func (m *memoryRepo) ListPremiumUsers(_ *http.Request) ([]domain.PremiumUser, er
 }
 
 func (m *memoryRepo) SavePremiumUser(_ *http.Request, email string, _ string) (domain.PremiumUser, error) {
-	id := "premium-" + strings.ReplaceAll(strings.ToLower(strings.TrimSpace(email)), "@", "-")
-	user := domain.PremiumUser{ID: id, Email: strings.ToLower(strings.TrimSpace(email)), CreatedAt: time.Now()}
+	normalizedEmail := strings.ToLower(strings.TrimSpace(email))
+	if normalizedEmail == "markush1986@gmail.com" {
+		return domain.PremiumUser{}, store.ErrAlreadyPremium
+	}
+	for _, premiumUser := range m.premiumUsers {
+		if strings.EqualFold(strings.TrimSpace(premiumUser.Email), normalizedEmail) {
+			return domain.PremiumUser{}, store.ErrAlreadyPremium
+		}
+	}
+	if userID, ok := m.userIDByEmail(normalizedEmail); ok {
+		allowed, _ := m.IsPremiumUser(nil, userID)
+		if allowed {
+			return domain.PremiumUser{}, store.ErrAlreadyPremium
+		}
+	}
+	id := "premium-" + strings.ReplaceAll(normalizedEmail, "@", "-")
+	user := domain.PremiumUser{ID: id, Email: normalizedEmail, CreatedAt: time.Now()}
 	m.premiumUsers[id] = user
 	return user, nil
 }
@@ -580,6 +611,32 @@ func (m *memoryRepo) familyID(userID string) string {
 	return m.activeFamilies[userID]
 }
 
+func (m *memoryRepo) userIDByEmailHash(emailHash string) (string, bool) {
+	emailHash = strings.TrimSpace(emailHash)
+	if emailHash == "" {
+		return "", false
+	}
+	for userID, hash := range m.emailHashes {
+		if hash == emailHash {
+			return userID, true
+		}
+	}
+	return "", false
+}
+
+func (m *memoryRepo) userIDByEmail(email string) (string, bool) {
+	email = strings.ToLower(strings.TrimSpace(email))
+	if email == "" {
+		return "", false
+	}
+	for userID, current := range m.emails {
+		if strings.EqualFold(strings.TrimSpace(current), email) {
+			return userID, true
+		}
+	}
+	return "", false
+}
+
 func (m *memoryRepo) accountSettingsOrDefault(userID string) domain.AccountSettings {
 	settings, ok := m.accountSettings[userID]
 	if !ok {
@@ -596,11 +653,24 @@ func (m *memoryRepo) ensureFamily(userID string) {
 	if m.familyMembers[familyID] == nil {
 		m.familyMembers[familyID] = map[string]memoryFamilyMember{}
 	}
+	if _, exists := m.familyMembers[familyID][userID]; exists {
+		return
+	}
 	role := "member"
 	if len(m.familyMembers[familyID]) == 0 {
 		role = "owner"
 	}
 	m.familyMembers[familyID][userID] = memoryFamilyMember{role: role}
+}
+
+func (m *memoryRepo) isPersonalFamily(userID string) bool {
+	familyID := m.familyID(userID)
+	members := m.familyMembers[familyID]
+	if len(members) != 1 {
+		return false
+	}
+	membership, ok := members[userID]
+	return ok && membership.role == "owner"
 }
 
 func (m *memoryRepo) GetPlanByID(_ *http.Request, id string) (domain.Plan, error) {
@@ -786,6 +856,34 @@ func TestAdminPremiumInviteCreatesGrantAndSendsMail(t *testing.T) {
 	}
 	if len(repo.premiumUsers) != 1 || !strings.Contains(rec.Body.String(), `"emailSent":true`) {
 		t.Fatalf("expected premium grant with mail response, users=%+v body=%s", repo.premiumUsers, rec.Body.String())
+	}
+}
+
+func TestAdminPremiumInviteRejectsExistingPremiumUser(t *testing.T) {
+	repo := newMemoryRepo()
+	repo.emails["user-1"] = "markush1986@gmail.com"
+	repo.premiumUsers["premium-anna-example.test"] = domain.PremiumUser{
+		ID:        "premium-anna-example.test",
+		Email:     "anna@example.test",
+		CreatedAt: time.Now().Add(-time.Hour),
+	}
+	mailerSpy := &spyMailer{}
+	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil, mailerSpy)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/admin/premium-users", bytes.NewBufferString(`{"email":"anna@example.test","sendInvite":true}`))
+	setAuth(repo, req, "user-1")
+	req.Header.Set("X-CSRF-Token", "csrf-user-1")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("expected 409, got %d: %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "bereits Premium-Zugriff") {
+		t.Fatalf("expected premium conflict message, got %s", rec.Body.String())
+	}
+	if len(mailerSpy.premium) != 0 {
+		t.Fatalf("expected no premium invite mail on conflict, got %+v", mailerSpy.premium)
 	}
 }
 
@@ -1147,6 +1245,17 @@ func TestFamilyInviteMergesProfileOnlyWithMatchingEmailHash(t *testing.T) {
 	repo := newMemoryRepo()
 	repo.profiles["family-user-1"] = domain.Profile{HouseholdName: "Familie A", Members: []domain.Member{{ID: "a", Name: "A"}}, Defaults: domain.MealDefaults{}, Presets: []string{"schnell"}}
 	repo.profiles["family-user-2"] = domain.Profile{HouseholdName: "Familie B", Members: []domain.Member{{ID: "b", Name: "B"}}, Defaults: domain.MealDefaults{}, Presets: []string{"gemuese"}}
+	repo.activeFamilies["user-1"] = "family-user-1"
+	repo.activeFamilies["user-2"] = "family-user-2"
+	repo.familyMembers["family-user-1"] = map[string]memoryFamilyMember{
+		"user-1": {role: "owner"},
+	}
+	repo.familyMembers["family-user-2"] = map[string]memoryFamilyMember{
+		"user-2": {role: "owner"},
+	}
+	if !repo.isPersonalFamily("user-2") {
+		t.Fatalf("expected user-2 to start as personal family, got %+v", repo.familyMembers["family-user-2"])
+	}
 	authService := testAuth()
 	mailerSpy := &spyMailer{}
 	handler := New(repo, planner.New(provider.NewMockGenerator()), authService, "", nil, nil, mailerSpy)
@@ -1188,6 +1297,63 @@ func TestFamilyInviteMergesProfileOnlyWithMatchingEmailHash(t *testing.T) {
 	handler.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"members":[{"id":"a","name":"A"},{"id":"b","name":"B"}]`) {
 		t.Fatalf("expected merged family members in summary, got %d: %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestCreateFamilyInviteRejectsAccountFromDifferentFamily(t *testing.T) {
+	repo := newMemoryRepo()
+	authService := testAuth()
+	handler := New(repo, planner.New(provider.NewMockGenerator()), authService, "", nil, nil, nil)
+	email := "person@example.test"
+	repo.emailHashes["user-2"] = authService.Hash("email:" + email)
+	repo.activeFamilies["user-2"] = "family-user-2"
+	repo.familyMembers["family-user-2"] = map[string]memoryFamilyMember{
+		"user-2": {role: "owner"},
+		"user-3": {role: "member"},
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/api/family/invites", bytes.NewBufferString(`{"email":"`+email+`"}`))
+	setAuth(repo, req, "user-1")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("expected 409, got %d: %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "bereits zu einem anderen Familienkonto") {
+		t.Fatalf("expected family conflict message, got %s", rec.Body.String())
+	}
+}
+
+func TestAcceptFamilyInviteRejectsAccountFromDifferentFamily(t *testing.T) {
+	repo := newMemoryRepo()
+	authService := testAuth()
+	handler := New(repo, planner.New(provider.NewMockGenerator()), authService, "", nil, nil, nil)
+	email := "person@example.test"
+	emailHash := authService.Hash("email:" + email)
+	repo.emailHashes["user-2"] = emailHash
+	repo.activeFamilies["user-2"] = "family-user-2"
+	repo.familyMembers["family-user-2"] = map[string]memoryFamilyMember{
+		"user-2": {role: "owner"},
+		"user-3": {role: "member"},
+	}
+	repo.invites["invite-token"] = memoryInvite{
+		targetFamilyID: "family-user-1",
+		emailHash:      emailHash,
+		token:          "invite-token",
+		expiresAt:      time.Now().Add(time.Hour),
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/api/family/invites/accept", bytes.NewBufferString(`{"token":"invite-token"}`))
+	setAuth(repo, req, "user-2")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("expected 409, got %d: %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "bereits zu einem anderen Familienkonto") {
+		t.Fatalf("expected family conflict message, got %s", rec.Body.String())
 	}
 }
 
