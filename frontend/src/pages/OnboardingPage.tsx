@@ -189,33 +189,60 @@ export function OnboardingPage() {
     setHasEdited(true);
   };
 
-  const memberOptions = form.members
-    .filter((member) => member.name.trim() !== '')
-    .map((member) => ({
-      id: member.id.trim() || member.alias.trim() || member.name.trim(),
-      label: member.alias.trim() || member.name.trim(),
-    }));
+  const familyMembersForAssignments = useMemo(() => {
+    const merged = new Map<string, { id: string; name: string; alias?: string; role?: string }>();
+    for (const member of form.members) {
+      const id = member.id.trim();
+      const name = member.name.trim();
+      if (!id || !name) continue;
+      merged.set(id, {
+        id,
+        name,
+        alias: member.alias.trim() || undefined,
+        role: member.role.trim() || undefined,
+      });
+    }
+    for (const member of familyQuery.data?.members ?? []) {
+      const id = member.id.trim();
+      const name = member.name.trim();
+      if (!id || !name) continue;
+      const current = merged.get(id);
+      merged.set(id, {
+        id,
+        name,
+        alias: member.alias?.trim() || current?.alias,
+        role: current?.role,
+      });
+    }
+    return Array.from(merged.values());
+  }, [familyQuery.data?.members, form.members]);
+
+  const memberOptions = familyMembersForAssignments.map((member) => ({
+    id: member.id,
+    label: member.alias?.trim() || member.name,
+  }));
 
   const linkedMembers = useMemo(() => {
-    const byId = new Map(form.members.map((member) => [member.id.trim(), member]));
+    const byId = new Map(familyMembersForAssignments.map((member) => [member.id, member]));
     return (familyQuery.data?.accounts ?? []).map((account) => {
       const linked = account.linkedMemberId ? byId.get(account.linkedMemberId) : undefined;
       return {
         ...account,
-        linkedLabel: linked ? linked.alias.trim() || linked.name.trim() : '',
-        unassigned: !linked,
+        linkedLabel: linked ? linked.alias?.trim() || linked.name.trim() : account.linkedMemberId || '',
+        unassigned: !account.linkedMemberId,
+        unresolvedLink: Boolean(account.linkedMemberId && !linked),
       };
     });
-  }, [familyQuery.data?.accounts, form.members]);
+  }, [familyMembersForAssignments, familyQuery.data?.accounts]);
   const familyRoster = useMemo(
     () =>
-      form.members.map((member, index) => ({
+      familyMembersForAssignments.map((member, index) => ({
         id: member.id,
-        label: member.alias.trim() || member.name.trim() || `Mitglied ${index + 1}`,
-        role: member.role.trim() || 'Profilmitglied',
+        label: member.alias?.trim() || member.name.trim() || `Mitglied ${index + 1}`,
+        role: member.role?.trim() || 'Haushaltsmitglied',
         accounts: linkedMembers.filter((account) => account.linkedMemberId === member.id),
       })),
-    [form.members, linkedMembers]
+    [familyMembersForAssignments, linkedMembers]
   );
   const linkedAccountsCount = linkedMembers.filter((account) => account.linkedMemberId).length;
   const unassignedAccountsCount = linkedMembers.filter((account) => account.unassigned).length;
@@ -224,9 +251,9 @@ export function OnboardingPage() {
   const canManageFamilyMail = Boolean(session?.isPremium || session?.isAdmin);
 
   const statusMessage = useMemo(() => {
-    if (saveMutation.isPending) return 'Profil wird gespeichert.';
+    if (saveMutation.isPending) return 'Angaben werden gespeichert.';
     if (saveMutation.isError) return readableApiError(saveMutation.error);
-    if (saveMutation.isSuccess && !hasEdited) return 'Profil gespeichert. Der nächste Wochenplan nutzt diese Angaben.';
+    if (saveMutation.isSuccess && !hasEdited) return 'Angaben gespeichert. Der nächste Wochenplan nutzt diese Einstellungen.';
     if (hasEdited) return 'Ungespeicherte Änderungen.';
     return 'Bereit zum Speichern.';
   }, [hasEdited, saveMutation.error, saveMutation.isError, saveMutation.isPending, saveMutation.isSuccess]);
@@ -245,26 +272,26 @@ export function OnboardingPage() {
       <main className="app-main">
         <section className="profile-page">
           <div className="profile-page-intro">
-            <span className="eyebrow">Profil</span>
-            <h1>Familienkonto pflegen</h1>
-            <p>Hier liegen Mitglieder, verknüpfte Logins und die Regeln, nach denen neue Wochen geplant werden.</p>
-            <div className="profile-overview-grid" aria-label="Profilübersicht">
+            <span className="eyebrow">Haushalt</span>
+            <h1>Haushalt und Familie pflegen</h1>
+            <p>Hier liegen Personen, Zugänge und Regeln, nach denen neue Wochen geplant werden.</p>
+            <div className="profile-overview-grid" aria-label="Haushaltsübersicht">
               <div className="profile-overview-card">
                 <strong>{form.members.length}</strong>
-                <span>Mitglieder im Profil</span>
+                <span>Personen im Haushalt</span>
               </div>
               <div className="profile-overview-card">
                 <strong>{familyQuery.data?.accounts?.length ?? 0}</strong>
-                <span>Verknüpfte Logins</span>
+                <span>Verknüpfte Zugänge</span>
               </div>
               <div className="profile-overview-card">
                 <strong>{familyQuery.data?.personal ? 'Privat' : 'Familie'}</strong>
-                <span>{familyQuery.data?.name || form.householdName || 'Konto'}</span>
+                <span>{familyQuery.data?.name || form.householdName || 'Bereich'}</span>
               </div>
             </div>
           </div>
 
-          <nav className="profile-tab-nav" aria-label="Profilbereiche">
+          <nav className="profile-tab-nav" aria-label="Bereiche für Haushalt und Familie">
             <button
               type="button"
               className={`profile-tab-button${activeTab === 'family' ? ' profile-tab-button-active' : ''}`}
@@ -310,7 +337,7 @@ export function OnboardingPage() {
 
           {joinedFamily ? (
             <div className="status-strip status-strip-success" role="status" aria-live="polite">
-              <span>Familienkonto aktiv. Das gemeinsame Profil wurde geladen und die Logins können jetzt sauber Personen zugeordnet werden.</span>
+              <span>Familienbereich aktiv. Die gemeinsamen Angaben wurden geladen und die Zugänge können jetzt sauber Personen zugeordnet werden.</span>
             </div>
           ) : null}
 
@@ -344,7 +371,7 @@ export function OnboardingPage() {
                   {form.members.map((member, index) => (
                     <div key={`roster-${member.id}-${index}`} className="member-pill">
                       <strong>{member.alias.trim() || member.name.trim() || `Mitglied ${index + 1}`}</strong>
-                      <span>{member.role.trim() || 'Profilmitglied'}</span>
+                      <span>{member.role.trim() || 'Haushaltsmitglied'}</span>
                     </div>
                   ))}
                 </div>
@@ -372,7 +399,7 @@ export function OnboardingPage() {
 
                       <div className="profile-section-fields member-grid">
                         <label className="field">
-                          <span className="field-label">Name im Profil</span>
+                          <span className="field-label">Voller Name</span>
                           <input
                             className="input"
                             name={`member-name-${index}`}
@@ -448,7 +475,7 @@ export function OnboardingPage() {
                           Zutat vor dem Kochen noch einmal kontrollieren.
                         </p>
                         <p className="profile-inline-note member-grid-wide">
-                          Name bleibt die eindeutige Person im Profil. Die Anrede wird in Prompts und im Plan bevorzugt
+                          Der volle Name bleibt die eindeutige Person im Haushalt. Die Anrede wird in Prompts und im Plan bevorzugt
                           verwendet, wenn sie gesetzt ist.
                         </p>
                       </div>
@@ -488,8 +515,8 @@ export function OnboardingPage() {
                   {familyQuery.data?.mergedWarning ? <p>{familyQuery.data.mergedWarning}</p> : null}
                   <div className="family-summary-row">
                     <span>{linkedAccountsCount} von {linkedMembers.length} Logins zugeordnet</span>
-                    <span>{memberOptions.length} Profilmitglieder aktiv</span>
-                    {unassignedAccountsCount > 0 ? <span>{unassignedAccountsCount} Logins brauchen noch eine Zuordnung</span> : null}
+                    <span>{memberOptions.length} Personen aktiv</span>
+                    {unassignedAccountsCount > 0 ? <span>{unassignedAccountsCount} Logins brauchen noch eine Person</span> : null}
                   </div>
                 </div>
 
@@ -533,11 +560,14 @@ export function OnboardingPage() {
                           <p>
                             {account.linkedLabel
                               ? `Verknüpft mit ${account.linkedLabel}`
-                              : 'Noch keinem Profilmitglied zugeordnet'}
+                              : 'Noch keiner Person zugeordnet'}
                           </p>
+                          {account.unresolvedLink ? (
+                            <p className="muted">Gespeicherte Zuordnung vorhanden, aber die Person ist im aktuellen Profil noch nicht sichtbar.</p>
+                          ) : null}
                         </div>
                         <label className="field">
-                          <span className="field-label">Zugeordnetes Profilmitglied</span>
+                          <span className="field-label">Zugeordnete Person</span>
                           <select
                             className="input"
                             value={account.linkedMemberId ?? ''}
@@ -906,11 +936,11 @@ export function OnboardingPage() {
             <div className="profile-save-bar">
               <div>
                 <strong>Speichern und für die nächste Woche nutzen</strong>
-                <p>Aliase und Profilzuordnungen werden in zukünftigen Prompts wiederverwendet.</p>
+                <p>Aliase und Zuordnungen werden in zukünftigen Prompts wiederverwendet.</p>
               </div>
               <button type="submit" className="button button-primary" disabled={saveMutation.isPending}>
                 <SaveIcon className="action-icon" />
-                {saveMutation.isPending ? 'Profil wird gespeichert' : 'Profil speichern'}
+                {saveMutation.isPending ? 'Angaben werden gespeichert' : 'Angaben speichern'}
               </button>
             </div>
           </form>

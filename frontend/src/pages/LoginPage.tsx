@@ -46,32 +46,43 @@ export function LoginPage() {
     <div className="auth-shell">
       <main className="login-panel" aria-labelledby="login-title">
         <div className="login-copy">
-          <p className="eyebrow">Die Familienküche</p>
-          <h1 id="login-title" aria-label="Mealplanner">
+          <p className="eyebrow">Privater Zugang</p>
+          <h1 id="login-title" aria-label="Familienküche">
             <AppLogo />
           </h1>
-          <p>
-            Wochen gemeinsam planen, Gerichte feinziehen und den Einkauf direkt mitnehmen. Der Login schützt euren
-            privaten Familienbereich, ohne unnötige Profildaten aufzublähen.
+          <p className="login-lead">
+            Wochen gemeinsam planen, Gerichte feinziehen und den Einkauf direkt mitnehmen. Der Login hält euren
+            Familienbereich kompakt, privat und ohne unnötige Profildaten.
           </p>
+          <div className="login-highlights" aria-label="Vorteile">
+            <span>Woche abstimmen</span>
+            <span>Rezepte verfeinern</span>
+            <span>Einkauf mitnehmen</span>
+          </div>
         </div>
 
-        <div className="login-actions" aria-label="Login-Anbieter">
-          {googleEnabled ? (
-            <button type="button" className="button button-primary login-button" onClick={() => void startGoogleLogin()} disabled={startingGoogleLogin}>
-              {startingGoogleLogin ? 'Google Login startet' : 'Mit Google anmelden'}
-            </button>
-          ) : (
-            <button type="button" className="button button-primary login-button" disabled>
-              Mit Google anmelden
-            </button>
-          )}
+        <div className="login-actions-block">
+          <p className="login-section-label">Anmelden</p>
+          <div className="login-actions" aria-label="Login-Anbieter">
+            {googleEnabled ? (
+              <button type="button" className="button button-primary login-button" onClick={() => void startGoogleLogin()} disabled={startingGoogleLogin}>
+                {startingGoogleLogin ? 'Google Login startet' : 'Mit Google anmelden'}
+              </button>
+            ) : (
+              <button type="button" className="button button-primary login-button" disabled>
+                Mit Google anmelden
+              </button>
+            )}
 
-          {apple?.enabled && appleStartUrl ? (
-            <a className="button button-secondary login-button" href={appleStartUrl}>
-              Mit Apple anmelden
-            </a>
-          ) : null}
+            {apple?.enabled && appleStartUrl ? (
+              <a className="button button-secondary login-button" href={appleStartUrl}>
+                Mit Apple anmelden
+              </a>
+            ) : null}
+          </div>
+          <p className="login-support-copy">
+            Social Login wird nur für den Zugang genutzt. Eure Planungsdaten bleiben im Familienkonto.
+          </p>
         </div>
 
         {providersQuery.isError ? (

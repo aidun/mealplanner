@@ -264,6 +264,31 @@ export function DashboardPage() {
       ? 'Das Gericht wurde ausgetauscht.'
       : '';
   const logoutMessage = logoutMutation.isError ? 'Logout gerade nicht möglich. Bitte versuche es erneut.' : '';
+  const workspaceViews = [
+    {
+      id: 'plan' as const,
+      title: 'Plan',
+      description: selectedDay?.label
+        ? `${selectedDay.label} ist ausgewählt.`
+        : 'Tage und Mahlzeiten im Wochenrhythmus durchgehen.',
+      meta: `${currentPlanQuery.data?.days.length ?? 0} Tage`,
+    },
+    {
+      id: 'detail' as const,
+      title: 'Gericht',
+      description: inspectedMeal?.title ?? 'Zutaten, Schritte und Anpassungen öffnen.',
+      meta: inspectedMealInPlan ? 'Im Fokus' : 'Noch nichts ausgewählt',
+    },
+    {
+      id: 'shopping' as const,
+      title: 'Einkauf',
+      description:
+        shoppingListQuery.data && countShoppingItems(shoppingListQuery.data) > 0
+          ? `${countShoppingItems(shoppingListQuery.data)} Einträge bereit.`
+          : 'Alles für die Woche gesammelt prüfen.',
+      meta: `${shoppingListQuery.data ? countShoppingItems(shoppingListQuery.data) : 0} Produkte`,
+    },
+  ];
 
   return loggedOut ? (
     <LoginPage />
@@ -299,20 +324,6 @@ export function DashboardPage() {
               <strong>{inspectedMeal?.title ?? 'Noch kein Gericht gewählt'}</strong>
             </div>
           </div>
-          <div className="plan-stage-meta" aria-label="Planstatus">
-            <div className="stage-stat">
-              <strong>{currentPlanQuery.data?.days.length ?? 0}</strong>
-              <span>Tage im Plan</span>
-            </div>
-            <div className="stage-stat">
-              <strong>{allMeals.length}</strong>
-              <span>Mahlzeiten</span>
-            </div>
-            <div className="stage-stat">
-              <strong>{shoppingListQuery.data ? countShoppingItems(shoppingListQuery.data) : 0}</strong>
-              <span>Einkäufe</span>
-            </div>
-          </div>
         </section>
 
         {planMessage || regenerateMessage || logoutMessage ? (
@@ -325,44 +336,35 @@ export function DashboardPage() {
           </div>
         ) : null}
 
-        <div className="workspace-pane-switch" aria-label="Bereiche wechseln">
-          <button
-            type="button"
-            className={`workspace-pane-button${activeWorkspacePane === 'plan' ? ' workspace-pane-button-active' : ''}`}
-            onClick={() =>
-              startTransition(() => {
-                updateSearchParams(setSearchParams, { pane: 'plan' });
-              })
-            }
-            aria-pressed={activeWorkspacePane === 'plan'}
-          >
-            Woche
-          </button>
-          <button
-            type="button"
-            className={`workspace-pane-button${activeWorkspacePane === 'detail' ? ' workspace-pane-button-active' : ''}`}
-            onClick={() =>
-              startTransition(() => {
-                updateSearchParams(setSearchParams, { pane: 'detail' });
-              })
-            }
-            aria-pressed={activeWorkspacePane === 'detail'}
-          >
-            Gericht
-          </button>
-          <button
-            type="button"
-            className={`workspace-pane-button${activeWorkspacePane === 'shopping' ? ' workspace-pane-button-active' : ''}`}
-            onClick={() =>
-              startTransition(() => {
-                updateSearchParams(setSearchParams, { pane: 'shopping' });
-              })
-            }
-            aria-pressed={activeWorkspacePane === 'shopping'}
-          >
-            Einkauf
-          </button>
-        </div>
+        <section className="workspace-nav-block surface" aria-labelledby="workspace-nav-title">
+          <div className="surface-header workspace-nav-header">
+            <div>
+              <span className="eyebrow">Arbeitsbereich</span>
+              <h2 id="workspace-nav-title">Direkt zwischen Woche, Gericht und Einkauf wechseln</h2>
+              <p>Jeder Bereich behält den aktuellen Kontext, damit du nicht neu suchen musst.</p>
+            </div>
+          </div>
+          <div className="workspace-pane-switch" aria-label="Bereiche wechseln">
+            {workspaceViews.map((view) => (
+              <button
+                key={view.id}
+                type="button"
+                className={`workspace-pane-button${activeWorkspacePane === view.id ? ' workspace-pane-button-active' : ''}`}
+                aria-label={view.title}
+                onClick={() =>
+                  startTransition(() => {
+                    updateSearchParams(setSearchParams, { pane: view.id });
+                  })
+                }
+                aria-pressed={activeWorkspacePane === view.id}
+              >
+                <span className="workspace-pane-title">{view.title}</span>
+                <strong className="workspace-pane-meta">{view.meta}</strong>
+                <span className="workspace-pane-description">{view.description}</span>
+              </button>
+            ))}
+          </div>
+        </section>
 
         <div className="workspace">
           <div className="workspace-main">

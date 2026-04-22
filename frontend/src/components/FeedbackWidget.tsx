@@ -31,8 +31,18 @@ export function FeedbackWidget() {
     return '';
   }, [feedbackMutation.error, feedbackMutation.isError, feedbackMutation.isSuccess]);
 
+  const routeClassName =
+    location.pathname === '/onboarding'
+      ? ' feedback-widget-route-onboarding'
+      : location.pathname === '/admin'
+        ? ' feedback-widget-route-admin'
+        : '';
+
   return (
-    <aside className={`feedback-widget${open ? ' feedback-widget-open' : ''}`} aria-label="Premium Feedback">
+    <aside
+      className={`feedback-widget${routeClassName}${open ? ' feedback-widget-open' : ''}`}
+      aria-label="Premium Feedback"
+    >
       <div className="feedback-widget-card">
         <button
           type="button"
