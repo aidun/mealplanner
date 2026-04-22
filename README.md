@@ -1,6 +1,6 @@
-# Mealplanner
+# Mahlio
 
-Private Familien-Webapp fuer Wochen-Essensplaene. Der aktuelle produktive Zugang laeuft ueber
+Private Familien-Webapp fuer Wochen-Essensplaene. Der aktuelle produktive Zugang laeuft in Phase A weiter ueber
 `https://mealplanner.markushartmann.dev`.
 
 ## Architektur
@@ -10,6 +10,7 @@ Private Familien-Webapp fuer Wochen-Essensplaene. Der aktuelle produktive Zugang
 - `deploy`: Kustomize-Manifeste fuer Test/Production, Cloudflare Tunnel und ArgoCD.
 - `docs/ARCHITECTURE.md`: Gesamtübersicht über Services, SaaS-Dienste und Betriebs-Komponenten.
 - `docs/API.md`: gepflegte Backend-API-Dokumentation fuer Frontend, Admin und Betrieb.
+- `docs/BRAND.md`: aktueller Marken-, Naming- und Claim-Stand fuer Phase A.
 - `docs/security.md`: Security-, Pentest- und Betriebs-Runbook.
 
 ## Lokal starten

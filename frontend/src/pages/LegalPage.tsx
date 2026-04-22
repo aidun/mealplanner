@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { AppLogo } from '../components/AppLogo';
+import { brand } from '../brand';
 
 interface LegalPageProps {
   kind: 'privacy' | 'imprint';
@@ -19,7 +20,7 @@ export function LegalPage({ kind }: LegalPageProps) {
     <div className="app-shell legal-shell">
       <header className="app-header compact-header">
         <div className="brand-block">
-          <Link to="/" className="brand-mark" aria-label="Familienküche Startseite">
+          <Link to="/" className="brand-mark" aria-label={`${brand.name} Startseite`}>
             <AppLogo />
           </Link>
           <p className="brand-subtitle">Rechtliche Angaben</p>
@@ -33,7 +34,7 @@ export function LegalPage({ kind }: LegalPageProps) {
               <p className="eyebrow">Rechtliches</p>
               <h1>{isPrivacy ? 'Datenschutz' : 'Impressum'}</h1>
               <p>
-                Diese Seite beschreibt den aktuellen Betriebsstand von Mealplanner. Die technischen Abläufe sind
+                Diese Seite beschreibt den aktuellen Betriebsstand von {brand.name}. Die technischen Abläufe sind
                 dokumentiert; Betreiber- und Pflichtangaben werden hier aus den hinterlegten Produktionsdaten
                 veröffentlicht.
               </p>
@@ -61,7 +62,7 @@ function PrivacyContent() {
 
       <h2>Login-Daten</h2>
       <p>
-        Mealplanner nutzt Social Login nur für den Zugang zum privaten Familienkonto. Dauerhaft gespeichert werden
+        {brand.name} nutzt Social Login nur für den Zugang zum privaten Familienkonto. Dauerhaft gespeichert werden
         nur die technisch nötigen Zuordnungen der freigegebenen Accounts; Namen, Profilbilder und ähnliche
         Provider-Profildaten werden nicht für die Rezeptplanung verwendet.
       </p>
@@ -115,7 +116,7 @@ function ImprintContent() {
 
       <h2>Hinweis</h2>
       <p>
-        Mealplanner ist ein privates Planungsangebot. Die technische Betriebsform und die Kontaktangaben sind hier
+        {brand.name} ist ein privates Planungsangebot. Die technische Betriebsform und die Kontaktangaben sind hier
         abgebildet; weitergehende rechtliche Pflichtangaben werden bei Bedarf ergänzt.
       </p>
     </div>

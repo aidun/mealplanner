@@ -2,6 +2,7 @@ import { Link, NavLink } from 'react-router-dom';
 import { AppLogo } from './AppLogo';
 import { LogoutIcon, PlusIcon, ShieldIcon, UserIcon } from './icons';
 import { formatWeekRange, formatWeekRangeCompact } from '../lib/format';
+import { brand } from '../brand';
 
 interface HeaderProps {
   weekStart?: string;
@@ -26,10 +27,10 @@ export function Header({
     <header className="app-header">
       <div className="header-overview">
         <div className="brand-block">
-          <Link to="/" className="brand-mark" aria-label="Familienküche Startseite">
+          <Link to="/" className="brand-mark" aria-label={`${brand.name} Startseite`}>
             <AppLogo compact />
           </Link>
-          <p className="brand-subtitle">Familienküche für Woche, Rezepte und Einkauf.</p>
+          <p className="brand-subtitle">{brand.shortTagline}</p>
         </div>
 
         <div className="header-meta">

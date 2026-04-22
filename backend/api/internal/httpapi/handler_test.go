@@ -821,7 +821,7 @@ func TestBringExport(t *testing.T) {
 		t.Fatalf("expected text/html content type, got %q", contentType)
 	}
 	body := rec.Body.String()
-	for _, expected := range []string{"schema.org", `"@type":"Recipe"`, "recipeIngredient", `"author":"Mealplanner"`, `"prepTime":"PT10M"`, `"totalTime":"PT10M"`, "itemprop=\"recipeIngredient ingredients\"", "itemprop=\"author\"", "itemprop=\"recipeInstructions\"", "platform.getbring.com/widgets/import.js", "data-bring-import", "2 Stk Zucchini", "400 g Pasta"} {
+	for _, expected := range []string{"schema.org", `"@type":"Recipe"`, "recipeIngredient", `"author":"Mahlio"`, `"prepTime":"PT10M"`, `"totalTime":"PT10M"`, "itemprop=\"recipeIngredient ingredients\"", "itemprop=\"author\"", "itemprop=\"recipeInstructions\"", "platform.getbring.com/widgets/import.js", "data-bring-import", "2 Stk Zucchini", "400 g Pasta"} {
 		if !strings.Contains(body, expected) {
 			t.Fatalf("bring export missing %q in body: %s", expected, body)
 		}
@@ -931,7 +931,7 @@ func TestBringExportCanScopeWeekDayAndMeal(t *testing.T) {
 		t.Fatalf("expected signed meal export 200, got %d: %s", rec.Code, rec.Body.String())
 	}
 	body := rec.Body.String()
-	for _, expected := range []string{"Pasta", "400 g Pasta", "Mealplanner Rezept: Pasta", "itemprop=\"yield\"", "itemprop=\"recipeIngredient ingredients\"", "Wasser kochen", "\"image\":\"data:image/svg+xml;utf8,"} {
+	for _, expected := range []string{"Pasta", "400 g Pasta", "Mahlio Rezept: Pasta", "itemprop=\"yield\"", "itemprop=\"recipeIngredient ingredients\"", "Wasser kochen", "\"image\":\"data:image/svg+xml;utf8,"} {
 		if !strings.Contains(body, expected) {
 			t.Fatalf("meal export missing %q in body: %s", expected, body)
 		}

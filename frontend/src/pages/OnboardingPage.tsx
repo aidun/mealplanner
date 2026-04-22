@@ -18,6 +18,7 @@ import { readableApiError } from '../lib/api-error';
 import { defaultMealPlanDays, emptyMember, formToProfile, profileToForm, syncMealPlanDays } from '../lib/profile-form';
 import type { MemberFormState, ProfileFormState } from '../types';
 import { useSession } from '../session';
+import { brand } from '../brand';
 
 const EMPTY_FORM: ProfileFormState = {
   householdName: '',
@@ -265,7 +266,7 @@ export function OnboardingPage() {
           <button type="button" className="brand-mark brand-button" onClick={() => navigate('/')}>
             <AppLogo />
           </button>
-          <p className="brand-subtitle">Mitglieder, Aliase und Regeln für kommende Wochen.</p>
+          <p className="brand-subtitle">Personen, Aliase und Regeln für kommende Wochen.</p>
         </div>
       </header>
 
@@ -765,7 +766,7 @@ export function OnboardingPage() {
                   />
                 </label>
                 <p className="profile-inline-note two-column-note">
-                  Hinweis: Auch bei klaren Regeln und Ausschlüssen prüft Mealplanner Rezepte nicht als rechtssicheren
+                  Hinweis: Auch bei klaren Regeln und Ausschlüssen prüft {brand.name} Rezepte nicht als rechtssicheren
                   Allergie-Check. Kritische Zutaten müssen vor dem Einkauf und Kochen manuell bestätigt werden.
                 </p>
               </div>

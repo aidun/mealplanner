@@ -60,7 +60,7 @@ func TestResendInviteEmailBuildsPayload(t *testing.T) {
 	for _, want := range []string{
 		`"from":"info@markushartmann.dev"`,
 		`"reply_to":["info@markushartmann.dev"]`,
-		`"subject":"Einladung zum Mealplanner von Familie Hartmann"`,
+		`"subject":"Einladung zu Mahlio von Familie Hartmann"`,
 		`"to":["person@example.test"]`,
 		`invite-token`,
 	} {

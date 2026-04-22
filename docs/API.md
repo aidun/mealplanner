@@ -1,6 +1,6 @@
 # Backend API
 
-Diese Dokumentation beschreibt die HTTP-Schnittstelle der Mealplanner-API auf fachlicher Ebene.
+Diese Dokumentation beschreibt die HTTP-Schnittstelle der Mahlio-API auf fachlicher Ebene.
 Sie ist die Referenz fuer Frontend, Admin-Workflow und Tests. Die API ist cookie-basiert, nutzt
 CSRF-Schutz fuer mutierende Requests und antwortet im Fehlerfall mit sprechendem Text oder einem
 JSON-Fehlerobjekt, falls der jeweilige Handler das bereits so liefert.

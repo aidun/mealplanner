@@ -75,13 +75,13 @@ test('planner smoke path', async ({ page, context }) => {
 
   await page.goto('/');
 
-  await expect(page.getByText('Die Familienküche für diese Woche.')).toBeVisible();
+  await expect(page.getByText('Diese Woche in Mahlio.')).toBeVisible();
 
-  await page.getByLabel('Primäre Aktionen').getByRole('link', { name: 'Profil' }).click();
-  await expect(page.getByText('Familienkonto pflegen')).toBeVisible();
+  await page.getByLabel('Primäre Aktionen').getByRole('link', { name: 'Haushalt' }).click();
+  await expect(page.getByText('Haushalt und Familie pflegen')).toBeVisible();
   await page.getByLabel('Haushaltsname').fill('Familie Weber');
-  await page.getByRole('button', { name: 'Profil speichern' }).click();
-  await expect(page.getByText('Profil gespeichert. Der nächste Wochenplan nutzt diese Angaben.')).toBeVisible();
+  await page.getByRole('button', { name: 'Angaben speichern' }).click();
+  await expect(page.getByText('Angaben gespeichert. Der nächste Wochenplan nutzt diese Einstellungen.')).toBeVisible();
   await page.getByRole('button', { name: 'Zum Wochenplan' }).click();
 
   await expect(page.getByRole('textbox', { name: 'Feedback' })).toHaveCount(0);
@@ -103,7 +103,7 @@ test('planner smoke path', async ({ page, context }) => {
   await newPage.waitForLoadState();
   expect(newPage.url()).toContain('/api/plans/plan-1/bring-export?token=test-token');
 
-  await page.getByLabel('Primäre Aktionen').getByRole('link', { name: 'Profil' }).click();
+  await page.getByLabel('Primäre Aktionen').getByRole('link', { name: 'Haushalt' }).click();
   await page.getByRole('button', { name: 'Favoriten' }).click();
   await expect(page.getByText('2 gespeicherte Rezepte')).toBeVisible();
 });
@@ -219,13 +219,13 @@ test('login and invite acceptance stay on guarded production paths', async ({ pa
 
   await page.goto('/');
   await expect(page.getByRole('button', { name: 'Mit Google anmelden' })).toBeVisible();
-  await expect(page.getByText('Mealplanner')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Mahlio' })).toBeVisible();
 
   authenticated = true;
   await page.goto('/family/invites/accept?token=invite-token');
   await page.getByRole('button', { name: 'Familienkonto beitreten' }).click();
   await expect(page).toHaveURL(/\/onboarding\?family=joined$/);
-  await expect(page.getByText('Familienkonto pflegen')).toBeVisible();
+  await expect(page.getByText('Haushalt und Familie pflegen')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Prompt prüfen' })).toHaveCount(0);
 });
 

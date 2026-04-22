@@ -164,7 +164,7 @@ flowchart LR
   - TLS am Edge
   - Tunnel-Zugang
 - Zweck:
-  - öffentliche Erreichbarkeit von `mealplanner.markushartmann.dev`
+  - öffentliche Erreichbarkeit von `mealplanner.markushartmann.dev` als Phase-A-Brand-Domain
 
 ## Monitoring und Diagnose
 

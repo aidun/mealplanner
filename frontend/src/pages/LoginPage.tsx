@@ -4,6 +4,7 @@ import { getAuthProviders } from '../api';
 import { AppLogo } from '../components/AppLogo';
 import { readableApiError } from '../lib/api-error';
 import { useState } from 'react';
+import { brand } from '../brand';
 
 export function LoginPage() {
   const [loginError, setLoginError] = useState('');
@@ -47,12 +48,12 @@ export function LoginPage() {
       <main className="login-panel" aria-labelledby="login-title">
         <div className="login-copy">
           <p className="eyebrow">Privater Zugang</p>
-          <h1 id="login-title" aria-label="Familienküche">
+          <h1 id="login-title" aria-label={brand.name}>
             <AppLogo />
           </h1>
           <p className="login-lead">
-            Wochen gemeinsam planen, Gerichte feinziehen und den Einkauf direkt mitnehmen. Der Login hält euren
-            Familienbereich kompakt, privat und ohne unnötige Profildaten.
+            {brand.name} hält Woche, Rezepte und Einkauf für euren Haushalt an einem Ort. Der Login schützt euren
+            privaten Bereich, ohne unnötige Profildaten aufzublähen.
           </p>
           <div className="login-highlights" aria-label="Vorteile">
             <span>Woche abstimmen</span>
@@ -81,7 +82,7 @@ export function LoginPage() {
             ) : null}
           </div>
           <p className="login-support-copy">
-            Social Login wird nur für den Zugang genutzt. Eure Planungsdaten bleiben im Familienkonto.
+            {brand.name} nutzt Social Login nur für den Zugang. Eure Planungsdaten bleiben im Familienkonto.
           </p>
         </div>
 

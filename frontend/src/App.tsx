@@ -10,6 +10,7 @@ import { LegalPage } from './pages/LegalPage';
 import { LoginPage } from './pages/LoginPage';
 import { OnboardingPage } from './pages/OnboardingPage';
 import { SessionProvider } from './session';
+import { brand } from './brand';
 
 export function App() {
   return (
@@ -82,7 +83,7 @@ function AuthenticatedRoute({ element }: { element: ReactElement }) {
           <section className="inline-banner">
             <div>
               <h2>Session wird geprüft</h2>
-              <p>Familienküche lädt deinen privaten Zugang.</p>
+              <p>{brand.name} lädt deinen privaten Zugang.</p>
             </div>
           </section>
         </main>

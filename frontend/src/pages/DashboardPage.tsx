@@ -23,6 +23,7 @@ import {
 } from '../api';
 import { useSession } from '../session';
 import type { Meal, PromptDebugSnapshot } from '../types';
+import { brand } from '../brand';
 
 function promptDebugEnabled() {
   if (import.meta.env.VITE_PROMPT_DEBUG !== 'true') {
@@ -311,8 +312,8 @@ export function DashboardPage() {
           <PlanBackdrop />
           <div className="plan-stage-copy plan-stage-copy-compact">
             <span className="eyebrow">Wochenplan</span>
-            <h1 id="home-title">Die Familienküche für diese Woche.</h1>
-            <p>Woche, Gericht und Einkauf greifen hier direkt ineinander, statt sich gegenseitig im Weg zu stehen.</p>
+            <h1 id="home-title">Diese Woche in {brand.name}.</h1>
+            <p>{brand.shortTagline} Woche, Gericht und Einkauf greifen hier direkt ineinander.</p>
           </div>
           <div className="plan-stage-context" aria-label="Aktueller Fokus">
             <div className="plan-focus-item">

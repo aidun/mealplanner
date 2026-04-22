@@ -8,6 +8,7 @@ import { Navigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { useSession } from '../session';
 import type { MailTemplate } from '../types';
+import { brand } from '../brand';
 
 export function AdminPage() {
   const queryClient = useQueryClient();
@@ -113,7 +114,7 @@ export function AdminPage() {
           <div className="profile-page-intro">
             <span className="eyebrow">Admin</span>
             <h1>Admin</h1>
-            <p>Premium-Freigaben, Feedback-Triage und die laufenden Texte für Die Familienküche.</p>
+            <p>Premium-Freigaben, Feedback-Triage und die laufenden Texte für {brand.name}.</p>
           </div>
 
           <div className="profile-section">

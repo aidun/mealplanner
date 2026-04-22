@@ -402,7 +402,7 @@ describe('Mealplanner app', () => {
 
     renderApp('/');
 
-    expect(await screen.findByRole('heading', { name: 'Familienküche' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Mahlio' })).toBeInTheDocument();
     expect(await screen.findByRole('button', { name: 'Mit Google anmelden' })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Mit Apple anmelden' })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Datenschutz' })).toBeInTheDocument();
@@ -1074,7 +1074,7 @@ describe('Mealplanner app', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Abmelden' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Logout gerade nicht möglich');
-    expect(screen.getByText('Die Familienküche für diese Woche.')).toBeInTheDocument();
+    expect(screen.getByText('Diese Woche in Mahlio.')).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Mit Google anmelden' })).not.toBeInTheDocument();
   });
 
@@ -1100,7 +1100,7 @@ describe('Mealplanner app', () => {
     window.localStorage.setItem('mealplanner.promptDebug', 'true');
     renderApp('/');
 
-    expect(await screen.findByText('Die Familienküche für diese Woche.')).toBeInTheDocument();
+    expect(await screen.findByText('Diese Woche in Mahlio.')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Prompt prüfen' })).not.toBeInTheDocument();
   });
 
@@ -1108,6 +1108,6 @@ describe('Mealplanner app', () => {
     renderApp('/onboarding');
 
     expect(await screen.findByText(/Allergien und Unverträglichkeiten werden in Rezepten nicht verbindlich geprüft/)).toBeInTheDocument();
-    expect(screen.getByText(/Mealplanner Rezepte nicht als rechtssicheren Allergie-Check/)).toBeInTheDocument();
+    expect(screen.getByText(/Mahlio Rezepte nicht als rechtssicheren Allergie-Check/)).toBeInTheDocument();
   });
 });

@@ -1,6 +1,6 @@
 # Security Runbook
 
-Mealplanner ist ab jetzt als produktive private Familien-App zu behandeln.
+Mahlio ist ab jetzt als produktive private Familien-App zu behandeln. `mealplanner.markushartmann.dev` bleibt dabei zunaechst die Phase-A-Übergangsadresse.
 Breaking Changes muessen vorab angekuendigt werden.
 
 ## Zugang und Datenschutz

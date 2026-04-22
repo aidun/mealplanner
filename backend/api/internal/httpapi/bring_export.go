@@ -14,11 +14,13 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/aidun/mealplanner/backend/api/internal/brand"
 	"github.com/aidun/mealplanner/backend/api/internal/domain"
 	"github.com/aidun/mealplanner/backend/api/internal/store"
 )
 
 type bringExportView struct {
+	BrandName    string
 	Title        string
 	WeekStart    string
 	Description  string
@@ -305,7 +307,7 @@ func newBringExportView(plan domain.Plan, canonicalURL string) (bringExportView,
 	schema := map[string]any{
 		"@context":           "https://schema.org",
 		"@type":              "Recipe",
-		"author":             "Mealplanner",
+		"author":             brand.Name,
 		"cookTime":           "PT0M",
 		"description":        description,
 		"image":              imageURL,
@@ -335,6 +337,7 @@ func newBringExportView(plan domain.Plan, canonicalURL string) (bringExportView,
 	}
 
 	return bringExportView{
+		BrandName:    brand.Name,
 		Title:        title,
 		WeekStart:    strings.TrimSpace(plan.WeekStart),
 		Description:  description,
@@ -357,13 +360,13 @@ func bringExportCopy(plan domain.Plan, kind string, onlyDay domain.DayPlan, only
 		if category == "" {
 			category = "Rezept"
 		}
-		title = "Mealplanner Rezept"
+		title = brand.Name + " Rezept"
 		if strings.TrimSpace(onlyMeal.Title) != "" {
-			title = "Mealplanner Rezept: " + strings.TrimSpace(onlyMeal.Title)
+			title = brand.Name + " Rezept: " + strings.TrimSpace(onlyMeal.Title)
 		}
 		description = strings.TrimSpace(onlyMeal.Description)
 		if description == "" {
-			description = "Ein familiengeeignetes Rezept aus dem Mealplanner."
+			description = "Ein familiengeeignetes Rezept aus " + brand.Name + "."
 		}
 		yield = "1 Rezept"
 		if servings := len(onlyMeal.Servings); servings > 0 {
@@ -377,11 +380,11 @@ func bringExportCopy(plan domain.Plan, kind string, onlyDay domain.DayPlan, only
 		if day == "" {
 			day = strings.TrimSpace(onlyDay.Date)
 		}
-		title = "Mealplanner Einkaufsliste fuer einen Tag"
+		title = brand.Name + " Einkaufsliste fuer einen Tag"
 		if day != "" {
-			title = "Mealplanner Einkaufsliste fuer " + day
+			title = brand.Name + " Einkaufsliste fuer " + day
 		}
-		return title, "Alle Zutaten fuer diesen Mealplanner-Tag.", "1 Tag", category
+		return title, "Alle Zutaten fuer diesen " + brand.Name + "-Tag.", "1 Tag", category
 	}
 	mealCount := 0
 	for _, day := range plan.Days {
@@ -389,13 +392,13 @@ func bringExportCopy(plan domain.Plan, kind string, onlyDay domain.DayPlan, only
 			mealCount++
 		}
 	}
-	title = "Mealplanner Einkaufsliste"
+	title = brand.Name + " Einkaufsliste"
 	if strings.TrimSpace(plan.WeekStart) != "" {
-		title = fmt.Sprintf("Mealplanner Einkaufsliste ab %s", strings.TrimSpace(plan.WeekStart))
+		title = fmt.Sprintf("%s Einkaufsliste ab %s", brand.Name, strings.TrimSpace(plan.WeekStart))
 	}
-	description = "Ein vorbereiteter Wochenplan fuer die Familienkueche mit allen Zutaten aus dem aktuellen Mealplanner-Wochenplan."
+	description = "Ein vorbereiteter Wochenplan mit allen Zutaten aus dem aktuellen " + brand.Name + "-Wochenplan."
 	if mealCount == 0 {
-		description = "Eine Mealplanner-Einkaufsliste fuer die Familienkueche."
+		description = "Eine " + brand.Name + "-Einkaufsliste fuer euren Wochenrhythmus."
 	}
 	return title, description, "1 Wochenplan", category
 }
@@ -481,9 +484,9 @@ func bringSchemaInstructions(instructions []string) []map[string]string {
 func bringExportImageURL(title string) string {
 	title = strings.TrimSpace(title)
 	if title == "" {
-		title = "Mealplanner Rezept"
+		title = brand.Name + " Rezept"
 	}
-	svg := fmt.Sprintf(`<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630"><rect width="1200" height="630" fill="#f6fbf8"/><rect x="42" y="42" width="1116" height="546" rx="24" fill="#ffffff" stroke="#c9ddd5" stroke-width="4"/><text x="90" y="180" font-family="Inter,Arial,sans-serif" font-size="34" font-weight="700" fill="#0f766e">Mealplanner Rezept</text><text x="90" y="270" font-family="Inter,Arial,sans-serif" font-size="66" font-weight="800" fill="#12211d">%s</text><text x="90" y="352" font-family="Inter,Arial,sans-serif" font-size="28" fill="#5c756d">Import fuer Bring</text></svg>`, bringSVGText(trimForSVG(title, 28)))
+	svg := fmt.Sprintf(`<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630"><rect width="1200" height="630" fill="#f6fbf8"/><rect x="42" y="42" width="1116" height="546" rx="24" fill="#ffffff" stroke="#c9ddd5" stroke-width="4"/><text x="90" y="180" font-family="Inter,Arial,sans-serif" font-size="34" font-weight="700" fill="#0f766e">%s Rezept</text><text x="90" y="270" font-family="Inter,Arial,sans-serif" font-size="66" font-weight="800" fill="#12211d">%s</text><text x="90" y="352" font-family="Inter,Arial,sans-serif" font-size="28" fill="#5c756d">Import fuer Bring</text></svg>`, bringSVGText(brand.Name), bringSVGText(trimForSVG(title, 28)))
 	return "data:image/svg+xml;utf8," + url.PathEscape(svg)
 }
 
@@ -502,7 +505,7 @@ func bringSVGText(value string) string {
 }
 
 func bringKeywords(kind string, onlyMeal domain.Meal) string {
-	keywords := []string{"Mealplanner", "Familienkueche"}
+	keywords := []string{brand.Name, brand.TransitionLabel}
 	if kind == "meal" {
 		keywords = append(keywords, "Rezept")
 		for _, tag := range onlyMeal.Tags {
@@ -691,7 +694,7 @@ var bringExportTemplate = template.Must(template.New("bring-export").Funcs(templ
     <p class="eyebrow">Bring Import</p>
     <h1 itemprop="name">{{ .Title }}</h1>
     <div style="display:none" itemprop="author" itemscope itemtype="https://schema.org/Organization">
-      <span itemprop="name">Mealplanner</span>
+      <span itemprop="name">{{ .BrandName }}</span>
     </div>
     {{ if .CanonicalURL }}<meta itemprop="url" content="{{ .CanonicalURL }}">{{ end }}
     {{ if .ImageURL }}<meta itemprop="image" content="{{ .ImageURL }}">{{ end }}
@@ -707,7 +710,7 @@ var bringExportTemplate = template.Must(template.New("bring-export").Funcs(templ
     {{ if .ImageURL }}<img src="{{ .ImageURL }}" alt="{{ .Title }}" itemprop="image" style="width:100%;max-width:560px;aspect-ratio:1200/630;object-fit:cover;border-radius:8px;border:1px solid var(--line);margin:18px 0 14px;">{{ end }}
     <p class="lead" itemprop="description">{{ .Description }}</p>
     <p class="lead" style="margin-top:-10px">
-      <span>Von Mealplanner</span>
+      <span>Von {{ .BrandName }}</span>
       <span aria-hidden="true"> · </span>
       <span itemprop="yield">{{ .Yield }}</span>
       <span aria-hidden="true"> · </span>
@@ -716,7 +719,7 @@ var bringExportTemplate = template.Must(template.New("bring-export").Funcs(templ
     <section class="bring-box" aria-label="Bring Import">
       <div {{ if .CanonicalURL }}data-bring-import="{{ .CanonicalURL }}"{{ else }}data-bring-import{{ end }} style="display:none"></div>
       <a href="https://www.getbring.com">Bring! Einkaufsliste App fuer iPhone und Android</a>
-      <p>Falls Bring die Rezeptdaten nicht automatisch uebernimmt, kopiere die Liste direkt aus der Mealplanner-App.</p>
+      <p>Falls Bring die Rezeptdaten nicht automatisch uebernimmt, kopiere die Liste direkt aus {{ .BrandName }}.</p>
     </section>
     <ol class="instruction" style="padding-left:20px" itemprop="recipeInstructions">
       {{ range $index, $instruction := .Instructions }}
