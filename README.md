@@ -74,6 +74,7 @@ gosec ./...
 
 cd ../../frontend
 npm run test -- --run
+npm run test:e2e
 npm run build
 npm audit --audit-level=moderate
 
@@ -81,3 +82,15 @@ cd ..
 kubectl kustomize deploy/test
 kubectl kustomize deploy/production
 ```
+
+## Testbetrieb
+
+Fuer wiederholbare Erstlogin-Tests im Test-Cluster gibt es einen Operator-Reset:
+
+```sh
+scripts/reset-test-first-login.sh markush1986@gmail.com
+```
+
+Der Reset ist absichtlich nur fuer `mealplanner-test` gedacht und bricht ab, wenn
+die notwendige Migration fuer `profile_onboarding_seen` noch nicht ausgerollt ist
+oder das Konto nicht mehr in einem persoenlichen Ein-Personen-Familienzustand ist.

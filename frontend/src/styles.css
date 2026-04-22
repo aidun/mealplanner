@@ -728,15 +728,19 @@ h3 {
   padding: 24px;
   background: rgba(21, 24, 21, 0.46);
   backdrop-filter: blur(10px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .secret-dialog {
   width: min(480px, 100%);
+  max-height: calc(100svh - 48px);
   border: 1px solid rgba(21, 24, 21, 0.12);
   border-radius: 8px;
   padding: 28px;
   background: #fffdf7;
   box-shadow: 0 24px 70px rgba(21, 24, 21, 0.22);
+  overflow-y: auto;
 }
 
 .secret-dialog h2 {
@@ -790,6 +794,7 @@ h3 {
 
 .dialog-actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 10px;
 }
@@ -2628,9 +2633,10 @@ a:focus-visible {
 
 .profile-tab-nav {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
-  overflow-x: auto;
-  padding: 0 18px;
+  overflow: visible;
+  padding: 0;
   scrollbar-width: none;
 }
 
@@ -2639,7 +2645,7 @@ a:focus-visible {
 }
 
 .profile-tab-button {
-  flex: 0 0 auto;
+  flex: 0 1 auto;
   min-height: 42px;
   padding: 0 14px;
   border: 1px solid rgba(18, 33, 29, 0.08);
@@ -3690,6 +3696,37 @@ a:focus-visible {
     width: 100%;
   }
 
+  .dialog-backdrop {
+    padding: 14px;
+    place-items: end center;
+  }
+
+  .secret-dialog {
+    width: min(100%, 560px);
+    max-height: calc(100svh - 28px);
+    padding: 20px 16px;
+    border-radius: 18px;
+  }
+
+  .dialog-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .dialog-actions .button {
+    width: 100%;
+  }
+
+  .profile-tab-nav {
+    gap: 8px;
+  }
+
+  .profile-tab-button {
+    flex: 1 1 calc(50% - 8px);
+    min-width: 0;
+    padding: 0 12px;
+  }
+
   .favorite-pill {
     min-width: min(100%, 260px);
   }
@@ -3731,6 +3768,11 @@ a:focus-visible {
   .favorite-settings-row {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .profile-save-bar {
+    position: static;
+    bottom: auto;
   }
 
   .meal-row {
@@ -3901,5 +3943,33 @@ a:focus-visible {
 
   .profile-page-intro {
     padding: 18px;
+  }
+}
+
+@media (max-width: 360px), (max-height: 720px) {
+  .dialog-backdrop {
+    padding: 10px;
+    place-items: end center;
+  }
+
+  .secret-dialog {
+    max-height: calc(100svh - 20px);
+    padding: 18px 14px;
+  }
+
+  .onboarding-welcome-steps {
+    gap: 10px;
+  }
+
+  .onboarding-welcome-step {
+    padding: 12px;
+  }
+
+  .profile-page-intro h1 {
+    font-size: clamp(2rem, 10vw, 3rem);
+  }
+
+  .profile-tab-button {
+    flex-basis: 100%;
   }
 }
