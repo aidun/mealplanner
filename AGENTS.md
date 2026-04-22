@@ -193,6 +193,9 @@ flowchart TD
 - Skills:
   - `openai-docs` bei OpenAI-/Modellfragen
   - `build-web-apps:react-best-practices` wenn Frontend-Architektur betroffen ist
+- Tooling:
+  - nutzt bei groesseren Frontend-/Design-Aufgaben den konfigurierten Stitch-MCP als vorgeschalteten Design-Kontext fuer `Nova`, `Lumen` und `Flux`
+  - entscheidet explizit, ob die Aufgabe `Stitch-first` laeuft oder direkt repo-nativ startet
 - Einsatz: immer bei nicht-trivialen Aufgaben
 
 ### 2. Product & UX Designer
@@ -204,6 +207,8 @@ flowchart TD
 - Skills:
   - `build-web-apps:frontend-skill`
   - `build-web-apps:web-design-guidelines`
+- Tooling:
+  - nutzt Stitch standardmaessig fuer Flow-, Copy- und Layout-Exploration, bevor produktive UI-Entscheidungen in Repo-Code uebernommen werden
 - Einsatz: bei allen UI-/UX-/Copy-/Navigationsthemen
 
 ### 3. Frontend Engineer
@@ -215,6 +220,8 @@ flowchart TD
 - Skills:
   - `build-web-apps:react-best-practices`
   - `build-web-apps:frontend-skill` bei visuellen Änderungen
+- Tooling:
+  - nutzt Stitch-MCP standardmaessig fuer Screen-Code, Screenshots und Design-Kontext als Handoff-Eingang, implementiert aber produktive UI weiterhin repo-nativ in React/Vite
 - Einsatz: bei Änderungen unter `frontend/`
 
 ### 4. Backend & AI Engineer
@@ -303,6 +310,8 @@ flowchart TD
   - `build-web-apps:frontend-skill`
   - `build-web-apps:web-design-guidelines`
   - optional `imagegen` fuer Bitmap-Brand-Assets, wenn repo-native SVG/CSS nicht reicht
+- Tooling:
+  - nutzt Stitch standardmaessig fuer hochwertige Varianten, visuelle Hierarchie und markennahe Einstiegsflaechen; Stitch ist Inspirations- und Handoff-Werkzeug, nicht die Source of Truth
 - Einsatz:
   - Logo, Wordmark, Favicon, visuelle Marke
   - hochwertiges Webdesign fuer Login, Landing-nahe Produktflächen und Markenflaechen
@@ -427,3 +436,23 @@ flowchart TD
   - Tablet prüfen
   - Handy prüfen
   - sichtbare Layout-, Overflow-, Überlappungs- und Bedienprobleme pro Breakpoint explizit bewerten, nicht nur implizit annehmen
+
+## Stitch fuer Frontendarbeit
+
+- Stitch wird in diesem Repo als vorgeschaltetes Design- und Handoff-Werkzeug fuer Frontendarbeit genutzt, nicht als Ersatz fuer produktiven Repo-Code.
+- `Stitch-first` ist der Default fuer nicht-triviale neue UI-Flaechen, neue Flows und markennahe Einstiegsseiten, sofern `Atlas` nichts anderes festlegt.
+- Bevor `Nova`, `Lumen` oder `Flux` auf Stitch aufsetzen, definiert `Atlas` im `AGEND`-Scope:
+  - Zielscreen oder Ziel-Flow
+  - feste Produktregeln, Branding- und Breakpoint-Vorgaben
+  - welche Teile nur Inspiration sind und welche spaeter verbindlich in Code uebernommen werden sollen
+- Erwarteter Ablauf:
+  1. `Atlas` setzt den `AGEND`-Scope fuer die Frontendarbeit.
+  2. `Nova` und bei Bedarf `Lumen` explorieren Flow, Copy, Hierarchie und Varianten in Stitch.
+  3. `Flux` nutzt Stitch-MCP fuer Screen-Kontext, Bilder oder exportierten HTML-Handoff, setzt die Oberflaeche aber repo-nativ in React/Vite um.
+  4. `Probe` prueft die umgesetzte Oberflaeche im echten Produkt auf Desktop, Tablet und Handy.
+  5. `Gate` bewertet Regressionen, Testluecken, Produktqualitaet und Rollout-Risiken.
+- Verbindliche Grenzen:
+  - keine extern generierten Designs ungeprueft ins Repo uebernehmen
+  - Branding-, Copy- und Familien-/Premium-Regeln aus diesem Repo bleiben hoeher priorisiert als Stitch-Ausgaben
+  - Source of Truth bleiben Repo-Dateien, Playwright-Pruefungen und die ausgerollte Testumgebung
+- Setup und MCP-Hinweise: [docs/STITCH.md](/Users/markus/repo/mealplanner/docs/STITCH.md)

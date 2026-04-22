@@ -11,6 +11,7 @@ Private Familien-Webapp fuer Wochen-Essensplaene. Der aktuelle produktive Zugang
 - `docs/ARCHITECTURE.md`: Gesamtübersicht über Services, SaaS-Dienste und Betriebs-Komponenten.
 - `docs/API.md`: gepflegte Backend-API-Dokumentation fuer Frontend, Admin und Betrieb.
 - `docs/BRAND.md`: aktueller Marken-, Naming- und Claim-Stand fuer Phase A.
+- `docs/STITCH.md`: Stitch-MCP-Setup und AGEND-Workflow fuer UI-Arbeit in `mealplanner`.
 - `docs/security.md`: Security-, Pentest- und Betriebs-Runbook.
 
 ## Lokal starten

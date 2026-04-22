@@ -166,6 +166,17 @@ flowchart LR
 - Zweck:
   - öffentliche Erreichbarkeit von `mealplanner.markushartmann.dev` als Phase-A-Brand-Domain
 
+### Stitch MCP
+
+- Rolle: lokales Design- und Handoff-Werkzeug fuer Frontendarbeit
+- Integration:
+  - globaler Codex-MCP-Eintrag in `/Users/markus/.codex/config.toml`
+  - projektspezifischer Ablauf in [docs/STITCH.md](/Users/markus/repo/mealplanner/docs/STITCH.md)
+- Zweck:
+  - Stitch-Screens, Bilder und Design-Kontext fuer `Nova`, `Lumen` und `Flux`
+  - beschleunigte Exploration vor der finalen React/Vite-Umsetzung
+  - kein produktiver Runtime-Bestandteil von `mealplanner`
+
 ## Monitoring und Diagnose
 
 ### Prometheus / ServiceMonitor

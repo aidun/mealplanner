@@ -8,7 +8,7 @@ import { MealInspector } from '../components/MealInspector';
 import { PlanBackdrop } from '../components/PlanBackdrop';
 import { ShoppingListPanel } from '../components/ShoppingListPanel';
 import { readableApiError } from '../lib/api-error';
-import { formatDate } from '../lib/format';
+import { formatDate, formatWeekRange } from '../lib/format';
 import { LoginPage } from './LoginPage';
 import {
   createPlan,
@@ -286,6 +286,8 @@ export function DashboardPage() {
       meta: `${shoppingItemCount} Produkte`,
     },
   ];
+  const stageDays = allDays.slice(0, 4);
+  const stageIngredients = inspectedMeal?.ingredients.slice(0, 4) ?? [];
 
   return loggedOut ? (
     <LoginPage />
@@ -306,24 +308,75 @@ export function DashboardPage() {
           aria-labelledby="home-title"
         >
           <PlanBackdrop />
-          <div className="plan-stage-copy plan-stage-copy-compact">
-            <span className="eyebrow">Diese Woche</span>
+          <div className="plan-stage-copy">
+            <span className="eyebrow">Wochenfläche</span>
             <h1 id="home-title">Alles für die Woche liegt an einem Tisch.</h1>
             <p>
-              Mit {brand.name} prüft ihr Gerichte, passt Rezepte an und nehmt den Einkauf direkt mit, ohne zwischen
-              drei Baustellen zu wechseln.
+              {brand.name} hält Plan, Rezept und Einkauf dichter zusammen, damit ihr weniger springt und schneller
+              entscheiden könnt, was wirklich auf den Tisch kommt.
             </p>
           </div>
-          <div className="plan-stage-context" aria-label="Aktueller Fokus">
-            <div className="plan-focus-item">
-              <span>Heute im Blick</span>
-              <strong>{selectedDay?.label ?? (selectedDay?.date ? formatDate(selectedDay.date) : 'Noch kein Tag gewählt')}</strong>
+
+          <div className="plan-stage-tableau" aria-label="Aktueller Fokus">
+            <div className="plan-stage-overview">
+              <div className="plan-stage-overview-head">
+                <span className="entry-preview-label">Aktive Woche</span>
+                <strong>{formatWeekRange(currentPlanQuery.data?.weekStart)}</strong>
+              </div>
+              <p>
+                {selectedDay?.label ?? (selectedDay?.date ? formatDate(selectedDay.date) : 'Noch kein Tag gewählt')}
+                {' · '}
+                {inspectedMeal?.title ?? 'Noch kein Gericht gewählt'}
+              </p>
             </div>
-            <div className="plan-focus-item">
-              <span>Geöffnetes Rezept</span>
-              <strong>{inspectedMeal?.title ?? 'Noch kein Gericht gewählt'}</strong>
+
+            <div className="plan-stage-grid">
+              <div className="plan-stage-days" aria-label="Wochenauszug">
+                {stageDays.map((day) => {
+                  const leadMeal = day.meals[0];
+                  const isActive = day.date === activeDayDate;
+                  return (
+                    <article
+                      key={day.date}
+                      className={`plan-stage-day${isActive ? ' plan-stage-day-active' : ''}`}
+                    >
+                      <span>{formatDate(day.date)}</span>
+                      <strong>{leadMeal?.title ?? 'Noch offen'}</strong>
+                      <small>{leadMeal ? `${day.meals.length} Gericht${day.meals.length > 1 ? 'e' : ''} im Tag` : 'Gericht öffnen und ausarbeiten.'}</small>
+                    </article>
+                  );
+                })}
+              </div>
+
+              <div className="plan-stage-focus">
+                <div className="plan-stage-focus-sheet">
+                  <span className="entry-preview-section-title">Gericht im Fokus</span>
+                  <h2>{inspectedMeal?.title ?? 'Noch kein Gericht gewählt'}</h2>
+                  <p>
+                    {inspectedMeal
+                      ? 'Geöffnet, kontextnah und direkt mit Zutaten sowie Einkauf verknüpft.'
+                      : 'Sobald ein Gericht gewählt ist, bleiben Zutaten und Einkauf direkt im Zusammenhang.'}
+                  </p>
+                  <div className="plan-stage-ingredient-row">
+                    {stageIngredients.length > 0 ? (
+                      stageIngredients.map((ingredient) => (
+                        <span key={`${inspectedMeal?.id}-${ingredient.name}`}>{ingredient.name}</span>
+                      ))
+                    ) : (
+                      <span>Wählt ein Gericht, um Zutaten im Kontext zu sehen.</span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="plan-stage-shopping-note">
+                  <span className="entry-preview-section-title">Einkaufsspur</span>
+                  <strong>{shoppingItemCount > 0 ? `${shoppingItemCount} Positionen abgestimmt` : 'Noch keine Einkaufsliste geladen'}</strong>
+                  <p>Die Liste bleibt an derselben Woche und nicht in einem getrennten Nebenfluss.</p>
+                </div>
+              </div>
             </div>
           </div>
+
           <div className="plan-stage-meta" aria-label="Wochenüberblick">
             <div className="stage-stat">
               <strong>{currentPlanQuery.data?.days.length ?? 0}</strong>

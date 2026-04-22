@@ -116,53 +116,64 @@ export function LoginPage() {
 
           <section className="login-preview" aria-label="Produktvorschau">
             <div className="login-preview-copy">
-              <p className="login-section-label">Produktvorschau</p>
-              <h2>Woche, Gericht und Einkauf greifen ineinander.</h2>
-              <p>Eine gemeinsame Oberfläche für das, was diese Woche wirklich auf euren Tisch soll.</p>
+              <p className="login-section-label">Am Tisch gedacht</p>
+              <h2>Eine ruhige Wochenfläche statt drei getrennter Baustellen.</h2>
+              <p>Plan, Rezept und Einkauf liegen in einer einzigen Komposition, damit die Woche schneller greifbar wird.</p>
             </div>
 
-            <div className="entry-preview-shell">
-              <div className="entry-preview-overview">
-                <span className="entry-preview-label">Nächste Woche</span>
-                <strong>Zitronenpasta mit Brokkoli</strong>
-                <p>Montagabend · 4 Portionen · Einkauf direkt daneben</p>
+            <div className="entry-tableau">
+              <div className="entry-tableau-overview">
+                <div>
+                  <span className="entry-preview-label">Nächste Woche</span>
+                  <strong>Zitronenpasta mit Brokkoli</strong>
+                </div>
+                <p>Montagabend · 4 Portionen · direkt an der Einkaufsspur</p>
               </div>
 
-              <div className="entry-preview-grid">
-                <div className="entry-preview-week" aria-label="Woche">
+              <div className="entry-tableau-grid">
+                <div className="entry-tableau-week" aria-label="Woche">
                   {previewDays.map((day) => (
-                    <button
+                    <article
                       key={day.label}
-                      type="button"
-                      className={`entry-preview-day${day.active ? ' entry-preview-day-active' : ''}`}
-                      aria-pressed={day.active}
+                      className={`entry-tableau-day${day.active ? ' entry-tableau-day-active' : ''}`}
                     >
                       <span>{day.label}</span>
                       <strong>{day.title}</strong>
                       <small>{day.note}</small>
-                    </button>
+                    </article>
                   ))}
                 </div>
 
-                <div className="entry-preview-recipe" aria-label="Gericht">
-                  <span className="entry-preview-section-title">Gericht im Fokus</span>
-                  <h3>Pasta al Limone mit Brokkoli und Burrata</h3>
-                  <p>Cremig, hell und schnell genug für einen vollen Montag.</p>
-                  <div className="entry-preview-ingredients" aria-label="Zutaten im Rezept">
-                    {previewIngredients.map((ingredient) => (
-                      <span key={ingredient}>{ingredient}</span>
-                    ))}
+                <div className="entry-tableau-focus" aria-label="Gericht im Fokus">
+                  <div className="entry-tableau-recipe">
+                    <span className="entry-preview-section-title">Gericht im Fokus</span>
+                    <h3>Pasta al Limone mit Brokkoli und Burrata</h3>
+                    <p>Cremig, hell und schnell genug für einen vollen Montag.</p>
+                    <div className="entry-tableau-ingredients" aria-label="Zutaten im Rezept">
+                      {previewIngredients.map((ingredient) => (
+                        <span key={ingredient}>{ingredient}</span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="entry-tableau-shopping" aria-label="Einkauf">
+                    <div className="entry-tableau-shopping-head">
+                      <span className="entry-preview-section-title">Einkaufsspur</span>
+                      <strong>Mit einem Griff auf der Liste</strong>
+                    </div>
+                    <ul>
+                      {previewShopping.map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ul>
                   </div>
                 </div>
+              </div>
 
-                <div className="entry-preview-shopping" aria-label="Einkauf">
-                  <span className="entry-preview-section-title">Direkt auf der Liste</span>
-                  <ul>
-                    {previewShopping.map((item) => (
-                      <li key={item}>{item}</li>
-                    ))}
-                  </ul>
-                </div>
+              <div className="entry-tableau-foot">
+                <span>Woche zuerst</span>
+                <span>Rezepte bleiben im Kontext</span>
+                <span>Einkauf hängt an derselben Woche</span>
               </div>
             </div>
           </section>
