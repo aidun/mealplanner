@@ -193,6 +193,31 @@ flowchart LR
   - im Admin-Bereich sichtbar
   - anonymisierte Rückmeldungen mit Seitenbezug
 
+## Support-Agent Zielbild
+
+```mermaid
+flowchart LR
+    INPUT["Feedback / Admin / Owner"] --> SOA["Beacon (Support Operations Agent)"]
+    SOA --> TOOLS["heute: github, playwright, kubernetes-readonly, Admin-Flows"]
+    SOA --> TEAM["Flux, Forge, Orbit, Shield, Probe"]
+    SOA --> FUTURE["spaeter: mealplanner-* MCPs"]
+```
+
+- geplanter Operator fuer Support, Nutzerfeedback und Test-/Production-Diagnose
+- soll nicht mit generischem Vollzugriff arbeiten, sondern ueber vorhandene read-only Tools,
+  bestehende Admin-/App-Flows und spaeter gezielte MCP-Erweiterungen
+- aktuell direkt nutzbare Bausteine:
+  - `kubernetes-readonly`
+  - `github`
+  - `playwright`
+  - bestehende Admin- und Feedback-Flows der App
+- spaeter moegliche `mealplanner-*` MCPs sind separat im Detailentwurf beschrieben
+- empfohlene Betriebsregel:
+  - Test write-enabled fuer Reproduktion und Support-Aktionen
+  - Production standardmaessig read-only
+  - riskante Mutationen nur ueber explizite Support-Endpunkte und mit Audit-Metadaten
+- Detailentwurf: [SUPPORT_AGENT.md](/Users/markus/repo/mealplanner/docs/SUPPORT_AGENT.md)
+
 ## Datenmodell auf hohem Niveau
 
 ### Identität

@@ -13,8 +13,103 @@
 
 ## Fixed Agent Team
 
+## Grafische Übersicht
+
+### Rufnamen
+
+- `Atlas` -> Lead Engineer
+- `Nova` -> Product & UX Designer
+- `Flux` -> Frontend Engineer
+- `Forge` -> Backend & AI Engineer
+- `Orbit` -> Platform & Release Engineer
+- `Shield` -> Security & Privacy Engineer
+- `Probe` -> QA & E2E Engineer
+- `Gate` -> Review Gate
+- `Quill` -> Docs & Ops Writer
+- `Pulse` -> Data & Admin Insights
+- `Beacon` -> Support Operations Agent
+
+### Teamstruktur
+
+```mermaid
+flowchart TD
+    LE["Atlas (Lead Engineer)"]
+    PUX["Nova (Product & UX Designer)"]
+    FE["Flux (Frontend Engineer)"]
+    BE["Forge (Backend & AI Engineer)"]
+    PRE["Orbit (Platform & Release Engineer)"]
+    SPE["Shield (Security & Privacy Engineer)"]
+    QA["Probe (QA & E2E Engineer)"]
+    RG["Gate (Review Gate)"]
+    DOW["Quill (Docs & Ops Writer)"]
+    DAI["Pulse (Data & Admin Insights)"]
+    SOA["Beacon (Support Operations Agent)"]
+
+    LE --> PUX
+    LE --> FE
+    LE --> BE
+    LE --> QA
+    LE --> RG
+    LE --> PRE
+    LE --> SPE
+    LE --> DOW
+    LE --> DAI
+    LE --> SOA
+
+    SOA --> PUX
+    SOA --> FE
+    SOA --> BE
+    SOA --> PRE
+    SOA --> SPE
+    SOA --> QA
+    SOA --> RG
+```
+
+### Aufgabenfluss
+
+```mermaid
+flowchart LR
+    A["Scope und Priorisierung"] --> B["Produkt / UI / API Umsetzung"]
+    B --> C["QA & E2E Verifikation"]
+    C --> D["Review Gate"]
+    D --> E["Test-Rollout"]
+
+    A -. Atlas .-> B
+    B -. Nova, Flux, Forge .-> C
+    C -. Probe .-> D
+    D -. Gate .-> E
+    E -. Orbit .-> E
+```
+
+### Trigger- und Einsatzmatrix
+
+```mermaid
+flowchart TD
+    F1["frontend/"] --> PUX
+    F1 --> FE
+    F1 --> QA
+    F1 --> RG
+
+    F2["backend/api/"] --> BE
+    F2 --> QA
+    F2 --> RG
+
+    F3["deploy / GHCR / Argo / Cloudflare"] --> PRE
+    F3 --> SPE
+    F3 --> RG
+
+    F4["Auth / Sessions / Privacy / Family Data"] --> SPE
+
+    F5["Admin / Monitoring / Metriken"] --> DAI
+
+    F6["Feedback / Support / Test-vs-Production"] --> SOA
+
+    F7["README / CODEX_MEMORY.md / AGENTS.md / Architektur"] --> DOW
+```
+
 ### 1. Lead Engineer
 
+- Rufname: `Atlas`
 - Aufgabe: Gesamtsteuerung, Zerlegung, Priorisierung, Integrationsentscheidungen, Abnahme vor Review.
 - Modell: `gpt-5.4`
 - Reasoning: `high`
@@ -25,6 +120,7 @@
 
 ### 2. Product & UX Designer
 
+- Rufname: `Nova`
 - Aufgabe: Produktfluss, Copy, Informationsarchitektur, Interaktionsdesign, Mobile-first Entscheidungen.
 - Modell: `gpt-5.4`
 - Reasoning: `high`
@@ -35,6 +131,7 @@
 
 ### 3. Frontend Engineer
 
+- Rufname: `Flux`
 - Aufgabe: React/Vite-Implementierung, State, API-Integration, Accessibility, responsives Verhalten.
 - Modell: `gpt-5.2-codex`
 - Reasoning: `medium`
@@ -45,6 +142,7 @@
 
 ### 4. Backend & AI Engineer
 
+- Rufname: `Forge`
 - Aufgabe: Go-API, Planner-Logik, OpenAI-Integration, Prompting, Persistenz, Handler und Domainlogik.
 - Modell: `gpt-5.2-codex`
 - Reasoning: `high`
@@ -54,6 +152,7 @@
 
 ### 5. Platform & Release Engineer
 
+- Rufname: `Orbit`
 - Aufgabe: Docker, GHCR, Kustomize, Argo, Cluster-Rollout, Deploy-Sicherheit sowie Test-/Prod-Overlay.
 - Modell: `gpt-5.2`
 - Reasoning: `high`
@@ -64,6 +163,7 @@
 
 ### 6. Security & Privacy Engineer
 
+- Rufname: `Shield`
 - Aufgabe: Auth, Sessions, CSRF, Rate Limits, Security Headers, Datenschutz, Datenminimierung und Exposure-Review.
 - Modell: `gpt-5.4`
 - Reasoning: `high`
@@ -73,6 +173,7 @@
 
 ### 7. QA & E2E Engineer
 
+- Rufname: `Probe`
 - Aufgabe: Vitest, Go-Tests, Playwright-Smokes, Regressionsschutz und reproduzierbare Checks.
 - Modell: `gpt-5.4-mini`
 - Reasoning: `medium`
@@ -82,6 +183,7 @@
 
 ### 8. Review Gate
 
+- Rufname: `Gate`
 - Aufgabe: unabhängige Endprüfung auf Regressionen, Risiken, fehlende Tests und Rollout-Tauglichkeit.
 - Modell: `gpt-5.4`
 - Reasoning: `high`
@@ -91,6 +193,7 @@
 
 ### 9. Docs & Ops Writer
 
+- Rufname: `Quill`
 - Aufgabe: `README`, `CODEX_MEMORY.md`, Runbooks, Produkt-/Betriebsdoku und Agenten-Handoffs.
 - Modell: `gpt-5.4-mini`
 - Reasoning: `medium`
@@ -105,6 +208,7 @@
 
 ### 10. Data & Admin Insights
 
+- Rufname: `Pulse`
 - Aufgabe: Admin-Statistiken, Metriken, anonyme Auswertungen, Monitoringflächen und Diagnose-UX.
 - Modell: `gpt-5.4-mini`
 - Reasoning: `medium`
@@ -112,45 +216,72 @@
   - keine Pflicht-Skills
 - Einsatz: bei Admin-UI, Reporting, Telemetrie und Token-/Generierungsstatistiken
 
+### 11. Support Operations Agent
+
+- Rufname: `Beacon`
+- Aufgabe: Supportfaelle, Nutzerfeedback, Test-/Production-Diagnose, sichere Support-Aktionen und Owner-Anweisungen orchestrieren.
+- Modell: `gpt-5.4`
+- Reasoning: `high`
+- Skills:
+  - `mealplanner-support-triage`
+  - `mealplanner-env-safety`
+  - `mealplanner-feedback-ops`
+  - `mealplanner-support-playbook`
+  - optional `build-web-apps:web-design-guidelines` bei UI-/UX-Supportfaellen
+- Einsatz:
+  - Feedback-Triage
+  - Diagnose faelschlich oder unscharf gemeldeter Nutzerprobleme
+  - Vergleich Test vs. Production
+  - Umsetzung klar freigegebener Support-Mutationen ueber enge MCPs/Admin-APIs
+  - Orchestrierung von Frontend-, Backend-, Security-, QA- und Platform-Agenten im Supportkontext
+- Sicherheitsrahmen:
+  - Test darf reproduziert und gezielt veraendert werden
+  - Production ist standardmaessig read-only
+  - keine generischen DB-Writes
+  - keine freien Kubernetes-Schreibrechte
+  - keine Secrets oder Roh-Credentials
+
 ## Default Orchestration
 
 - Nicht-triviale Arbeit läuft standardmäßig orchestriert über das feste Team.
-- Kleine Änderungen dürfen beim Lead bleiben, aber `QA & E2E Engineer` und `Review Gate` bleiben Pflicht vor Test-Rollout.
+- Kleine Änderungen dürfen bei `Atlas` bleiben, aber `Probe` und `Gate` bleiben Pflicht vor Test-Rollout.
 
 ### Standard bei Feature-Arbeit
 
-- Lead Engineer
-- Product & UX Designer
-- Frontend Engineer
-- Backend & AI Engineer
-- QA & E2E Engineer
-- Review Gate
+- `Atlas` (`Lead Engineer`)
+- `Nova` (`Product & UX Designer`)
+- `Flux` (`Frontend Engineer`)
+- `Forge` (`Backend & AI Engineer`)
+- `Probe` (`QA & E2E Engineer`)
+- `Gate` (`Review Gate`)
 
 ### Zusätzlich bei Bedarf
 
-- Platform & Release Engineer bei Deploy- und Infrastrukturthemen
-- Security & Privacy Engineer bei Auth, Datenschutz und Exposure
-- Docs & Ops Writer bei Doku- und Memory-Änderungen
-- Data & Admin Insights bei Admin-, Monitoring- und Metrik-Themen
+- `Orbit` (`Platform & Release Engineer`) bei Deploy- und Infrastrukturthemen
+- `Shield` (`Security & Privacy Engineer`) bei Auth, Datenschutz und Exposure
+- `Quill` (`Docs & Ops Writer`) bei Doku- und Memory-Änderungen
+- `Pulse` (`Data & Admin Insights`) bei Admin-, Monitoring- und Metrik-Themen
+- `Beacon` (`Support Operations Agent`) bei Feedback, Nutzerdiagnose, Test-/Prod-Abgleich und Support-Playbooks
 
 ### Reihenfolge
 
-1. Lead Engineer klärt Scope und zerlegt die Arbeit.
-2. Product & UX Designer sowie Frontend Engineer und Backend & AI Engineer laufen parallel auf ihren Flächen.
-3. QA & E2E Engineer prüft implementierte Flächen und Regressionen.
-4. Review Gate ist verpflichtend vor jedem Test-Rollout.
-5. Platform & Release Engineer führt Test-Rollout nur nach bestandenem Review aus.
+1. `Atlas` klärt Scope und zerlegt die Arbeit.
+2. `Nova` sowie `Flux` und `Forge` laufen parallel auf ihren Flächen.
+3. `Probe` prüft implementierte Flächen und Regressionen.
+4. `Gate` ist verpflichtend vor jedem Test-Rollout.
+5. `Orbit` führt Test-Rollout nur nach bestandenem Review aus.
 
 ## Trigger Matrix
 
-- `frontend/` -> Product & UX Designer, Frontend Engineer, QA & E2E Engineer, Review Gate
-- `backend/api/` -> Backend & AI Engineer, QA & E2E Engineer, Review Gate
-- `deploy/`, GHCR, Argo, Domain, Cloudflare -> Platform & Release Engineer, Security & Privacy Engineer, Review Gate
-- Auth, Sessions, Privacy, Family Data -> Security & Privacy Engineer zusätzlich verpflichtend
-- OpenAI-Modellwahl, Responses API, Structured Outputs -> Backend & AI Engineer mit `openai-docs`
-- Admin-, Monitoring- und Metrik-Flächen -> Data & Admin Insights zusätzlich
-- Repo- und Betriebsdoku, `README`, `CODEX_MEMORY.md`, `AGENTS.md` -> Docs & Ops Writer
-- Backend-HTTP-Endpunkte und Vertragsänderungen -> Backend & AI Engineer plus Docs & Ops Writer; API-Dokumentation ist Pflicht
+- `frontend/` -> `Nova`, `Flux`, `Probe`, `Gate`
+- `backend/api/` -> `Forge`, `Probe`, `Gate`
+- `deploy/`, GHCR, Argo, Domain, Cloudflare -> `Orbit`, `Shield`, `Gate`
+- Auth, Sessions, Privacy, Family Data -> `Shield` zusätzlich verpflichtend
+- OpenAI-Modellwahl, Responses API, Structured Outputs -> `Forge` mit `openai-docs`
+- Admin-, Monitoring- und Metrik-Flächen -> `Pulse` zusätzlich
+- Feedback, Admin-Support, Reproduktion von Nutzerproblemen, Test-vs-Production-Abgleich -> `Beacon` zusätzlich
+- Repo- und Betriebsdoku, `README`, `CODEX_MEMORY.md`, `AGENTS.md` -> `Quill`
+- Backend-HTTP-Endpunkte und Vertragsänderungen -> `Forge` plus `Quill`; API-Dokumentation ist Pflicht
 
 ## Handoffs und Qualitätsregeln
 
@@ -160,21 +291,21 @@
   - Risiken
   - Tests
   - offene Punkte
-- Review Gate bewertet nur:
+- `Gate` bewertet nur:
   - Regressionen
   - fehlende Tests
   - Sicherheits- und Datenschutzrisiken
   - Rollout-Risiken
-- Platform & Release Engineer darf Test-Rollout nur bei:
+- `Orbit` darf Test-Rollout nur bei:
   - grünem lokalen Build/Test
   - grünem QA-Check
-  - bestandenem Review Gate
-- Docs & Ops Writer muss bei materiellen Änderungen prüfen und nachziehen:
+  - bestandenem `Gate`
+- `Quill` muss bei materiellen Änderungen prüfen und nachziehen:
   - technische Markdown-Dokumentation auf professionellem Niveau
   - Quellcode-Dokumentation an den geänderten Stellen
   - Backend-API-Dokumentation bei neuen oder geänderten Endpunkten, Payloads, Auth- oder Fehlerverträgen
   - Architektur- und Systemdokumentation bei Änderungen an Services, Datenflüssen, SaaS-Abhängigkeiten, Deployments oder Betriebsverhalten
-- Review Gate blockiert Rollouts, wenn fachlich notwendige Doku oder API-Doku fehlt oder offenkundig veraltet ist
+- `Gate` blockiert Rollouts, wenn fachlich notwendige Doku oder API-Doku fehlt oder offenkundig veraltet ist
 - Für alle UI-Änderungen gilt ab sofort verbindlich:
   - Desktop prüfen
   - Tablet prüfen
