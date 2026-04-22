@@ -78,7 +78,7 @@ test('planner smoke path', async ({ page, context }) => {
   await expect(page.getByText('Alles für diese Woche an einem Ort.')).toBeVisible();
 
   await page.getByLabel('Primäre Aktionen').getByRole('link', { name: 'Haushalt' }).click();
-  await expect(page.getByText('Familie sauber aufstellen')).toBeVisible();
+  await expect(page.getByText('Haushalt einrichten')).toBeVisible();
   await page.getByLabel('Haushaltsname').fill('Familie Weber');
   await page.getByRole('button', { name: 'Angaben speichern' }).click();
   await expect(page.getByText('Angaben gespeichert. Der nächste Wochenplan nutzt diese Einstellungen.')).toBeVisible();
@@ -225,7 +225,7 @@ test('login and invite acceptance stay on guarded production paths', async ({ pa
   await page.goto('/family/invites/accept?token=invite-token');
   await page.getByRole('button', { name: 'Familienkonto beitreten' }).click();
   await expect(page).toHaveURL(/\/onboarding\?family=joined$/);
-  await expect(page.getByText('Familie sauber aufstellen')).toBeVisible();
+  await expect(page.getByText('Haushalt einrichten')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Prompt prüfen' })).toHaveCount(0);
 });
 

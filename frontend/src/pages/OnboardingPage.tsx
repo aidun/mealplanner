@@ -16,7 +16,7 @@ import {
 } from '../api';
 import { readableApiError } from '../lib/api-error';
 import { defaultMealPlanDays, emptyMember, formToProfile, profileToForm, syncMealPlanDays } from '../lib/profile-form';
-import type { MemberFormState, ProfileFormState } from '../types';
+import type { FamilyAccount, MemberFormState, ProfileFormState } from '../types';
 import { useSession } from '../session';
 import { brand } from '../brand';
 
@@ -75,10 +75,10 @@ export function OnboardingPage() {
 
   useEffect(() => {
     if (profileQuery.data) {
-      setForm(profileToForm(profileQuery.data));
+      setForm(seedProfileForm(profileToForm(profileQuery.data), session?.email, familyQuery.data?.accounts));
       setHasEdited(false);
     }
-  }, [profileQuery.data]);
+  }, [familyQuery.data?.accounts, profileQuery.data, session?.email]);
 
   const saveMutation = useMutation({
     mutationFn: saveProfile,
@@ -271,7 +271,7 @@ export function OnboardingPage() {
           <button type="button" className="brand-mark brand-button" onClick={() => navigate('/')}>
             <AppLogo />
           </button>
-          <p className="brand-subtitle">Profilpersonen, Login-Zugänge und Regeln für kommende Wochen.</p>
+          <p className="brand-subtitle">Haushalt, Zugänge und Wochenplanung an einem Ort.</p>
         </div>
       </header>
 
@@ -279,8 +279,8 @@ export function OnboardingPage() {
         <section className="profile-page">
           <div className="profile-page-intro">
             <span className="eyebrow">Haushalt</span>
-            <h1>Familie sauber aufstellen</h1>
-            <p>Profilpersonen, Login-Zugänge und Planungsregeln bleiben hier getrennt, damit neue Wochen nachvollziehbar entstehen.</p>
+            <h1>Haushalt einrichten</h1>
+            <p>Lege fest, wer mitisst, welche Zugänge dazugehören und wie neue Wochen geplant werden.</p>
             <div className="profile-overview-grid" aria-label="Haushaltsübersicht">
               <div className="profile-overview-card">
                 <strong>{namedMembersCount}</strong>
@@ -294,10 +294,6 @@ export function OnboardingPage() {
                 <strong>{familyQuery.data?.personal ? 'Privat' : 'Familie'}</strong>
                 <span>{displayHouseholdLabel}</span>
               </div>
-            </div>
-            <div className="profile-model-strip" aria-label="Kontomodell">
-              <span>Profilpersonen steuern Portionen, Vorlieben und Namen im Plan.</span>
-              <span>Login-Zugänge geben Zugriff auf genau ein aktives Familienkonto.</span>
             </div>
           </div>
 
@@ -522,7 +518,7 @@ export function OnboardingPage() {
               <div className="profile-section-copy">
                 <span className="section-index">02</span>
                 <h2 id="family-section">Familienkonto</h2>
-                <p>Hier liegen nur Zugänge. Jede Login-Mail gehört genau einem aktiven Familienkonto und kann einer Profilperson zugeordnet werden.</p>
+                <p>Hier verwaltest du die Zugänge zu diesem Haushalt und ordnest sie den sichtbaren Personen zu.</p>
               </div>
               <div className="profile-section-fields">
                 <div className="family-overview" aria-label="Familienkonto Übersicht">
@@ -533,11 +529,6 @@ export function OnboardingPage() {
                     <span>{namedMembersCount} Profilpersonen sichtbar</span>
                     {unassignedAccountsCount > 0 ? <span>{unassignedAccountsCount} Logins brauchen noch eine Person</span> : null}
                   </div>
-                </div>
-
-                <div className="family-model-note">
-                  <strong>Kontoregel</strong>
-                  <p>Ein Login gehört genau zu einem aktiven Familienkonto. Wer eine Einladung annimmt, arbeitet danach in diesem gemeinsamen Konto weiter.</p>
                 </div>
 
                 <div className="family-roster" aria-label="Wer gehört zum Familienkonto">
@@ -982,4 +973,65 @@ function parseProfileTab(value: string | null): 'family' | 'rules' | 'favorites'
     return value;
   }
   return 'family';
+}
+
+function seedProfileForm(
+  form: ProfileFormState,
+  sessionEmail?: string,
+  accounts?: FamilyAccount[]
+): ProfileFormState {
+  const accountEmail = [sessionEmail, ...(accounts ?? []).map((account) => account.email ?? '')]
+    .map((value) => (value ?? '').trim())
+    .find(Boolean);
+  if (!accountEmail) {
+    return form;
+  }
+
+  const suggestion = deriveSeedFromEmail(accountEmail);
+  const nextMembers = form.members.length > 0 ? [...form.members] : [emptyMember(0)];
+  const firstMember = nextMembers[0] ?? emptyMember(0);
+  const seededFirstMember = {
+    ...firstMember,
+    name: firstMember.name.trim() || suggestion.memberName,
+    alias: firstMember.alias.trim() || suggestion.alias,
+  };
+  nextMembers[0] = seededFirstMember;
+
+  return {
+    ...form,
+    householdName: form.householdName.trim() || suggestion.householdName,
+    members: nextMembers,
+    mealPlanDays: syncMealPlanDays(form.mealPlanDays, nextMembers),
+  };
+}
+
+function deriveSeedFromEmail(email: string) {
+  const localPart = email.split('@')[0] ?? '';
+  const cleaned = localPart
+    .replace(/\+/g, ' ')
+    .replace(/[._-]+/g, ' ')
+    .replace(/\d+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const titled = toTitleCase(cleaned);
+  const memberName = titled || 'Person 1';
+  const firstWord = memberName.split(' ')[0] || memberName;
+  return {
+    memberName,
+    alias: firstWord,
+    householdName: `Haushalt ${firstWord}`,
+  };
+}
+
+function toTitleCase(value: string) {
+  return value
+    .split(' ')
+    .map((part) => {
+      if (!part) {
+        return '';
+      }
+      return `${part.charAt(0).toUpperCase()}${part.slice(1).toLowerCase()}`;
+    })
+    .filter(Boolean)
+    .join(' ');
 }

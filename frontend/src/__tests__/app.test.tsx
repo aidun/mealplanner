@@ -669,7 +669,7 @@ describe('Mealplanner app', () => {
   it('opens onboarding and saves the profile', async () => {
     renderApp('/onboarding');
 
-    expect(await screen.findByText('Familie sauber aufstellen')).toBeInTheDocument();
+    expect(await screen.findByText('Haushalt einrichten')).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Haushaltsname'), { target: { value: 'Familie Weber' } });
     fireEvent.change(screen.getAllByLabelText('Anrede im Plan')[0]!, { target: { value: 'Mama' } });
     fireEvent.change(screen.getByLabelText('Standard-Portionen'), { target: { value: '4' } });
@@ -818,9 +818,11 @@ describe('Mealplanner app', () => {
 
     renderApp('/onboarding');
 
-    expect(await screen.findByText(/Dieser Bereich startet bewusst neutral/)).toBeInTheDocument();
-    expect(screen.getByLabelText('Haushaltsname')).toHaveValue('');
-    expect(screen.queryByDisplayValue('Person 1')).not.toBeInTheDocument();
+    expect(await screen.findByText('Haushalt einrichten')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByLabelText('Haushaltsname')).toHaveValue('Haushalt Anna');
+    });
+    expect(screen.getAllByDisplayValue('Anna').length).toBeGreaterThan(0);
   });
 
   it('highlights unassigned family accounts', async () => {
@@ -966,7 +968,7 @@ describe('Mealplanner app', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Familienkonto beitreten' }));
 
     expect(await screen.findByText(/Familienbereich aktiv\./)).toBeInTheDocument();
-    expect(await screen.findByText('Familie sauber aufstellen')).toBeInTheDocument();
+    expect(await screen.findByText('Haushalt einrichten')).toBeInTheDocument();
   });
 
   it('shows feedback when plan generation fails', async () => {

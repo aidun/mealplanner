@@ -1053,7 +1053,7 @@ func (s Store) ensurePersonalFamily(ctx context.Context, userID string) error {
 		return err
 	}
 	if activeFamilyID != nil && strings.TrimSpace(*activeFamilyID) != "" {
-		return nil
+		return s.ensureFamilyMembership(ctx, strings.TrimSpace(*activeFamilyID), userID)
 	}
 	var familyID string
 	err = s.pool.QueryRow(ctx, `INSERT INTO families(name, owner_user_id) VALUES ('Persoenliche Familie', $1::uuid) RETURNING id::text`, userID).Scan(&familyID)
@@ -1063,7 +1063,27 @@ func (s Store) ensurePersonalFamily(ctx context.Context, userID string) error {
 	if _, err := s.pool.Exec(ctx, `UPDATE users SET active_family_id = $1 WHERE id = $2::uuid`, familyID, userID); err != nil {
 		return err
 	}
-	_, err = s.pool.Exec(ctx, `INSERT INTO family_members(family_id, user_id, role) VALUES ($1, $2::uuid, 'owner') ON CONFLICT DO NOTHING`, familyID, userID)
+	return s.ensureFamilyMembership(ctx, familyID, userID)
+}
+
+func (s Store) ensureFamilyMembership(ctx context.Context, familyID string, userID string) error {
+	var role string
+	err := s.pool.QueryRow(ctx, `
+		SELECT CASE WHEN owner_user_id = $2::uuid THEN 'owner' ELSE 'member' END
+		FROM families
+		WHERE id = $1
+	`, familyID, userID).Scan(&role)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrNotFound
+	}
+	if err != nil {
+		return err
+	}
+	_, err = s.pool.Exec(ctx, `
+		INSERT INTO family_members(family_id, user_id, role)
+		VALUES ($1, $2::uuid, $3)
+		ON CONFLICT DO NOTHING
+	`, familyID, userID, role)
 	return err
 }
 
