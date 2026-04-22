@@ -9,6 +9,7 @@ import {
   getFamily,
   getFavorites,
   getProfile,
+  saveProfile as persistProfile,
   saveProfile,
   updateFamilyAccountSettings,
   updateFamilyMemberLink,
@@ -44,6 +45,7 @@ export function OnboardingPage() {
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteCopyState, setInviteCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
   const [lastLinkedAccountEmail, setLastLinkedAccountEmail] = useState('');
+  const [linkSuccessMessage, setLinkSuccessMessage] = useState('');
   const activeTab = parseProfileTab(searchParams.get('tab'));
   const setActiveTab = (tab: 'family' | 'rules' | 'favorites' | 'invites') => {
     setSearchParams((current) => {
@@ -96,9 +98,28 @@ export function OnboardingPage() {
   });
 
   const linkMutation = useMutation({
-    mutationFn: updateFamilyMemberLink,
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['family'] });
+    mutationFn: async (payload: { accountUserId: string; memberId: string }) => {
+      const needsSave = hasEdited;
+      setLinkSuccessMessage('');
+      if (hasEdited) {
+        await persistProfile(formToProfile(form));
+      }
+      const family = await updateFamilyMemberLink(payload);
+      return { family, needsSave, accountEmail: lastLinkedAccountEmail };
+    },
+    onSuccess: async (result) => {
+      setLinkSuccessMessage(
+        result.needsSave
+          ? `${result.accountEmail || 'Die Zuordnung'} wurde aktualisiert und das Profil dabei gespeichert.`
+          : result.accountEmail
+            ? `${result.accountEmail} wurde aktualisiert.`
+            : 'Zuordnung gespeichert.'
+      );
+      setHasEdited(false);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['profile'] }),
+        queryClient.invalidateQueries({ queryKey: ['family'] }),
+      ]);
     },
   });
   const accountSettingsMutation = useMutation({
@@ -588,9 +609,7 @@ export function OnboardingPage() {
                 </div>
                 {linkMutation.isError ? <p className="error-copy">{readableApiError(linkMutation.error)}</p> : null}
                 {linkMutation.isSuccess ? (
-                  <p className="success-copy">
-                    {lastLinkedAccountEmail ? `${lastLinkedAccountEmail} wurde aktualisiert.` : 'Zuordnung gespeichert.'}
-                  </p>
+                  <p className="success-copy">{linkSuccessMessage || 'Zuordnung gespeichert.'}</p>
                 ) : null}
                 {accountSettingsMutation.isError ? (
                   <p className="error-copy">{readableApiError(accountSettingsMutation.error)}</p>

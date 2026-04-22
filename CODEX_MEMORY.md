@@ -32,6 +32,8 @@ Last updated: 2026-04-22
 - Das frühere Sammel-Secret `api-secrets` ist fachlich aufgeteilt in `mealplanner-api-internal`, `mealplanner-auth-core`, `mealplanner-openai`, `mealplanner-email-provider`, `mealplanner-oidc-google` und `mealplanner-oidc-apple`; nicht-sensitive Laufzeitwerte liegen in `mealplanner-api-config`.
 - Seit 2026-04-22 hat Feedback einen echten Admin-Workflow: `feedback_entries` tragen `status`, `resolved_at` und `resolved_by_user_id`; `/api/admin/overview` liefert offene Punkte standardmäßig und optional Archivpunkte über `includeResolved=true`, plus `POST /api/admin/feedback/{id}/resolve` zum sauberen Ausblenden gelöster Punkte.
 - Die Admin-Oberfläche zeigt offene und gelöste Feedbacks getrennt, Mail-Templates bewusst nur als Plain-Text/HTML-Editor mit Vorschau und kein WYSIWYG; parallel wurden Login-, Header-, Profil- und Mobile-Copy auf `Familienküche`/ruhigere Bedienung nachgezogen.
+- Seit 2026-04-22 speichert die Profilseite offene Profil-Aenderungen automatisch mit, bevor ein Login ueber `PUT /api/family/member-links` einem Profilmitglied zugeordnet wird. Das behebt den Fall, dass lokale Mitglieder-Aenderungen im Frontend weiter waren als das im Backend gespeicherte Profil.
+- Die Backend-API-Dokumentation liegt jetzt unter `docs/API.md` und muss bei Endpunkt-, Payload- oder Auth-Aenderungen mitgezogen werden.
 
 ## Wichtige Arbeitsregeln
 

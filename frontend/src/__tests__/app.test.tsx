@@ -810,6 +810,22 @@ describe('Mealplanner app', () => {
     expect(await screen.findByText('ben@example.test wurde aktualisiert.')).toBeInTheDocument();
   });
 
+  it('saves unsaved profile edits before linking a login to a person', async () => {
+    renderApp('/onboarding');
+
+    const aliasFields = await screen.findAllByLabelText('Anrede im Plan');
+    fireEvent.change(aliasFields[0]!, { target: { value: 'Mama Neu' } });
+    const selects = await screen.findAllByLabelText('Zugeordnetes Profilmitglied');
+    fireEvent.change(selects[1]!, { target: { value: 'anna' } });
+
+    await waitFor(() => {
+      const calls = vi.mocked(fetch).mock.calls.map((call) => String(call[0]));
+      expect(calls.find((url) => url.includes('/api/profile'))).toBeTruthy();
+      expect(calls.find((url) => url.includes('/api/family/member-links'))).toBeTruthy();
+    });
+    expect(await screen.findByText(/wurde aktualisiert/i)).toBeInTheDocument();
+  });
+
   it('stores per-account mail settings from the family profile area', async () => {
     renderApp('/onboarding');
 
