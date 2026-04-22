@@ -22,7 +22,7 @@ export function ShoppingListPanel({ planId, shoppingList, loading }: ShoppingLis
     <section className="surface shopping-list-panel">
       <div className="surface-header">
         <div>
-          <h2>Einkaufsliste</h2>
+          <h2>Einkauf für diese Woche</h2>
           <p>
             {items.length > 0
               ? `${items.length} Artikel${categories.length > 0 ? ` · ${categories.length} Bereiche` : ''}`

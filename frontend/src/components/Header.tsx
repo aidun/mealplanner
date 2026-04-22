@@ -35,7 +35,7 @@ export function Header({
 
         <div className="header-meta">
           <div className="week-chip">
-            <span className="week-chip-label">Woche</span>
+            <span className="week-chip-label">Diese Woche</span>
             <strong className="week-chip-value week-chip-value-default">{formatWeekRange(weekStart)}</strong>
             <strong className="week-chip-value week-chip-value-compact">{formatWeekRangeCompact(weekStart)}</strong>
           </div>
@@ -47,21 +47,21 @@ export function Header({
           <button
             type="button"
             className="button button-primary header-primary-action"
-            aria-label={creatingPlan ? 'Wochenplan wird erstellt…' : 'Wochenplan erstellen'}
+            aria-label={creatingPlan ? 'Neue Woche wird geplant…' : 'Neue Woche planen'}
             onClick={onCreatePlan}
             disabled={creatingPlan}
           >
             <PlusIcon className="action-icon" />
             <span className="header-primary-label-default">
-              {creatingPlan ? 'Wochenplan wird erstellt…' : 'Wochenplan erstellen'}
+              {creatingPlan ? 'Neue Woche wird geplant…' : 'Neue Woche planen'}
             </span>
-            <span className="header-primary-label-compact">{creatingPlan ? 'Plan läuft…' : 'Plan erstellen'}</span>
+            <span className="header-primary-label-compact">{creatingPlan ? 'Plan läuft…' : 'Woche planen'}</span>
           </button>
         ) : null}
         <div className="header-secondary-actions">
           <NavLink to="/onboarding" className="button button-secondary">
             <UserIcon className="action-icon" />
-            Haushalt
+            Küchenprofil
           </NavLink>
           {isAdmin ? (
             <NavLink to="/admin" className="button button-secondary">

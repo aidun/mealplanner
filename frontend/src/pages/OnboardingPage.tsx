@@ -295,16 +295,16 @@ export function OnboardingPage() {
           <button type="button" className="brand-mark brand-button" onClick={() => navigate('/')}>
             <AppLogo />
           </button>
-          <p className="brand-subtitle">Haushalt, Zugänge und Wochenplanung an einem Ort.</p>
+          <p className="brand-subtitle">Küchenprofil, Zugänge und Wochenrhythmus an einem Ort.</p>
         </div>
       </header>
 
       <main className="app-main">
         <section className="profile-page">
           <div className="profile-page-intro">
-            <span className="eyebrow">Haushalt</span>
-            <h1>Haushalt einrichten</h1>
-            <p>Lege fest, wer mitisst, welche Zugänge dazugehören und wie neue Wochen geplant werden.</p>
+            <span className="eyebrow">Küchenprofil</span>
+            <h1>Haushalt & Küchenprofil</h1>
+            <p>Hier legt ihr fest, wer mitisst, wie euer Alltag tickt und welche Zugänge zum gemeinsamen Bereich gehören.</p>
             <div className="profile-overview-grid" aria-label="Haushaltsübersicht">
               <div className="profile-overview-card">
                 <strong>{namedMembersCount}</strong>
@@ -327,14 +327,14 @@ export function OnboardingPage() {
               className={`profile-tab-button${activeTab === 'family' ? ' profile-tab-button-active' : ''}`}
               onClick={() => setActiveTab('family')}
             >
-              Familie
+              Haushalt
             </button>
             <button
               type="button"
               className={`profile-tab-button${activeTab === 'rules' ? ' profile-tab-button-active' : ''}`}
               onClick={() => setActiveTab('rules')}
             >
-              Planungsregeln
+              Küchenregeln
             </button>
             <button
               type="button"
@@ -348,7 +348,7 @@ export function OnboardingPage() {
               className={`profile-tab-button${activeTab === 'invites' ? ' profile-tab-button-active' : ''}`}
               onClick={() => setActiveTab('invites')}
             >
-              Einladungen
+              Zugänge
             </button>
           </nav>
 
@@ -389,8 +389,8 @@ export function OnboardingPage() {
             <section className={`profile-section${activeTab !== 'family' ? ' profile-section-hidden' : ''}`} aria-labelledby="household-section">
               <div className="profile-section-copy">
                 <span className="section-index">01</span>
-                <h2 id="household-section">Haushalt</h2>
-                <p>Nur echte Profilpersonen gehören hier hinein. Sie steuern Portionsgrößen, Vorlieben und die Namen im Plan.</p>
+                <h2 id="household-section">Wer mitisst</h2>
+                <p>Nur echte Profilpersonen gehören hier hinein. Sie steuern Portionen, Vorlieben und die Ansprache im Plan.</p>
               </div>
               <div className="profile-section-fields">
                 <label className="field">
@@ -543,8 +543,8 @@ export function OnboardingPage() {
             <section className={`profile-section${activeTab !== 'family' ? ' profile-section-hidden' : ''}`} aria-labelledby="family-section">
               <div className="profile-section-copy">
                 <span className="section-index">02</span>
-                <h2 id="family-section">Familienkonto</h2>
-                <p>Hier verwaltest du die Zugänge zu diesem Haushalt und ordnest sie den sichtbaren Personen zu.</p>
+                <h2 id="family-section">Zugänge zum Haushalt</h2>
+                <p>Hier verwaltest du die Logins zu diesem Bereich und ordnest sie den sichtbaren Personen sauber zu.</p>
               </div>
               <div className="profile-section-fields">
                 <div className="family-overview" aria-label="Familienkonto Übersicht">
@@ -696,8 +696,8 @@ export function OnboardingPage() {
             <section className={`profile-section${activeTab !== 'rules' ? ' profile-section-hidden' : ''}`} aria-labelledby="taste-section">
               <div className="profile-section-copy">
                 <span className="section-index">03</span>
-                <h2 id="taste-section">Planungsstil</h2>
-                <p>Küchen, Kochstil und Zutaten, die draußen bleiben.</p>
+                <h2 id="taste-section">Küchenregeln</h2>
+                <p>Wie eure Woche schmecken soll: Küchen, Tempo und Zutaten, die draußen bleiben.</p>
               </div>
               <div className="profile-section-fields two-column">
                 <div className="meal-plan-settings member-grid-wide">
@@ -816,8 +816,8 @@ export function OnboardingPage() {
             <section className={`profile-section${activeTab !== 'rules' ? ' profile-section-hidden' : ''}`} aria-labelledby="defaults-section">
               <div className="profile-section-copy">
                 <span className="section-index">04</span>
-                <h2 id="defaults-section">Mahlzeiten-Defaults</h2>
-                <p>Diese Texte gehen direkt in die Planungslogik ein.</p>
+                <h2 id="defaults-section">Mahlzeiten-Leitplanken</h2>
+                <p>Diese Hinweise geben der Planungslogik pro Tageszeit eine wiedererkennbare Richtung.</p>
               </div>
               <div className="profile-section-fields preset-grid">
                 <label className="field">
@@ -867,7 +867,7 @@ export function OnboardingPage() {
               <div className="profile-section-copy">
                 <span className="section-index">05</span>
                 <h2 id="favorites-section">Favoriten</h2>
-                <p>Gespeicherte Gerichte liegen hier gesammelt und können direkt bereinigt werden.</p>
+                <p>Gespeicherte Gerichte liegen hier gesammelt und geben der nächsten Woche eine vertraute Richtung.</p>
               </div>
               <div className="profile-section-fields">
                 <div className="family-overview" aria-label="Favoriten Übersicht">
@@ -912,8 +912,8 @@ export function OnboardingPage() {
             <section className={`profile-section${activeTab !== 'invites' ? ' profile-section-hidden' : ''}`} aria-labelledby="invites-section">
               <div className="profile-section-copy">
                 <span className="section-index">06</span>
-                <h2 id="invites-section">Einladungen</h2>
-                <p>Neue Logins ins Familienkonto holen und sauber zusammenführen.</p>
+                <h2 id="invites-section">Einladungen & Zugänge</h2>
+                <p>Neue Logins in den gemeinsamen Bereich holen und bestehende Profile sauber zusammenführen.</p>
               </div>
               <div className="profile-section-fields">
                 <p className="panel-feedback" role="note">

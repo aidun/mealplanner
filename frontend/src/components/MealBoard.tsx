@@ -47,7 +47,7 @@ export function MealBoard({
       <div className="surface-header">
         <div>
           <h2>Diese Woche auf dem Tisch</h2>
-          <p>Tag wählen, Gericht öffnen und direkt weiterarbeiten.</p>
+          <p>Tag wählen, Gericht öffnen und die Woche ohne Medienbruch weiterführen.</p>
         </div>
         {days.length > 0 ? (
           <div className="carousel-actions" aria-label="Tage wechseln">
@@ -81,7 +81,7 @@ export function MealBoard({
         {days.length === 0 ? (
           <div className="empty-state">
             <h3>Noch kein Wochenplan</h3>
-            <p>Startet eine neue Woche mit Gerichten, die zu eurem Alltag passen.</p>
+            <p>Plant eine neue Woche mit Gerichten, die zu eurem Tempo und Geschmack passen.</p>
           </div>
         ) : activeDay ? (
           <section key={activeDay.date} className="day-column" aria-label={activeDay.label ?? activeDay.date}>

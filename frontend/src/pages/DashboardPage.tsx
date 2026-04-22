@@ -265,27 +265,25 @@ export function DashboardPage() {
       ? 'Das Gericht wurde ausgetauscht.'
       : '';
   const logoutMessage = logoutMutation.isError ? 'Logout gerade nicht möglich. Bitte versuche es erneut.' : '';
+  const shoppingItemCount = shoppingListQuery.data ? countShoppingItems(shoppingListQuery.data) : 0;
   const workspaceViews = [
     {
       id: 'plan' as const,
       title: 'Woche',
-      description: selectedDay?.label ? `${selectedDay.label} im Fokus.` : 'Tage und Mahlzeiten durchgehen.',
+      description: selectedDay?.label ? `${selectedDay.label} zuerst prüfen.` : 'Tage und Mahlzeiten im Blick halten.',
       meta: `${currentPlanQuery.data?.days.length ?? 0} Tage`,
     },
     {
       id: 'detail' as const,
       title: 'Rezept',
-      description: inspectedMeal?.title ?? 'Zutaten, Schritte und Anpassungen öffnen.',
+      description: inspectedMeal?.title ?? 'Zutaten, Schritte und Änderungen öffnen.',
       meta: inspectedMealInPlan ? 'Im Fokus' : 'Noch nichts ausgewählt',
     },
     {
       id: 'shopping' as const,
       title: 'Einkauf',
-      description:
-        shoppingListQuery.data && countShoppingItems(shoppingListQuery.data) > 0
-          ? `${countShoppingItems(shoppingListQuery.data)} Einträge bereit.`
-          : 'Alles für die Woche gesammelt prüfen.',
-      meta: `${shoppingListQuery.data ? countShoppingItems(shoppingListQuery.data) : 0} Produkte`,
+      description: shoppingItemCount > 0 ? `${shoppingItemCount} Positionen abgestimmt.` : 'Alles für die Woche gesammelt prüfen.',
+      meta: `${shoppingItemCount} Produkte`,
     },
   ];
 
@@ -309,9 +307,12 @@ export function DashboardPage() {
         >
           <PlanBackdrop />
           <div className="plan-stage-copy plan-stage-copy-compact">
-            <span className="eyebrow">Wochenplan</span>
-            <h1 id="home-title">Alles für diese Woche an einem Ort.</h1>
-            <p>{brand.name} hält Tage, Rezepte und Einkauf in einem ruhigen Ablauf zusammen, statt sie wie getrennte Admin-Bereiche zu behandeln.</p>
+            <span className="eyebrow">Diese Woche</span>
+            <h1 id="home-title">Plan, Rezepte und Einkauf in einem ruhigen Ablauf.</h1>
+            <p>
+              {brand.name} hält euren Küchenrhythmus zusammen: Tage prüfen, Gerichte schärfen und den Einkauf aus
+              derselben Woche heraus mitnehmen.
+            </p>
           </div>
           <div className="plan-stage-context" aria-label="Aktueller Fokus">
             <div className="plan-focus-item">
@@ -321,6 +322,20 @@ export function DashboardPage() {
             <div className="plan-focus-item">
               <span>Geöffnetes Rezept</span>
               <strong>{inspectedMeal?.title ?? 'Noch kein Gericht gewählt'}</strong>
+            </div>
+          </div>
+          <div className="plan-stage-meta" aria-label="Wochenüberblick">
+            <div className="stage-stat">
+              <strong>{currentPlanQuery.data?.days.length ?? 0}</strong>
+              <span>Tage geplant</span>
+            </div>
+            <div className="stage-stat">
+              <strong>{allMeals.length}</strong>
+              <span>Gerichte in Arbeit</span>
+            </div>
+            <div className="stage-stat">
+              <strong>{shoppingItemCount}</strong>
+              <span>Einkaufspositionen</span>
             </div>
           </div>
         </section>

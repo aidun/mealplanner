@@ -5,8 +5,7 @@ const (
 	LegacyName      = "Mealplanner"
 	TransitionLabel = "Familienküche"
 	Domain          = "mealplanner.markushartmann.dev"
-	Slogan          = "Gemeinsam planen, entspannt kochen."
-	ShortTagline    = "Woche, Rezepte und Einkauf in einem Fluss."
-	Description     = "Mahlio plant Wochen, Rezepte und Einkauf fuer Familien an einem Ort."
+	Slogan          = "Gut essen. Klar planen. Ruhig durch die Woche."
+	ShortTagline    = "Private Kuechenplanung fuer Haushalte mit Geschmack."
+	Description     = "Mahlio bringt Wochenrhythmus, Rezepte und Einkauf in einen ruhigen Kuechenfluss fuer Haushalte mit Geschmack."
 )
-

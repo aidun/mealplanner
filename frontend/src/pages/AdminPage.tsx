@@ -112,16 +112,16 @@ export function AdminPage() {
       <main className="app-main">
         <section className="profile-page">
           <div className="profile-page-intro">
-            <span className="eyebrow">Admin</span>
-            <h1>Admin</h1>
-            <p>Premium-Freigaben, Feedback-Triage und die laufenden Texte für {brand.name}.</p>
+            <span className="eyebrow">Backoffice</span>
+            <h1>Marke, Premium & Support</h1>
+            <p>Hier laufen Premium-Freigaben, Service-Copy und Feedback für {brand.name} zusammen.</p>
           </div>
 
           <div className="profile-section">
             <div className="profile-section-copy">
               <span className="section-index">01</span>
-              <h2>Premium-Freigaben</h2>
-              <p>Diese E-Mail-Adressen schalten Premium familienweit frei und können direkt eine Einladung per Mail erhalten.</p>
+              <h2>Premium-Zugänge</h2>
+              <p>Diese E-Mail-Adressen schalten Premium familienweit frei und können direkt eine passende Mail erhalten.</p>
             </div>
             <div className="profile-section-fields">
               <div className="premium-entry-row">
@@ -264,8 +264,8 @@ export function AdminPage() {
           <div className="profile-section">
             <div className="profile-section-copy">
               <span className="section-index">03</span>
-              <h2>Mail-Templates</h2>
-              <p>Betreff und Inhalte für Premium-Einladung, Familien-Einladung und Wochenplan-Mails anpassen.</p>
+              <h2>Mail-Tonalität</h2>
+              <p>Betreff und Inhalte für Premium, Einladungen und Wochenplan-Mails in der aktuellen Mahlio-Sprache pflegen.</p>
             </div>
             <div className="profile-section-fields">
               <div className="family-account-list">
@@ -335,7 +335,7 @@ export function AdminPage() {
                           disabled={saveTemplateMutation.isPending}
                         >
                           <SaveIcon className="action-icon" />
-                          Template speichern
+                          Vorlage speichern
                         </button>
                       </div>
                     </article>
@@ -350,8 +350,8 @@ export function AdminPage() {
           <div className="profile-section">
             <div className="profile-section-copy">
               <span className="section-index">04</span>
-              <h2>Feedback</h2>
-              <p>Offene Rückmeldungen zuerst bearbeiten, gelöste Punkte nur noch im Archiv halten.</p>
+              <h2>Support & Feedback</h2>
+              <p>Offene Rückmeldungen zuerst bearbeiten, gelöste Punkte nur noch als nachvollziehbares Archiv führen.</p>
             </div>
             <div className="profile-section-fields">
               <div className="family-account-list">
