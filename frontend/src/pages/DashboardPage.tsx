@@ -253,14 +253,14 @@ export function DashboardPage() {
   const planMessage = createPlanMutation.isPending
     ? 'Wir stellen eure Woche zusammen.'
     : createPlanMutation.isError
-    ? readableApiError(createPlanMutation.error)
+    ? readableApiError(createPlanMutation.error, 'Der Wochenplan konnte gerade nicht erstellt werden. Bitte versuche es gleich noch einmal.')
       : createPlanMutation.isSuccess
         ? 'Der neue Wochenplan ist fertig.'
         : currentPlanQuery.isError
           ? 'Der aktuelle Plan konnte nicht geladen werden.'
           : '';
   const regenerateMessage = regenerateMealMutation.isError
-    ? readableApiError(regenerateMealMutation.error)
+    ? readableApiError(regenerateMealMutation.error, 'Das Gericht konnte gerade nicht ausgetauscht werden. Bitte versuche es noch einmal.')
     : regenerateMealMutation.isSuccess
       ? 'Das Gericht wurde ausgetauscht.'
       : '';

@@ -235,18 +235,42 @@ export function OnboardingPage() {
       };
     });
   }, [familyMembersForAssignments, familyQuery.data?.accounts]);
+  const visibleAccounts = useMemo(() => {
+    if (linkedMembers.length > 0) {
+      return linkedMembers;
+    }
+    if (!session?.authenticated || !session.userID || !session.email) {
+      return [];
+    }
+    return [
+      {
+        userId: session.userID,
+        email: session.email,
+        role: familyQuery.data?.personal ? 'owner' : '',
+        linkedMemberId: '',
+        settings: {
+          weeklyPlanEmailEnabled: true,
+          recipeEmailEnabled: true,
+        },
+        linkedLabel: '',
+        unassigned: true,
+        unresolvedLink: false,
+      },
+    ];
+  }, [familyQuery.data?.personal, linkedMembers, session?.authenticated, session?.email, session?.userID]);
   const familyRoster = useMemo(
     () =>
       familyMembersForAssignments.map((member, index) => ({
         id: member.id,
         label: member.alias?.trim() || member.name.trim() || `Mitglied ${index + 1}`,
         role: member.role?.trim() || 'Haushaltsmitglied',
-        accounts: linkedMembers.filter((account) => account.linkedMemberId === member.id),
+        accounts: visibleAccounts.filter((account) => account.linkedMemberId === member.id),
       })),
-    [familyMembersForAssignments, linkedMembers]
+    [familyMembersForAssignments, visibleAccounts]
   );
-  const linkedAccountsCount = linkedMembers.filter((account) => account.linkedMemberId).length;
-  const unassignedAccountsCount = linkedMembers.filter((account) => account.unassigned).length;
+  const visibleAccountsCount = visibleAccounts.length;
+  const linkedAccountsCount = visibleAccounts.filter((account) => account.linkedMemberId).length;
+  const unassignedAccountsCount = visibleAccounts.filter((account) => account.unassigned).length;
   const favorites = favoritesQuery.data ?? [];
   const inviteSentByEmail = Boolean((inviteMutation.data as { emailSent?: boolean } | undefined)?.emailSent);
   const canManageFamilyMail = Boolean(session?.isPremium || session?.isAdmin);
@@ -258,10 +282,10 @@ export function OnboardingPage() {
 
   const statusMessage = useMemo(() => {
     if (saveMutation.isPending) return 'Angaben werden gespeichert.';
-    if (saveMutation.isError) return readableApiError(saveMutation.error);
+    if (saveMutation.isError) return readableApiError(saveMutation.error, 'Angaben konnten gerade nicht gespeichert werden.');
     if (saveMutation.isSuccess && !hasEdited) return 'Angaben gespeichert. Der nächste Wochenplan nutzt diese Einstellungen.';
     if (hasEdited) return 'Ungespeicherte Änderungen.';
-    return 'Bereit zum Speichern.';
+    return '';
   }, [hasEdited, saveMutation.error, saveMutation.isError, saveMutation.isPending, saveMutation.isSuccess]);
 
   return (
@@ -287,7 +311,7 @@ export function OnboardingPage() {
                 <span>Profilpersonen</span>
               </div>
               <div className="profile-overview-card">
-                <strong>{familyQuery.data?.accounts?.length ?? 0}</strong>
+                <strong>{visibleAccountsCount}</strong>
                 <span>Login-Zugänge</span>
               </div>
               <div className="profile-overview-card">
@@ -328,18 +352,20 @@ export function OnboardingPage() {
             </button>
           </nav>
 
-          <div
-            className={`status-strip${saveMutation.isError ? ' status-strip-error' : ''}${saveMutation.isSuccess && !hasEdited ? ' status-strip-success' : ''}`}
-            role={saveMutation.isError ? 'alert' : 'status'}
-            aria-live="polite"
-          >
-            <span>{statusMessage}</span>
-            {saveMutation.isSuccess && !hasEdited ? (
-              <button type="button" className="button button-secondary" onClick={() => navigate('/')}>
-                Zum Wochenplan
-              </button>
-            ) : null}
-          </div>
+          {statusMessage ? (
+            <div
+              className={`status-strip${saveMutation.isError ? ' status-strip-error' : ''}${saveMutation.isSuccess && !hasEdited ? ' status-strip-success' : ''}`}
+              role={saveMutation.isError ? 'alert' : 'status'}
+              aria-live="polite"
+            >
+              <span>{statusMessage}</span>
+              {saveMutation.isSuccess && !hasEdited ? (
+                <button type="button" className="button button-secondary" onClick={() => navigate('/')}>
+                  Zum Wochenplan
+                </button>
+              ) : null}
+            </div>
+          ) : null}
 
           {joinedFamily ? (
             <div className="status-strip status-strip-success" role="status" aria-live="polite">
@@ -525,7 +551,7 @@ export function OnboardingPage() {
                   <strong>{familyQuery.data?.personal ? 'Persönlicher Bereich' : 'Gemeinsames Familienkonto'}</strong>
                   {familyQuery.data?.mergedWarning ? <p>{familyQuery.data.mergedWarning}</p> : null}
                   <div className="family-summary-row">
-                    <span>{linkedAccountsCount} von {linkedMembers.length} Logins zugeordnet</span>
+                    <span>{linkedAccountsCount} von {visibleAccountsCount} Logins zugeordnet</span>
                     <span>{namedMembersCount} Profilpersonen sichtbar</span>
                     {unassignedAccountsCount > 0 ? <span>{unassignedAccountsCount} Logins brauchen noch eine Person</span> : null}
                   </div>
@@ -561,8 +587,8 @@ export function OnboardingPage() {
                 </div>
 
                 <div className="family-account-list">
-                  {linkedMembers.length > 0 ? (
-                    linkedMembers.map((account) => (
+                  {visibleAccounts.length > 0 ? (
+                    visibleAccounts.map((account) => (
                       <article
                         key={account.userId}
                         className={`family-account-row${account.unassigned ? ' family-account-row-unassigned' : ''}`}
@@ -651,9 +677,7 @@ export function OnboardingPage() {
                         </div>
                       </article>
                     ))
-                  ) : (
-                    <p className="muted">Noch keine verknüpften Login-Accounts sichtbar.</p>
-                  )}
+                  ) : null}
                 </div>
                 {linkMutation.isError ? <p className="error-copy">{readableApiError(linkMutation.error)}</p> : null}
                 {linkMutation.isSuccess ? (

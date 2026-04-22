@@ -4,10 +4,10 @@ export function readableApiError(error: unknown, fallback = 'Das hat gerade nich
   if (error instanceof ApiError) {
     try {
       const parsed = JSON.parse(error.message) as { error?: string; requestId?: string };
-      if (parsed.error && parsed.requestId) {
-        return `${parsed.error} Fehler-ID: ${parsed.requestId}`;
-      }
       if (parsed.error) {
+        if (parsed.error === 'Das hat gerade nicht geklappt. Bitte versuche es erneut.') {
+          return fallback;
+        }
         return parsed.error;
       }
     } catch {

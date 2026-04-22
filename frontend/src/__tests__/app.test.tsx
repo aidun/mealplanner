@@ -117,7 +117,7 @@ const family = {
   ],
   personal: false,
 };
-const session = { authenticated: true, csrfToken: 'csrf-token-1', email: 'anna@example.test', isAdmin: false };
+const session = { authenticated: true, csrfToken: 'csrf-token-1', userID: 'user-1', email: 'anna@example.test', isAdmin: false };
 const adminOverview = {
   premiumUsers: [{ id: 'premium-1', email: 'premium@example.test' }],
   mailTemplates: [
@@ -850,10 +850,31 @@ describe('Mealplanner app', () => {
     expect(screen.getAllByText('Zuordnung offen').length).toBeGreaterThan(0);
   });
 
+  it('keeps the current login visible when family accounts return empty', async () => {
+    vi.stubGlobal(
+      'fetch',
+      createFetchMock({
+        familyOverride: {
+          ...family,
+          accounts: [],
+        },
+      })
+    );
+
+    renderApp('/onboarding');
+
+    expect(await screen.findByText('anna@example.test')).toBeInTheDocument();
+    expect(screen.queryByText('Noch keine verknüpften Login-Accounts sichtbar.')).not.toBeInTheDocument();
+  });
+
   it('shows specific feedback after linking a family account', async () => {
     renderApp('/onboarding');
 
-    const selects = await screen.findAllByLabelText('Zugeordnete Person');
+    expect((await screen.findAllByText('ben@example.test')).length).toBeGreaterThan(0);
+    await waitFor(() => {
+      expect(screen.getAllByLabelText('Zugeordnete Person').length).toBeGreaterThan(1);
+    });
+    const selects = screen.getAllByLabelText('Zugeordnete Person');
     fireEvent.change(selects[1]!, { target: { value: 'anna' } });
 
     expect(await screen.findByText('ben@example.test wurde aktualisiert.')).toBeInTheDocument();
@@ -878,7 +899,11 @@ describe('Mealplanner app', () => {
   it('stores per-account mail settings from the family profile area', async () => {
     renderApp('/onboarding');
 
-    const weeklyPlanToggles = await screen.findAllByRole('checkbox', { name: 'Wochenplan-Mail' });
+    expect((await screen.findAllByText('ben@example.test')).length).toBeGreaterThan(0);
+    await waitFor(() => {
+      expect(screen.getAllByRole('checkbox', { name: 'Wochenplan-Mail' }).length).toBeGreaterThan(1);
+    });
+    const weeklyPlanToggles = screen.getAllByRole('checkbox', { name: 'Wochenplan-Mail' });
     fireEvent.click(weeklyPlanToggles[1]!);
 
     await waitFor(() => {
@@ -999,7 +1024,7 @@ describe('Mealplanner app', () => {
     fireEvent.click(await screen.findByRole('button', { name: /Wochenplan erstellen/i }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Das hat gerade nicht geklappt. Bitte versuche es erneut. Fehler-ID: req-123'
+      'Der Wochenplan konnte gerade nicht erstellt werden. Bitte versuche es gleich noch einmal.'
     );
   });
 
