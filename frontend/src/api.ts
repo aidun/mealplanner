@@ -98,6 +98,10 @@ export async function logout() {
   csrfToken = '';
 }
 
+export async function skipProfileOnboarding() {
+  return request<null>('/api/account/onboarding/skip', { method: 'POST' });
+}
+
 export async function getProfile() {
   return request<Profile>('/api/profile', undefined, { allow404: true });
 }

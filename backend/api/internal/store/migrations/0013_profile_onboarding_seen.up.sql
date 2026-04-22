@@ -1,0 +1,2 @@
+ALTER TABLE user_settings
+  ADD COLUMN IF NOT EXISTS profile_onboarding_seen BOOLEAN NOT NULL DEFAULT FALSE;

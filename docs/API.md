@@ -13,6 +13,38 @@ JSON-Fehlerobjekt, falls der jeweilige Handler das bereits so liefert.
 - Premium-Endpunkte: fuer Premium-Familien bzw. den Admin, sofern der jeweilige Handler ueber
   `withPremium` geschuetzt ist
 
+### `GET /api/session`
+
+Liefert die aktuelle Login-Session fuer das Frontend.
+
+Antwort:
+
+```json
+{
+  "authenticated": true,
+  "userID": "user-1",
+  "email": "anna@example.test",
+  "isAdmin": false,
+  "isPremium": true,
+  "csrfToken": "csrf-token",
+  "onboardingRequired": true
+}
+```
+
+Hinweis:
+
+- `onboardingRequired=true` gilt nur fuer den neutralen Erstzustand: Platzhalterprofil aktiv und
+  der First-Login-Dialog wurde noch nicht uebersprungen.
+
+### `POST /api/account/onboarding/skip`
+
+Merkt sich, dass der First-Login-Dialog fuer den aktuellen Login-Account nicht erneut automatisch
+erscheinen soll.
+
+Antwort:
+
+- `204 No Content`
+
 ## Admin
 
 ### `GET /api/admin/overview`

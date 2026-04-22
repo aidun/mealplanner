@@ -200,6 +200,7 @@ export interface Session {
   email?: string;
   isAdmin?: boolean;
   isPremium?: boolean;
+  onboardingRequired?: boolean;
 }
 
 export interface AccountSettings {

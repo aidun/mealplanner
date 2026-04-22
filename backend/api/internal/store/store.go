@@ -186,6 +186,30 @@ func (s Store) GetAccountSettings(ctx context.Context, userID string) (domain.Ac
 	return settings, err
 }
 
+func (s Store) HasSeenProfileOnboarding(ctx context.Context, userID string) (bool, error) {
+	var seen bool
+	err := s.pool.QueryRow(ctx, `
+		SELECT profile_onboarding_seen
+		FROM user_settings
+		WHERE user_id = $1::uuid
+	`, userID).Scan(&seen)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	return seen, err
+}
+
+func (s Store) MarkProfileOnboardingSeen(ctx context.Context, userID string) error {
+	_, err := s.pool.Exec(ctx, `
+		INSERT INTO user_settings(user_id, profile_onboarding_seen, updated_at)
+		VALUES ($1::uuid, true, now())
+		ON CONFLICT (user_id) DO UPDATE
+		SET profile_onboarding_seen = true,
+		    updated_at = now()
+	`, userID)
+	return err
+}
+
 func (s Store) SaveAccountSettings(ctx context.Context, userID string, settings domain.AccountSettings) (domain.AccountSettings, error) {
 	err := s.pool.QueryRow(ctx, `
 		INSERT INTO user_settings(user_id, weekly_plan_email_enabled, recipe_email_enabled, updated_at)

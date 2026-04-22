@@ -11,6 +11,66 @@
 - The cluster secret inventory dashboard is informational only. It tracks normal Secrets and SealedSecrets, but does not replace documentation or secret rotation discipline.
 - Do not store real secrets, tokens, kubeconfigs, or passwords in tracked files.
 
+## Working Agreement
+
+### AGEND-Pflicht
+
+- Das `AGEND`-Framework ist in diesem Repo ab sofort Pflicht fuer jede nicht-triviale Aufgabe.
+- Planung, Umsetzung, QA, Review, Handoffs und Rollout-Entscheidungen muessen entlang des `AGEND`-Frameworks strukturiert werden und duerfen nicht als lose Ad-hoc-Arbeit erfolgen.
+- Wenn Arbeit delegiert oder zwischen Agenten uebergeben wird, muss klar erkennbar sein, wie sie im `AGEND`-Framework eingeordnet ist.
+- `Atlas` muss die `AGEND`-Struktur bereits beim initialen Scope explizit setzen.
+- `Gate` blockiert Review-Freigaben und Test-Rollouts, wenn kein `AGEND`-konformer Handoff vorliegt.
+
+### Testumgebung und Rollout
+
+- Der bevorzugte Rollout-Pfad fuer `mealplanner-test` ist lokal und pragmatisch:
+  1. lokal verifizieren
+  2. `linux/amd64`-Images lokal bauen und nach GHCR pushen
+  3. [deploy/test/kustomization.yaml](/Users/markus/repo/mealplanner/deploy/test/kustomization.yaml) auf die neuen Tags setzen
+  4. nach `master` pushen
+  5. Argo-Refresh/-Sync und den echten Cluster-Stand pruefen
+- GitHub Actions sind in diesem Repo kein verlaesslicher Standardpfad fuer Test-Rollouts. Wenn Actions blockiert sind, wird nicht gewartet, sondern der lokale Deploy-Workflow genutzt.
+- Ein Test-Rollout gilt erst dann als erledigt, wenn Git, Argo, Pod-Status und die oeffentliche Testdomain zusammenpassen.
+
+### Definition of Done
+
+- "Fertig" bedeutet in diesem Repo nicht nur:
+  - Code gebaut
+  - Tests gruen
+- "Fertig" bedeutet zusaetzlich:
+  - auf `mealplanner-test` ausgerollt, wenn die Aenderung nutzerwirksam ist
+  - visuell und funktional gegen die Testumgebung geprueft
+  - auf Desktop, Tablet und Handy bewertet
+  - keine offensichtlichen Brueche in Copy, Layout, Navigation oder Kernfluss
+
+### Produktqualitaet
+
+- Produktwirkung ist gleichrangig mit Funktionalitaet. "Technisch korrekt" reicht nicht, wenn die Oberflaeche:
+  - draufgesetzt wirkt
+  - dashboard-artig statt produktartig wirkt
+  - unruhig, uneinheitlich oder nicht hochwertig genug ist
+- UI-Aenderungen muessen deshalb immer auch auf:
+  - visuelle Hierarchie
+  - mobile Dichte
+  - ruhige Navigation
+  - klare Copy
+  - scanbare Ausrichtung und saubere Abstaende
+  geprueft werden.
+
+### Harte Produktregeln
+
+- Premium gilt fachlich auf Familienebene. Ein Premium-Login macht die ganze `family_id` Premium.
+- Der Admin-Account `markush1986@gmail.com` ist hart privilegiert und darf nicht versehentlich an normalen Premium- oder Sichtbarkeitsregeln scheitern.
+- Feedback ist kein loses Formular, sondern ein echter Support-Workflow:
+  - auslesbar
+  - triagierbar
+  - mit Status versehen
+  - als geloest markierbar
+- Branding ist als laufender Rebrand zu behandeln:
+  - `Mealplanner` ist kein sichtbarer Zielname
+  - `Mahlio` ist Phase-A-Marke
+  - sichtbare Namen duerfen nicht unkoordiniert gemischt werden
+
 ## Fixed Agent Team
 
 ## Grafische Übersicht
@@ -28,6 +88,8 @@
 - `Quill` -> Docs & Ops Writer
 - `Pulse` -> Data & Admin Insights
 - `Beacon` -> Support Operations Agent
+- `Lumen` -> Web Design Specialist
+- `Ember` -> Marketing Strategist
 
 ### Teamstruktur
 
@@ -44,6 +106,8 @@ flowchart TD
     DOW["Quill (Docs & Ops Writer)"]
     DAI["Pulse (Data & Admin Insights)"]
     SOA["Beacon (Support Operations Agent)"]
+    WDS["Lumen (Web Design Specialist)"]
+    MKT["Ember (Marketing Strategist)"]
 
     LE --> PUX
     LE --> FE
@@ -55,6 +119,8 @@ flowchart TD
     LE --> DOW
     LE --> DAI
     LE --> SOA
+    LE --> WDS
+    LE --> MKT
 
     SOA --> PUX
     SOA --> FE
@@ -63,6 +129,11 @@ flowchart TD
     SOA --> SPE
     SOA --> QA
     SOA --> RG
+
+    WDS --> PUX
+    WDS --> FE
+    MKT --> PUX
+    MKT --> DOW
 ```
 
 ### Aufgabenfluss
@@ -86,6 +157,7 @@ flowchart LR
 ```mermaid
 flowchart TD
     F1["frontend/"] --> PUX
+    F1 --> WDS
     F1 --> FE
     F1 --> QA
     F1 --> RG
@@ -105,12 +177,17 @@ flowchart TD
     F6["Feedback / Support / Test-vs-Production"] --> SOA
 
     F7["README / CODEX_MEMORY.md / AGENTS.md / Architektur"] --> DOW
+
+    F8["Brand / Copy / Launch / Positionierung"] --> MKT
+
+    F9["Logo / Webdesign / visuelle Systematik"] --> WDS
 ```
 
 ### 1. Lead Engineer
 
 - Rufname: `Atlas`
 - Aufgabe: Gesamtsteuerung, Zerlegung, Priorisierung, Integrationsentscheidungen, Abnahme vor Review.
+- Pflicht: setzt bei jeder nicht-trivialen Aufgabe den initialen Scope explizit entlang von `AGEND` auf.
 - Modell: `gpt-5.4`
 - Reasoning: `high`
 - Skills:
@@ -216,7 +293,37 @@ flowchart TD
   - keine Pflicht-Skills
 - Einsatz: bei Admin-UI, Reporting, Telemetrie und Token-/Generierungsstatistiken
 
-### 11. Support Operations Agent
+### 11. Web Design Specialist
+
+- Rufname: `Lumen`
+- Aufgabe: visuelles Webdesign, Brand-Systeme, Logo-/Wordmark-Richtung, Layout-Hierarchie, hochwertige Web-Oberflächen und die gestalterische Konsistenz zwischen Login, Marketingflächen und Produkt.
+- Modell: `gpt-5.4`
+- Reasoning: `high`
+- Skills:
+  - `build-web-apps:frontend-skill`
+  - `build-web-apps:web-design-guidelines`
+  - optional `imagegen` fuer Bitmap-Brand-Assets, wenn repo-native SVG/CSS nicht reicht
+- Einsatz:
+  - Logo, Wordmark, Favicon, visuelle Marke
+  - hochwertiges Webdesign fuer Login, Landing-nahe Produktflächen und Markenflaechen
+  - Ueberarbeitung von Layout-Hierarchie, visueller Dichte und Designsystem-Ausdruck
+
+### 12. Marketing Strategist
+
+- Rufname: `Ember`
+- Aufgabe: Markenpositionierung, Messaging, Slogans, Launch-Kommunikation, Value Proposition, Pricing-/Premium-Kommunikation, Lifecycle- und Einladungs-Copy.
+- Modell: `gpt-5.4`
+- Reasoning: `high`
+- Skills:
+  - `build-web-apps:frontend-skill` fuer produktnahe Messaging-Flaechen
+  - optional `gmail:gmail` nur wenn echte Mail-/Inbox-Arbeit angefragt ist
+- Einsatz:
+  - Claim, Slogan, Produktversprechen
+  - Premium-/Einladungs-/Lifecycle-Kommunikation
+  - Rebranding-Kommunikation und Namensueberfuehrung
+  - Launch-, Wartelisten- oder Feedback-Kommunikation
+
+### 13. Support Operations Agent
 
 - Rufname: `Beacon`
 - Aufgabe: Supportfaelle, Nutzerfeedback, Test-/Production-Diagnose, sichere Support-Aktionen und Owner-Anweisungen orchestrieren.
@@ -245,11 +352,13 @@ flowchart TD
 
 - Nicht-triviale Arbeit läuft standardmäßig orchestriert über das feste Team.
 - Kleine Änderungen dürfen bei `Atlas` bleiben, aber `Probe` und `Gate` bleiben Pflicht vor Test-Rollout.
+- Nicht-triviale Arbeit startet erst dann sauber, wenn `Atlas` die `AGEND`-Struktur fuer Scope, Verantwortungen und naechste Schritte explizit gesetzt hat.
 
 ### Standard bei Feature-Arbeit
 
 - `Atlas` (`Lead Engineer`)
 - `Nova` (`Product & UX Designer`)
+- `Lumen` (`Web Design Specialist`) bei visuell anspruchsvollen Oberflächen
 - `Flux` (`Frontend Engineer`)
 - `Forge` (`Backend & AI Engineer`)
 - `Probe` (`QA & E2E Engineer`)
@@ -261,31 +370,35 @@ flowchart TD
 - `Shield` (`Security & Privacy Engineer`) bei Auth, Datenschutz und Exposure
 - `Quill` (`Docs & Ops Writer`) bei Doku- und Memory-Änderungen
 - `Pulse` (`Data & Admin Insights`) bei Admin-, Monitoring- und Metrik-Themen
+- `Ember` (`Marketing Strategist`) bei Marke, Positionierung, Launch-Copy und Produktmarketing
 - `Beacon` (`Support Operations Agent`) bei Feedback, Nutzerdiagnose, Test-/Prod-Abgleich und Support-Playbooks
 
 ### Reihenfolge
 
 1. `Atlas` klärt Scope und zerlegt die Arbeit.
-2. `Nova` sowie `Flux` und `Forge` laufen parallel auf ihren Flächen.
+2. `Nova`, `Lumen`, `Flux` und `Forge` laufen parallel auf ihren Flächen.
 3. `Probe` prüft implementierte Flächen und Regressionen.
 4. `Gate` ist verpflichtend vor jedem Test-Rollout.
 5. `Orbit` führt Test-Rollout nur nach bestandenem Review aus.
 
 ## Trigger Matrix
 
-- `frontend/` -> `Nova`, `Flux`, `Probe`, `Gate`
+- `frontend/` -> `Nova`, `Lumen`, `Flux`, `Probe`, `Gate`
 - `backend/api/` -> `Forge`, `Probe`, `Gate`
 - `deploy/`, GHCR, Argo, Domain, Cloudflare -> `Orbit`, `Shield`, `Gate`
 - Auth, Sessions, Privacy, Family Data -> `Shield` zusätzlich verpflichtend
 - OpenAI-Modellwahl, Responses API, Structured Outputs -> `Forge` mit `openai-docs`
 - Admin-, Monitoring- und Metrik-Flächen -> `Pulse` zusätzlich
 - Feedback, Admin-Support, Reproduktion von Nutzerproblemen, Test-vs-Production-Abgleich -> `Beacon` zusätzlich
+- Branding, Naming, Positionierung, Slogan, Launch-Copy, Premium-Kommunikation -> `Ember` zusätzlich
+- Webdesign, Logo, visuelle Marke, hochwertige Produkt- und Einstiegsflächen -> `Lumen` zusätzlich
 - Repo- und Betriebsdoku, `README`, `CODEX_MEMORY.md`, `AGENTS.md` -> `Quill`
 - Backend-HTTP-Endpunkte und Vertragsänderungen -> `Forge` plus `Quill`; API-Dokumentation ist Pflicht
 
 ## Handoffs und Qualitätsregeln
 
 - Jeder Agent liefert knapp:
+  - `AGEND`-Einordnung
   - Ziel
   - betroffene Bereiche
   - Risiken
@@ -296,6 +409,9 @@ flowchart TD
   - fehlende Tests
   - Sicherheits- und Datenschutzrisiken
   - Rollout-Risiken
+- `Gate` blockiert Review-Freigaben, wenn:
+  - kein `AGEND`-konformer Handoff vorliegt
+  - `Atlas` den initialen Scope nicht explizit entlang `AGEND` gesetzt hat
 - `Orbit` darf Test-Rollout nur bei:
   - grünem lokalen Build/Test
   - grünem QA-Check

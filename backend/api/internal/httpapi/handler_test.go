@@ -33,6 +33,7 @@ type memoryRepo struct {
 	premiumUsers    map[string]domain.PremiumUser
 	premiumInvites  []domain.PremiumInvite
 	accountSettings map[string]domain.AccountSettings
+	onboardingSeen  map[string]bool
 	mailTemplates   map[string]domain.MailTemplate
 	activeFamilies  map[string]string
 	familyMembers   map[string]map[string]memoryFamilyMember
@@ -104,6 +105,7 @@ func newMemoryRepo() *memoryRepo {
 		emailHashes:     map[string]string{},
 		premiumUsers:    map[string]domain.PremiumUser{},
 		accountSettings: map[string]domain.AccountSettings{},
+		onboardingSeen:  map[string]bool{},
 		mailTemplates:   map[string]domain.MailTemplate{},
 		activeFamilies:  map[string]string{},
 		familyMembers:   map[string]map[string]memoryFamilyMember{},
@@ -183,6 +185,15 @@ func (m *memoryRepo) SaveAccountSettings(r *http.Request, settings domain.Accoun
 	settings.UpdatedAt = time.Now()
 	m.accountSettings[mustUserID(r.Context())] = settings
 	return settings, nil
+}
+
+func (m *memoryRepo) HasSeenProfileOnboarding(_ *http.Request, userID string) (bool, error) {
+	return m.onboardingSeen[userID], nil
+}
+
+func (m *memoryRepo) MarkProfileOnboardingSeen(_ *http.Request, userID string) error {
+	m.onboardingSeen[userID] = true
+	return nil
 }
 
 func (m *memoryRepo) GetAccountSettingsForUser(_ *http.Request, userID string) (domain.AccountSettings, error) {
@@ -1546,6 +1557,53 @@ func TestSessionIncludesPremiumForFamilyMember(t *testing.T) {
 	handler.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"isPremium":true`) {
 		t.Fatalf("expected family-wide premium session, got %d: %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestSessionIncludesOnboardingRequiredForPlaceholderProfile(t *testing.T) {
+	repo := newMemoryRepo()
+	repo.emails["user-1"] = "anna@example.test"
+	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil, nil)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/session", nil)
+	setAuth(repo, req, "user-1")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"onboardingRequired":true`) {
+		t.Fatalf("expected onboardingRequired for placeholder profile, got %d: %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestSessionOmitsOnboardingRequiredAfterSkip(t *testing.T) {
+	repo := newMemoryRepo()
+	repo.emails["user-1"] = "anna@example.test"
+	repo.onboardingSeen["user-1"] = true
+	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil, nil)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/session", nil)
+	setAuth(repo, req, "user-1")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"onboardingRequired":false`) {
+		t.Fatalf("expected onboardingRequired false after skip, got %d: %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestSkipProfileOnboardingMarksAccount(t *testing.T) {
+	repo := newMemoryRepo()
+	repo.emails["user-1"] = "anna@example.test"
+	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "", nil, nil, nil)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/account/onboarding/skip", nil)
+	setAuth(repo, req, "user-1")
+	req.Header.Set("X-CSRF-Token", "csrf-user-1")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("expected 204, got %d: %s", rec.Code, rec.Body.String())
+	}
+	if !repo.onboardingSeen["user-1"] {
+		t.Fatal("expected onboarding skip to be persisted")
 	}
 }
 

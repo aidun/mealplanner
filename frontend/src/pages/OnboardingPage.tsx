@@ -11,6 +11,7 @@ import {
   getProfile,
   saveProfile as persistProfile,
   saveProfile,
+  skipProfileOnboarding,
   updateFamilyAccountSettings,
   updateFamilyMemberLink,
 } from '../api';
@@ -41,8 +42,10 @@ export function OnboardingPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const session = useSession();
   const joinedFamily = searchParams.get('family') === 'joined';
+  const welcomeDialogRequested = searchParams.get('welcome') === '1';
   const [form, setForm] = useState<ProfileFormState>(EMPTY_FORM);
   const [hasEdited, setHasEdited] = useState(false);
+  const [showWelcomeDialog, setShowWelcomeDialog] = useState(Boolean(session?.onboardingRequired));
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteCopyState, setInviteCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
   const [lastLinkedAccountEmail, setLastLinkedAccountEmail] = useState('');
@@ -90,6 +93,7 @@ export function OnboardingPage() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['profile'] }),
         queryClient.invalidateQueries({ queryKey: ['family'] }),
+        queryClient.invalidateQueries({ queryKey: ['session'] }),
       ]);
     },
   });
@@ -135,6 +139,19 @@ export function OnboardingPage() {
       await queryClient.invalidateQueries({ queryKey: ['favorites'] });
     },
   });
+  const skipOnboardingMutation = useMutation({
+    mutationFn: skipProfileOnboarding,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['session'] });
+      navigate('/', { replace: true });
+    },
+  });
+
+  useEffect(() => {
+    if (session?.onboardingRequired) {
+      setShowWelcomeDialog(true);
+    }
+  }, [session?.onboardingRequired]);
 
   const update = (key: keyof ProfileFormState, value: string) => {
     setForm((current) => ({ ...current, [key]: value }));
@@ -280,6 +297,20 @@ export function OnboardingPage() {
     : familyQuery.data?.name || form.householdName || 'Familienkonto';
   const hasUnconfiguredProfile = !form.householdName.trim() && namedMembersCount === 0;
 
+  const closeWelcomeDialog = () => {
+    setShowWelcomeDialog(false);
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      next.delete('welcome');
+      return next;
+    }, { replace: true });
+  };
+
+  const startWelcomeFlow = () => {
+    closeWelcomeDialog();
+    setActiveTab('family');
+  };
+
   const statusMessage = useMemo(() => {
     if (saveMutation.isPending) return 'Angaben werden gespeichert.';
     if (saveMutation.isError) return readableApiError(saveMutation.error, 'Angaben konnten gerade nicht gespeichert werden.');
@@ -300,6 +331,48 @@ export function OnboardingPage() {
       </header>
 
       <main className="app-main">
+        {showWelcomeDialog && (session?.onboardingRequired || welcomeDialogRequested) ? (
+          <div className="dialog-backdrop" role="presentation">
+            <section className="secret-dialog onboarding-welcome-dialog" aria-labelledby="onboarding-welcome-title" aria-modal="true" role="dialog">
+              <span className="eyebrow">Erster Einstieg</span>
+              <h2 id="onboarding-welcome-title">Richte euer Kuechenprofil in wenigen Schritten ein</h2>
+              <p>
+                Beim ersten Login fuehrt dich {brand.name} kurz durch Haushalt, Geschmacksrichtung und optionale Familienzugaenge. Du kannst das jetzt erledigen oder erst spaeter weitermachen.
+              </p>
+              <div className="onboarding-welcome-steps">
+                <article className="onboarding-welcome-step">
+                  <strong>1. Haushalt benennen</strong>
+                  <span>Lege fest, wie euer Bereich heisst und wer mitisst.</span>
+                </article>
+                <article className="onboarding-welcome-step">
+                  <strong>2. Alltag und Geschmack schärfen</strong>
+                  <span>Definiere Vorlieben, No-Gos und einfache Leitplanken fuer die Woche.</span>
+                </article>
+                <article className="onboarding-welcome-step">
+                  <strong>3. Optional gemeinsam nutzen</strong>
+                  <span>Favoriten und weitere Logins kannst du direkt danach ergaenzen.</span>
+                </article>
+              </div>
+              <div className="dialog-actions onboarding-welcome-actions">
+                <button
+                  type="button"
+                  className="button button-secondary"
+                  onClick={() => skipOnboardingMutation.mutate()}
+                  disabled={skipOnboardingMutation.isPending}
+                >
+                  {skipOnboardingMutation.isPending ? 'Wird uebersprungen' : 'Jetzt ueberspringen'}
+                </button>
+                <button type="button" className="button button-primary" onClick={startWelcomeFlow}>
+                  Profil jetzt ausfuellen
+                </button>
+              </div>
+              {skipOnboardingMutation.isError ? (
+                <p className="error-copy">{readableApiError(skipOnboardingMutation.error, 'Der Dialog konnte gerade nicht uebersprungen werden.')}</p>
+              ) : null}
+            </section>
+          </div>
+        ) : null}
+
         <section className="profile-page">
           <div className="profile-page-intro">
             <span className="eyebrow">Küchenprofil</span>

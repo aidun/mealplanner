@@ -209,6 +209,7 @@ function createFetchMock(options: {
   profileOverride?: typeof profile;
   isAdmin?: boolean;
   inviteEmailSent?: boolean;
+  onboardingRequired?: boolean;
 } = {}) {
   const authenticated = options.authenticated ?? true;
   const activeFamily = options.familyOverride ?? family;
@@ -221,7 +222,12 @@ function createFetchMock(options: {
       return new Response(
         JSON.stringify(
           authenticated
-            ? { ...session, isAdmin: options.isAdmin ?? false, isPremium: options.isAdmin ? false : true }
+            ? {
+                ...session,
+                isAdmin: options.isAdmin ?? false,
+                isPremium: options.isAdmin ? false : true,
+                onboardingRequired: options.onboardingRequired ?? false,
+              }
             : { authenticated: false }
         ),
         { status: 200 }
@@ -373,6 +379,10 @@ function createFetchMock(options: {
       return new Response(JSON.stringify(profile), { status: 200 });
     }
 
+    if (url.endsWith('/api/account/onboarding/skip') && init?.method === 'POST') {
+      return new Response(null, { status: 204 });
+    }
+
     return new Response('', { status: 404 });
   }) as unknown as typeof fetch;
 }
@@ -409,6 +419,49 @@ describe('Mealplanner app', () => {
     expect(screen.queryByRole('link', { name: 'Mit Apple anmelden' })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Datenschutz' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Impressum' })).toBeInTheDocument();
+  });
+
+  it('redirects first-login users to onboarding and shows the welcome dialog', async () => {
+    vi.stubGlobal(
+      'fetch',
+      createFetchMock({
+        onboardingRequired: true,
+        profileOverride: {
+          householdName: 'Privater Haushalt',
+          members: [{ id: 'person-1', name: 'Person 1', alias: 'Person 1', role: 'Erwachsen', likes: '' }],
+          defaults: {
+            breakfast: 'schnell, familientauglich, nicht zu suess',
+            lunch: 'alltagstauglich und gut vorzubereiten',
+            dinner: 'gemeinsames warmes Essen',
+            snacks: 'nur wenn sinnvoll fuer Kalorienziel oder Alltag',
+          },
+          presets: ['familientauglich'],
+          notes: 'Naehrwerte sind Schaetzungen und nicht medizinisch verbindlich.',
+        },
+      })
+    );
+
+    renderApp('/');
+
+    expect(await screen.findByRole('dialog', { name: /Richte euer Kuechenprofil/i })).toBeInTheDocument();
+    expect(screen.getByText(/Beim ersten Login fuehrt dich/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Profil jetzt ausfuellen' })).toBeInTheDocument();
+  });
+
+  it('lets first-login users skip the welcome dialog', async () => {
+    const fetchMock = createFetchMock({ onboardingRequired: true });
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderApp('/');
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Jetzt ueberspringen' }));
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('/api/account/onboarding/skip'),
+        expect.objectContaining({ method: 'POST' })
+      )
+    );
   });
 
   it('renders disabled Google login as a disabled button, not a link', async () => {

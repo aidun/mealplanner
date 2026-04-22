@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/aidun/mealplanner/backend/api/internal/auth"
+	"github.com/aidun/mealplanner/backend/api/internal/domain"
 	"github.com/aidun/mealplanner/backend/api/internal/store"
 )
 
@@ -49,13 +50,25 @@ func (h *Handler) getSession(w http.ResponseWriter, r *http.Request) {
 		h.serverError(w, r, err)
 		return
 	}
+	sessionRequest := r.WithContext(context.WithValue(r.Context(), userIDKey, userID))
+	profile, err := h.repo.GetProfile(sessionRequest)
+	if err != nil {
+		h.serverError(w, r, err)
+		return
+	}
+	hasSeenOnboarding, err := h.repo.HasSeenProfileOnboarding(sessionRequest, userID)
+	if err != nil {
+		h.serverError(w, r, err)
+		return
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"authenticated": true,
-		"userID":        userID,
-		"email":         email,
-		"isAdmin":       isAdminEmail(email),
-		"isPremium":     isPremium,
-		"csrfToken":     csrf,
+		"authenticated":      true,
+		"userID":             userID,
+		"email":              email,
+		"isAdmin":            isAdminEmail(email),
+		"isPremium":          isPremium,
+		"csrfToken":          csrf,
+		"onboardingRequired": domain.IsPlaceholderProfile(profile) && !hasSeenOnboarding,
 	})
 }
 

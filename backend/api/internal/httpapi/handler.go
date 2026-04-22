@@ -32,6 +32,8 @@ type Repository interface {
 	GetAccountSettings(r *http.Request) (domain.AccountSettings, error)
 	SaveAccountSettings(r *http.Request, settings domain.AccountSettings) (domain.AccountSettings, error)
 	GetAccountSettingsForUser(r *http.Request, userID string) (domain.AccountSettings, error)
+	HasSeenProfileOnboarding(r *http.Request, userID string) (bool, error)
+	MarkProfileOnboardingSeen(r *http.Request, userID string) error
 	CreateSession(r *http.Request, userID string, ttl time.Duration) (string, string, time.Time, error)
 	GetSession(r *http.Request, sessionID string) (string, string, time.Time, error)
 	DeleteSession(r *http.Request, sessionID string) error
@@ -98,6 +100,14 @@ func (r StoreRepository) SaveAccountSettings(req *http.Request, settings domain.
 
 func (r StoreRepository) GetAccountSettingsForUser(req *http.Request, userID string) (domain.AccountSettings, error) {
 	return r.Store.GetAccountSettings(req.Context(), userID)
+}
+
+func (r StoreRepository) HasSeenProfileOnboarding(req *http.Request, userID string) (bool, error) {
+	return r.Store.HasSeenProfileOnboarding(req.Context(), userID)
+}
+
+func (r StoreRepository) MarkProfileOnboardingSeen(req *http.Request, userID string) error {
+	return r.Store.MarkProfileOnboardingSeen(req.Context(), userID)
 }
 
 func (r StoreRepository) CreateSession(req *http.Request, userID string, ttl time.Duration) (string, string, time.Time, error) {
@@ -290,6 +300,7 @@ func New(repo Repository, planner planner.Planner, authService auth.Service, api
 	mux.HandleFunc("PUT /api/profile", h.withSession(h.withCSRF(h.putProfile)))
 	mux.HandleFunc("GET /api/account-settings", h.withSession(h.getAccountSettings))
 	mux.HandleFunc("PUT /api/account-settings", h.withSession(h.withCSRF(h.putAccountSettings)))
+	mux.HandleFunc("POST /api/account/onboarding/skip", h.withSession(h.withCSRF(h.skipProfileOnboarding)))
 	mux.HandleFunc("GET /api/family", h.withSession(h.getFamily))
 	mux.HandleFunc("POST /api/family/invites", h.withSession(h.withCSRF(h.createFamilyInvite)))
 	mux.HandleFunc("POST /api/family/invites/accept", h.withSession(h.withCSRF(h.acceptFamilyInvite)))
@@ -374,6 +385,14 @@ func (h *Handler) putAccountSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, saved)
+}
+
+func (h *Handler) skipProfileOnboarding(w http.ResponseWriter, r *http.Request) {
+	if err := h.repo.MarkProfileOnboardingSeen(r, mustUserID(r.Context())); err != nil {
+		h.serverError(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *Handler) getFamily(w http.ResponseWriter, r *http.Request) {

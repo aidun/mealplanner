@@ -95,6 +95,10 @@ function AuthenticatedRoute({ element }: { element: ReactElement }) {
     return <LoginPage />;
   }
 
+  if (location.pathname === '/' && sessionQuery.data?.onboardingRequired) {
+    return <Navigate to="/onboarding?welcome=1" replace />;
+  }
+
   const feedbackEnabledRoutes = new Set(['/', '/onboarding', '/admin']);
   const showFeedback =
     feedbackEnabledRoutes.has(location.pathname) &&

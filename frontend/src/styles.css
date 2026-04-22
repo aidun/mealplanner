@@ -749,6 +749,39 @@ h3 {
   color: var(--muted);
 }
 
+.onboarding-welcome-dialog {
+  width: min(560px, 100%);
+}
+
+.onboarding-welcome-steps {
+  display: grid;
+  gap: 12px;
+  margin-top: 22px;
+}
+
+.onboarding-welcome-step {
+  display: grid;
+  gap: 4px;
+  padding: 14px 16px;
+  border: 1px solid rgba(21, 24, 21, 0.1);
+  border-radius: 12px;
+  background: rgba(250, 244, 235, 0.88);
+}
+
+.onboarding-welcome-step strong {
+  font-size: 0.98rem;
+}
+
+.onboarding-welcome-step span {
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.onboarding-welcome-actions {
+  margin-top: 22px;
+}
+
 .secret-form {
   display: grid;
   gap: 18px;
