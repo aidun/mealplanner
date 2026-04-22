@@ -35,6 +35,7 @@ kubectl -n "$NAMESPACE" exec "$POD" -- sh -lc '
 set -eu
 
 email="$1"
+namespace="$2"
 
 if ! psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Atc "select 1 from schema_migrations where version = 13" | grep -qx "1"; then
   echo "Migration 0013 fehlt im Cluster. Bitte zuerst den aktuellen Test-Stand ausrollen." >&2
@@ -72,5 +73,5 @@ SET profile_onboarding_seen = false,
 COMMIT;
 SQL
 
-echo "Reset abgeschlossen fuer ${email} in ${NAMESPACE}."
-' -- "$EMAIL"
+echo "Reset abgeschlossen fuer ${email} in ${namespace}."
+' -- "$EMAIL" "$NAMESPACE"
