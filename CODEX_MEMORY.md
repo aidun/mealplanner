@@ -1,6 +1,6 @@
 # Mealplanner Memory
 
-Last updated: 2026-04-22
+Last updated: 2026-04-23
 
 ## Kontext
 
@@ -46,8 +46,9 @@ Last updated: 2026-04-22
 - Seit 2026-04-22 speichert die Profilseite offene Profil-Aenderungen automatisch mit, bevor ein Login ueber `PUT /api/family/member-links` einem Profilmitglied zugeordnet wird. Das behebt den Fall, dass lokale Mitglieder-Aenderungen im Frontend weiter waren als das im Backend gespeicherte Profil.
 - Seit 2026-04-22 ist das neutrale Erstprofil wieder sauber vom echten Familienzustand getrennt: `domain.DefaultProfile()` nutzt nur noch Platzhalter (`Privater Haushalt`, `Person 1`), `domain.IsPlaceholderProfile()` erkennt diesen Zustand, und die Familienübersicht behandelt Placeholder nicht mehr als echte Profilpersonen.
 - Seit 2026-04-22/23 fuehrt das Produkt Erstnutzer ueber einen skipbaren First-Login-Dialog in `/onboarding`: `GET /api/session` liefert dafuer `onboardingRequired`, das nur bei Placeholder-Profil plus nicht uebersprungenem Dialog aktiv ist; das Ueberspringen wird serverseitig ueber `user_settings.profile_onboarding_seen` und `POST /api/account/onboarding/skip` persistiert.
+- Seit 2026-04-23 ist der Erstlogin-Einstieg kein vorgeschobener Profil-Editor mehr, sondern ein kompakter Guided-Flow mit eigener Onboarding-Flaeche, reduzierter Progress-Navigation, skipbarer Kurzstrecke und sauber getrenntem Detailprofil. Der sticky Produkt-Header bleibt in diesem Modus aus, damit kleine Displays keine Ueberlappungen mehr erzeugen.
 - Seit 2026-04-22/23 gibt es fuer wiederholbare Testzyklen zusaetzlich den Operator-Reset `scripts/reset-test-first-login.sh <email>`, der im Namespace `mealplanner-test` das gespeicherte Profil entfernt und `profile_onboarding_seen=false` setzt, aber aus Sicherheitsgruenden nur fuer persoenliche Ein-Personen-Familien arbeitet.
-- Der dauerhafte UI-Testrahmen umfasst jetzt neben Vitest auch Playwright-Breakpoint-Guards fuer Desktop, Tablet, Mobile und kleine Displays; `frontend/e2e/onboarding-layout.spec.ts` prueft den First-Login-Dialog explizit auf Overflow, Dialoggrenzen und nicht ueberlappende Primäraktionen.
+- Der dauerhafte UI-Testrahmen umfasst jetzt neben Vitest auch Playwright-Breakpoint-Guards fuer Desktop, Tablet, Mobile und kleine Displays; `frontend/e2e/onboarding-layout.spec.ts` prueft den Guided-First-Login-Fluss explizit auf Overflow, Viewport-Grenzen, nicht ueberlappende Primäraktionen und den Ruecksprung ins Detailprofil.
 - Seit 2026-04-22 haertet `store.ensurePersonalFamily()` alte Familienzustaende nach: wenn `active_family_id` gesetzt ist, aber der passende `family_members`-Eintrag fuer den User fehlt, wird die Mitgliedschaft automatisch wiederhergestellt. Das verhindert leere Familienkonto-Ansichten bei vorhandener aktiver Familie.
 - Onboarding und Familienkonto wurden am 2026-04-22 stärker getrennt: Profilpersonen steuern Portionen und Planungslogik, Login-Zugänge leben separat im Familienkonto, und die Regel `ein Login -> ein aktives Familienkonto` wird in der Oberfläche ausdrücklich erklärt.
 - Die Haushaltsoberflaeche wurde am 2026-04-22 produktnäher gezogen und spaeter auf `Haushalt & Küchenprofil` weiterentwickelt: weniger Verwaltungslesart, mehr Fokus auf Profilpersonen, Küchenregeln und sauber getrennte Logins.

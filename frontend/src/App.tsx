@@ -100,9 +100,13 @@ function AuthenticatedRoute({ element }: { element: ReactElement }) {
   }
 
   const feedbackEnabledRoutes = new Set(['/', '/onboarding', '/admin']);
+  const suppressFeedbackForGuidedOnboarding =
+    location.pathname === '/onboarding' &&
+    (new URLSearchParams(location.search).get('welcome') === '1' || Boolean(sessionQuery.data?.onboardingRequired));
   const showFeedback =
     feedbackEnabledRoutes.has(location.pathname) &&
-    Boolean(sessionQuery.data?.isPremium || sessionQuery.data?.isAdmin);
+    Boolean(sessionQuery.data?.isPremium || sessionQuery.data?.isAdmin) &&
+    !suppressFeedbackForGuidedOnboarding;
 
   return (
     <SessionProvider session={sessionQuery.data}>

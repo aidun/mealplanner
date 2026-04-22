@@ -421,7 +421,7 @@ describe('Mealplanner app', () => {
     expect(screen.getByRole('link', { name: 'Impressum' })).toBeInTheDocument();
   });
 
-  it('redirects first-login users to onboarding and shows the welcome dialog', async () => {
+  it('redirects first-login users to onboarding and shows the guided onboarding wizard', async () => {
     vi.stubGlobal(
       'fetch',
       createFetchMock({
@@ -443,18 +443,18 @@ describe('Mealplanner app', () => {
 
     renderApp('/');
 
-    expect(await screen.findByRole('dialog', { name: /Richte euer Kuechenprofil/i })).toBeInTheDocument();
-    expect(screen.getByText(/Beim ersten Login fuehrt dich/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Profil jetzt ausfuellen' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /Ein paar lockere Fragen/i })).toBeInTheDocument();
+    expect(screen.getByText(/Statt dich direkt in einen großen Profil-Editor zu werfen/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: "Los geht's" })).toBeInTheDocument();
   });
 
-  it('lets first-login users skip the welcome dialog', async () => {
+  it('lets first-login users skip the guided onboarding wizard', async () => {
     const fetchMock = createFetchMock({ onboardingRequired: true });
     vi.stubGlobal('fetch', fetchMock);
 
     renderApp('/');
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Jetzt ueberspringen' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Erstmal ueberspringen' }));
 
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(

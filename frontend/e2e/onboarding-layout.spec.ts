@@ -51,34 +51,42 @@ test('first-login onboarding stays stable from desktop to small mobile', async (
     await page.goto('/');
 
     await expect(page).toHaveURL(/\/onboarding\?welcome=1$/);
-    const dialog = page.getByRole('dialog', { name: /Richte euer Kuechenprofil/i });
-    await expect(dialog).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Ein paar lockere Fragen/i })).toBeVisible();
+    const wizard = page.locator('.guided-onboarding-card');
+    await expect(wizard).toBeVisible();
     await assertNoHorizontalOverflow(page);
-    await assertHorizontallyWithinViewport(dialog, page);
+    await assertHorizontallyWithinViewport(wizard, page);
 
-    const skipButton = page.getByRole('button', { name: 'Jetzt ueberspringen' });
-    const startButton = page.getByRole('button', { name: 'Profil jetzt ausfuellen' });
+    const skipButton = page.getByRole('button', { name: 'Erstmal ueberspringen' });
+    const startButton = page.getByRole('button', { name: "Los geht's" });
     await expect(skipButton).toBeVisible();
     await expect(startButton).toBeVisible();
     await expectNoOverlap(skipButton, startButton);
 
     await startButton.click();
-    await expect(dialog).toHaveCount(0);
-    await expect(page.getByRole('heading', { name: 'Haushalt & Küchenprofil' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Wie sollen wir euren Bereich nennen?' })).toBeVisible();
+    await page.getByRole('textbox', { name: 'Name des Bereichs' }).fill('Haushalt Markush');
+    await page.getByRole('button', { name: 'Weiter' }).click();
+    await expect(page.getByRole('heading', { name: 'Wer isst meistens mit?' })).toBeVisible();
+    await page.getByRole('textbox', { name: 'Name' }).fill('Markush');
+    await page.getByRole('button', { name: 'Weiter' }).click();
+    await expect(page.getByRole('heading', { name: /Worauf soll .* beim Kochen achten/i })).toBeVisible();
+    await page.getByRole('button', { name: 'Weiter' }).click();
+    await expect(page.getByRole('heading', { name: 'Wie soll sich eure Woche anfühlen?' })).toBeVisible();
+    await page.getByRole('button', { name: 'Weiter' }).click();
+    await expect(page.getByRole('heading', { name: 'Das reicht für einen guten Start.' })).toBeVisible();
 
     await assertNoHorizontalOverflow(page);
-    await assertHorizontallyWithinViewport(page.locator('.profile-page-intro'), page);
-    const saveBar = page.locator('.profile-save-bar');
-    await saveBar.scrollIntoViewIfNeeded();
-    await assertHorizontallyWithinViewport(saveBar, page);
+    await assertHorizontallyWithinViewport(wizard, page);
+    await expectNoOverlap(
+      page.getByRole('button', { name: 'Noch kurz ins Detailprofil' }),
+      page.getByRole('button', { name: 'Mit diesem Start zur Woche' })
+    );
 
-    const tabNav = page.locator('.profile-tab-nav');
-    await expect(tabNav).toBeVisible();
-    const tabOverflow = await tabNav.evaluate((element) => ({
-      scrollWidth: element.scrollWidth,
-      clientWidth: element.clientWidth,
-    }));
-    expect(tabOverflow.scrollWidth).toBeLessThanOrEqual(tabOverflow.clientWidth + 1);
+    await page.getByRole('button', { name: 'Noch kurz ins Detailprofil' }).click();
+    await expect(page.getByRole('heading', { name: 'Haushalt & Küchenprofil' })).toBeVisible();
+    await assertNoHorizontalOverflow(page);
+    await assertHorizontallyWithinViewport(page.locator('.profile-page-intro'), page);
   }
 });
 

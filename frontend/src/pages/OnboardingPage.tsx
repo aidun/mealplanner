@@ -36,6 +36,15 @@ const EMPTY_FORM: ProfileFormState = {
   snackPresets: '',
 };
 
+const GUIDED_ONBOARDING_STEPS = [
+  { id: 'welcome', label: 'Start' },
+  { id: 'household', label: 'Bereich' },
+  { id: 'members', label: 'Menschen' },
+  { id: 'taste', label: 'Geschmack' },
+  { id: 'rhythm', label: 'Alltag' },
+  { id: 'finish', label: 'Fertig' },
+];
+
 export function OnboardingPage() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -45,7 +54,9 @@ export function OnboardingPage() {
   const welcomeDialogRequested = searchParams.get('welcome') === '1';
   const [form, setForm] = useState<ProfileFormState>(EMPTY_FORM);
   const [hasEdited, setHasEdited] = useState(false);
-  const [showWelcomeDialog, setShowWelcomeDialog] = useState(Boolean(session?.onboardingRequired));
+  const [showWelcomeDialog, setShowWelcomeDialog] = useState(Boolean(session?.onboardingRequired || welcomeDialogRequested));
+  const [guidedStep, setGuidedStep] = useState(0);
+  const [guidedOnboardingDismissed, setGuidedOnboardingDismissed] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteCopyState, setInviteCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
   const [lastLinkedAccountEmail, setLastLinkedAccountEmail] = useState('');
@@ -148,10 +159,11 @@ export function OnboardingPage() {
   });
 
   useEffect(() => {
-    if (session?.onboardingRequired) {
+    if ((session?.onboardingRequired || welcomeDialogRequested) && !guidedOnboardingDismissed) {
       setShowWelcomeDialog(true);
+      setGuidedStep(0);
     }
-  }, [session?.onboardingRequired]);
+  }, [guidedOnboardingDismissed, session?.onboardingRequired, welcomeDialogRequested]);
 
   const update = (key: keyof ProfileFormState, value: string) => {
     setForm((current) => ({ ...current, [key]: value }));
@@ -299,6 +311,8 @@ export function OnboardingPage() {
 
   const closeWelcomeDialog = () => {
     setShowWelcomeDialog(false);
+    setGuidedOnboardingDismissed(true);
+    setGuidedStep(0);
     setSearchParams((current) => {
       const next = new URLSearchParams(current);
       next.delete('welcome');
@@ -306,10 +320,7 @@ export function OnboardingPage() {
     }, { replace: true });
   };
 
-  const startWelcomeFlow = () => {
-    closeWelcomeDialog();
-    setActiveTab('family');
-  };
+  const startWelcomeFlow = () => setGuidedStep(1);
 
   const statusMessage = useMemo(() => {
     if (saveMutation.isPending) return 'Angaben werden gespeichert.';
@@ -318,6 +329,337 @@ export function OnboardingPage() {
     if (hasEdited) return 'Ungespeicherte Änderungen.';
     return '';
   }, [hasEdited, saveMutation.error, saveMutation.isError, saveMutation.isPending, saveMutation.isSuccess]);
+
+  const hasNamedMembers = namedMembersCount > 0;
+  const guidedOnboardingActive = showWelcomeDialog;
+  const primaryMember = form.members.find((member) => member.name.trim() !== '') ?? form.members[0];
+  const guidedProgressPercent = `${Math.round((guidedStep / (GUIDED_ONBOARDING_STEPS.length - 1)) * 100)}%`;
+
+  const completeGuidedOnboarding = async (mode: 'dashboard' | 'profile') => {
+    await saveMutation.mutateAsync(formToProfile(form));
+    closeWelcomeDialog();
+    if (mode === 'dashboard') {
+      navigate('/', { replace: true });
+      return;
+    }
+    setActiveTab('family');
+  };
+
+  const canAdvanceGuidedStep = (() => {
+    switch (guidedStep) {
+      case 1:
+        return form.householdName.trim() !== '';
+      case 2:
+        return hasNamedMembers;
+      default:
+        return true;
+    }
+  })();
+
+  if (guidedOnboardingActive) {
+    return (
+      <div className="app-shell guided-onboarding-app-shell">
+        <main className="app-main guided-onboarding-main">
+          <section className="guided-onboarding-shell" aria-labelledby="guided-onboarding-title">
+            <div className="guided-onboarding-topbar">
+              <button type="button" className="brand-mark brand-button" onClick={() => navigate('/')}>
+                <AppLogo />
+              </button>
+              <div className="guided-onboarding-topbar-copy">
+                <strong>Ersteinrichtung</strong>
+                <span>Skipbar, kurz und nur fuer einen guten Start.</span>
+              </div>
+              <span className="guided-onboarding-step-badge">
+                {guidedStep === 0 ? 'ca. 1 Minute' : `Schritt ${guidedStep} / ${GUIDED_ONBOARDING_STEPS.length - 1}`}
+              </span>
+            </div>
+            <div className="guided-onboarding-card">
+              <div className="guided-onboarding-progress" aria-label="Onboarding Fortschritt">
+                <div className="guided-onboarding-progress-meta">
+                  <span>{guidedStep === 0 ? 'Kurzer Einstieg' : guidedStep === GUIDED_ONBOARDING_STEPS.length - 1 ? 'Fast geschafft' : `Frage ${guidedStep} von ${GUIDED_ONBOARDING_STEPS.length - 2}`}</span>
+                  <strong>{GUIDED_ONBOARDING_STEPS[guidedStep]?.label ?? 'Start'}</strong>
+                </div>
+                <div className="guided-onboarding-progress-track" aria-hidden="true">
+                  <span className="guided-onboarding-progress-fill" style={{ width: guidedProgressPercent }} />
+                </div>
+                <div className="guided-onboarding-progress-labels">
+                  {GUIDED_ONBOARDING_STEPS.map((step, index) => (
+                    <span
+                      key={step.id}
+                      className={`guided-onboarding-progress-pill${index === guidedStep ? ' guided-onboarding-progress-pill-active' : ''}${index < guidedStep ? ' guided-onboarding-progress-pill-complete' : ''}`}
+                    >
+                      {step.label}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {guidedStep === 0 ? (
+                <div className="guided-onboarding-panel">
+                  <div className="guided-onboarding-hero">
+                    <div className="guided-onboarding-copy">
+                      <span className="eyebrow">Erster Einstieg</span>
+                      <h1 id="guided-onboarding-title">Ein paar lockere Fragen, dann passt die Woche schon deutlich besser.</h1>
+                      <p className="guided-onboarding-lead">
+                        Statt dich direkt in einen großen Profil-Editor zu werfen, richten wir {brand.name} kurz mit dir ein.
+                        Du kannst jederzeit überspringen oder später im Detail nachschärfen.
+                      </p>
+                    </div>
+                    <div className="guided-onboarding-teasers">
+                      <article>
+                        <strong>Wer isst mit?</strong>
+                        <span>Eine Person reicht zum Start. Mehr geht jederzeit später.</span>
+                      </article>
+                      <article>
+                        <strong>Wie soll es schmecken?</strong>
+                        <span>Ein paar Vorlieben und No-Gos genügen für die erste sinnvolle Woche.</span>
+                      </article>
+                      <article>
+                        <strong>Wie viel Detail jetzt?</strong>
+                        <span>Nur das Nötigste jetzt. Feinschliff bleibt im Profil.</span>
+                      </article>
+                    </div>
+                  </div>
+                  <div className="guided-onboarding-actions">
+                    <button
+                      type="button"
+                      className="button button-secondary"
+                      onClick={() => skipOnboardingMutation.mutate()}
+                      disabled={skipOnboardingMutation.isPending}
+                    >
+                      {skipOnboardingMutation.isPending ? 'Wird uebersprungen' : 'Erstmal ueberspringen'}
+                    </button>
+                    <button type="button" className="button button-primary" onClick={startWelcomeFlow}>
+                      Los geht's
+                    </button>
+                  </div>
+                  {skipOnboardingMutation.isError ? (
+                    <p className="error-copy">{readableApiError(skipOnboardingMutation.error, 'Der Einstieg konnte gerade nicht uebersprungen werden.')}</p>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {guidedStep === 1 ? (
+                <div className="guided-onboarding-panel">
+                  <span className="eyebrow">Frage 1</span>
+                  <h1 id="guided-onboarding-title">Wie sollen wir euren Bereich nennen?</h1>
+                  <p className="guided-onboarding-lead">
+                    Das ist nur der Name für euren gemeinsamen Planungsbereich. Er darf ruhig einfach sein.
+                  </p>
+                  <label className="field guided-onboarding-field">
+                    <span className="field-label">Name des Bereichs</span>
+                    <input
+                      className="input guided-onboarding-input"
+                      autoComplete="organization"
+                      value={form.householdName}
+                      onChange={(event) => update('householdName', event.target.value)}
+                      placeholder="Familie Weber"
+                    />
+                  </label>
+                  <p className="guided-onboarding-hint">Wenn du allein startest, reicht auch etwas wie „Haushalt Markus“.</p>
+                </div>
+              ) : null}
+
+              {guidedStep === 2 ? (
+                <div className="guided-onboarding-panel">
+                  <span className="eyebrow">Frage 2</span>
+                  <h1 id="guided-onboarding-title">Wer isst meistens mit?</h1>
+                  <p className="guided-onboarding-lead">
+                    Wir brauchen nur die Menschen, die im Plan wirklich auftauchen sollen. Eine Person reicht zum Start.
+                  </p>
+                  <div className="guided-onboarding-member-list">
+                    {form.members.map((member, index) => (
+                      <article key={`${member.id}-${index}`} className="guided-onboarding-member-card">
+                        <div className="guided-onboarding-member-head">
+                          <strong>{member.name.trim() || `Person ${index + 1}`}</strong>
+                          {form.members.length > 1 ? (
+                            <button
+                              type="button"
+                              className="icon-button"
+                              onClick={() => removeMember(index)}
+                              aria-label={`${member.name.trim() || `Person ${index + 1}`} entfernen`}
+                            >
+                              <TrashIcon className="action-icon" />
+                            </button>
+                          ) : null}
+                        </div>
+                        <div className="guided-onboarding-member-grid">
+                          <label className="field">
+                            <span className="field-label">Name</span>
+                            <input
+                              className="input"
+                              autoComplete="name"
+                              value={member.name}
+                              onChange={(event) => updateMember(index, 'name', event.target.value)}
+                              placeholder="Anna"
+                            />
+                          </label>
+                          <label className="field">
+                            <span className="field-label">Im Plan ansprechen als</span>
+                            <input
+                              className="input"
+                              autoComplete="nickname"
+                              value={member.alias}
+                              onChange={(event) => updateMember(index, 'alias', event.target.value)}
+                              placeholder="Mama, Ben, Oma"
+                            />
+                          </label>
+                          <label className="field guided-onboarding-member-grid-wide">
+                            <span className="field-label">Kurz beschrieben</span>
+                            <input
+                              className="input"
+                              value={member.role}
+                              onChange={(event) => updateMember(index, 'role', event.target.value)}
+                              placeholder="Erwachsen, Kind, Gast"
+                            />
+                          </label>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                  <div className="guided-onboarding-inline-actions">
+                    <button type="button" className="button button-secondary" onClick={addMember}>
+                      <PlusIcon className="action-icon" />
+                      Noch eine Person
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+
+              {guidedStep === 3 ? (
+                <div className="guided-onboarding-panel">
+                  <span className="eyebrow">Frage 3</span>
+                  <h1 id="guided-onboarding-title">Worauf soll {brand.name} beim Kochen achten?</h1>
+                  <p className="guided-onboarding-lead">
+                    Ein paar Stichworte reichen. Denk eher an Alltag, Geschmack und Dinge, die direkt raus sollen.
+                  </p>
+                  <div className="guided-onboarding-stack">
+                    <label className="field guided-onboarding-field">
+                      <span className="field-label">Was kocht ihr gern?</span>
+                      <textarea
+                        className="input textarea guided-onboarding-input"
+                        rows={4}
+                        value={form.preferredCuisines}
+                        onChange={(event) => update('preferredCuisines', event.target.value)}
+                        placeholder={'Mediterran\nPasta\nSchnell unter der Woche'}
+                      />
+                    </label>
+                    <label className="field guided-onboarding-field">
+                      <span className="field-label">Was soll lieber nicht auftauchen?</span>
+                      <textarea
+                        className="input textarea guided-onboarding-input"
+                        rows={4}
+                        value={form.excludedIngredients}
+                        onChange={(event) => update('excludedIngredients', event.target.value)}
+                        placeholder={'Keine Erdnüsse\nKeine rohen Zwiebeln'}
+                      />
+                    </label>
+                  </div>
+                </div>
+              ) : null}
+
+              {guidedStep === 4 ? (
+                <div className="guided-onboarding-panel">
+                  <span className="eyebrow">Frage 4</span>
+                  <h1 id="guided-onboarding-title">Wie soll sich eure Woche anfühlen?</h1>
+                  <p className="guided-onboarding-lead">
+                    Hier geht es um Tempo, Aufwand und kleine Leitplanken. Nicht perfekt, nur hilfreich.
+                  </p>
+                  <div className="guided-onboarding-stack">
+                    <label className="field guided-onboarding-field">
+                      <span className="field-label">Euer Kochstil im Alltag</span>
+                      <textarea
+                        className="input textarea guided-onboarding-input"
+                        rows={4}
+                        value={form.cookingStyle}
+                        onChange={(event) => update('cookingStyle', event.target.value)}
+                        placeholder="Frisch, unkompliziert, wenig Abwasch"
+                      />
+                    </label>
+                    <label className="field guided-onboarding-field">
+                      <span className="field-label">Wichtige Regeln für die Woche</span>
+                      <textarea
+                        className="input textarea guided-onboarding-input"
+                        rows={4}
+                        value={form.mealPlanningRules}
+                        onChange={(event) => update('mealPlanningRules', event.target.value)}
+                        placeholder="Unter der Woche maximal 30 Minuten, freitags gern etwas Besonderes"
+                      />
+                    </label>
+                  </div>
+                </div>
+              ) : null}
+
+              {guidedStep === 5 ? (
+                <div className="guided-onboarding-panel">
+                  <span className="eyebrow">Startklar</span>
+                  <h1 id="guided-onboarding-title">Das reicht für einen guten Start.</h1>
+                  <p className="guided-onboarding-lead">
+                    {brand.name} hat jetzt genug Kontext für eine deutlich passendere Woche. Feinschliff, Einladungen und
+                    Tageslogik kannst du später immer noch im Detailprofil anpassen.
+                  </p>
+                  <div className="guided-onboarding-summary">
+                    <article>
+                      <span>Bereich</span>
+                      <strong>{form.householdName.trim() || 'Noch offen'}</strong>
+                    </article>
+                    <article>
+                      <span>Profilpersonen</span>
+                      <strong>{namedMembersCount || 0}</strong>
+                    </article>
+                    <article>
+                      <span>Erste Hauptperson</span>
+                      <strong>{primaryMember?.alias.trim() || primaryMember?.name.trim() || 'Noch offen'}</strong>
+                    </article>
+                  </div>
+                  <div className="guided-onboarding-actions guided-onboarding-actions-final">
+                    <button
+                      type="button"
+                      className="button button-secondary"
+                      onClick={() => completeGuidedOnboarding('profile')}
+                      disabled={saveMutation.isPending}
+                    >
+                      {saveMutation.isPending ? 'Wird gespeichert' : 'Noch kurz ins Detailprofil'}
+                    </button>
+                    <button
+                      type="button"
+                      className="button button-primary"
+                      onClick={() => completeGuidedOnboarding('dashboard')}
+                      disabled={saveMutation.isPending}
+                    >
+                      {saveMutation.isPending ? 'Wird gespeichert' : 'Mit diesem Start zur Woche'}
+                    </button>
+                  </div>
+                  {saveMutation.isError ? (
+                    <p className="error-copy">{readableApiError(saveMutation.error, 'Der Einstieg konnte gerade nicht gespeichert werden.')}</p>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {guidedStep > 0 && guidedStep < GUIDED_ONBOARDING_STEPS.length ? (
+                <div className="guided-onboarding-footer">
+                  <button type="button" className="button button-secondary" onClick={() => setGuidedStep((current) => Math.max(0, current - 1))}>
+                    Zurueck
+                  </button>
+                  <div className="guided-onboarding-footer-meta">
+                    <span>{guidedStep} von {GUIDED_ONBOARDING_STEPS.length - 1} Fragen</span>
+                    <button
+                      type="button"
+                      className="button button-primary"
+                      onClick={() => setGuidedStep((current) => Math.min(GUIDED_ONBOARDING_STEPS.length - 1, current + 1))}
+                      disabled={!canAdvanceGuidedStep}
+                    >
+                      Weiter
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          </section>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="app-shell">
@@ -331,48 +673,6 @@ export function OnboardingPage() {
       </header>
 
       <main className="app-main">
-        {showWelcomeDialog && (session?.onboardingRequired || welcomeDialogRequested) ? (
-          <div className="dialog-backdrop" role="presentation">
-            <section className="secret-dialog onboarding-welcome-dialog" aria-labelledby="onboarding-welcome-title" aria-modal="true" role="dialog">
-              <span className="eyebrow">Erster Einstieg</span>
-              <h2 id="onboarding-welcome-title">Richte euer Kuechenprofil in wenigen Schritten ein</h2>
-              <p>
-                Beim ersten Login fuehrt dich {brand.name} kurz durch Haushalt, Geschmacksrichtung und optionale Familienzugaenge. Du kannst das jetzt erledigen oder erst spaeter weitermachen.
-              </p>
-              <div className="onboarding-welcome-steps">
-                <article className="onboarding-welcome-step">
-                  <strong>1. Haushalt benennen</strong>
-                  <span>Lege fest, wie euer Bereich heisst und wer mitisst.</span>
-                </article>
-                <article className="onboarding-welcome-step">
-                  <strong>2. Alltag und Geschmack schärfen</strong>
-                  <span>Definiere Vorlieben, No-Gos und einfache Leitplanken fuer die Woche.</span>
-                </article>
-                <article className="onboarding-welcome-step">
-                  <strong>3. Optional gemeinsam nutzen</strong>
-                  <span>Favoriten und weitere Logins kannst du direkt danach ergaenzen.</span>
-                </article>
-              </div>
-              <div className="dialog-actions onboarding-welcome-actions">
-                <button
-                  type="button"
-                  className="button button-secondary"
-                  onClick={() => skipOnboardingMutation.mutate()}
-                  disabled={skipOnboardingMutation.isPending}
-                >
-                  {skipOnboardingMutation.isPending ? 'Wird uebersprungen' : 'Jetzt ueberspringen'}
-                </button>
-                <button type="button" className="button button-primary" onClick={startWelcomeFlow}>
-                  Profil jetzt ausfuellen
-                </button>
-              </div>
-              {skipOnboardingMutation.isError ? (
-                <p className="error-copy">{readableApiError(skipOnboardingMutation.error, 'Der Dialog konnte gerade nicht uebersprungen werden.')}</p>
-              ) : null}
-            </section>
-          </div>
-        ) : null}
-
         <section className="profile-page">
           <div className="profile-page-intro">
             <span className="eyebrow">Küchenprofil</span>
