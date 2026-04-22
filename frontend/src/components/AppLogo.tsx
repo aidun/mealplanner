@@ -3,10 +3,11 @@ import { brand } from '../brand';
 
 interface AppLogoProps extends HTMLAttributes<HTMLSpanElement> {
   compact?: boolean;
+  markOnly?: boolean;
   tone?: 'brand' | 'mono';
 }
 
-export function AppLogo({ compact = false, tone = 'brand', className = '', ...props }: AppLogoProps) {
+export function AppLogo({ compact = false, markOnly = false, tone = 'brand', className = '', ...props }: AppLogoProps) {
   const markId = tone === 'mono' ? 'mahlio-logo-mono' : 'mahlio-logo-fill';
   const stroke = tone === 'mono' ? 'currentColor' : '#0d8a63';
   const tomato = tone === 'mono' ? 'currentColor' : '#df6a46';
@@ -34,10 +35,10 @@ export function AppLogo({ compact = false, tone = 'brand', className = '', ...pr
           </linearGradient>
         </defs>
       </svg>
-      {compact ? <span className="app-logo-wordmark">{brand.name}</span> : (
+      {markOnly ? null : compact ? <span className="app-logo-wordmark">{brand.name}</span> : (
         <span className="app-logo-type">
           <strong>{brand.name}</strong>
-          <small>{brand.slogan}</small>
+          <small>{brand.category}</small>
         </span>
       )}
     </span>

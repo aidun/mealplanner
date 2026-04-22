@@ -114,7 +114,7 @@ export function AdminPage() {
           <div className="profile-page-intro">
             <span className="eyebrow">Backoffice</span>
             <h1>Marke, Premium & Support</h1>
-            <p>Hier laufen Premium-Freigaben, Service-Copy und Feedback für {brand.name} zusammen.</p>
+            <p>Hier bleiben Premium-Freigaben, Service-Copy und Feedback in derselben Mahlio-Linie.</p>
           </div>
 
           <div className="profile-section">

@@ -366,7 +366,7 @@ func bringExportCopy(plan domain.Plan, kind string, onlyDay domain.DayPlan, only
 		}
 		description = strings.TrimSpace(onlyMeal.Description)
 		if description == "" {
-			description = "Ein familiengeeignetes Rezept aus " + brand.Name + "."
+			description = "Ein Rezept aus eurer " + brand.Name + "-Woche."
 		}
 		yield = "1 Rezept"
 		if servings := len(onlyMeal.Servings); servings > 0 {
@@ -384,7 +384,7 @@ func bringExportCopy(plan domain.Plan, kind string, onlyDay domain.DayPlan, only
 		if day != "" {
 			title = brand.Name + " Einkaufsliste fuer " + day
 		}
-		return title, "Alle Zutaten fuer diesen " + brand.Name + "-Tag.", "1 Tag", category
+		return title, "Alle Zutaten fuer diesen Tag in eurer " + brand.Name + "-Woche.", "1 Tag", category
 	}
 	mealCount := 0
 	for _, day := range plan.Days {
@@ -396,9 +396,9 @@ func bringExportCopy(plan domain.Plan, kind string, onlyDay domain.DayPlan, only
 	if strings.TrimSpace(plan.WeekStart) != "" {
 		title = fmt.Sprintf("%s Einkaufsliste ab %s", brand.Name, strings.TrimSpace(plan.WeekStart))
 	}
-	description = "Ein vorbereiteter Wochenplan mit allen Zutaten aus dem aktuellen " + brand.Name + "-Wochenplan."
+	description = "Alle Zutaten aus eurer gemeinsamen " + brand.Name + "-Woche."
 	if mealCount == 0 {
-		description = "Eine " + brand.Name + "-Einkaufsliste fuer euren Wochenrhythmus."
+		description = "Eine " + brand.Name + "-Einkaufsliste fuer euren gemeinsamen Tisch."
 	}
 	return title, description, "1 Wochenplan", category
 }

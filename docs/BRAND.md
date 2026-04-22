@@ -1,63 +1,72 @@
 # Brand
 
-## Phase A Brand-Ziel
+## Fixpunkte
 
 - Primärmarke: `Mahlio`
-- Übergangslabel: `Familienküche`
 - Technischer Altname: `Mealplanner`
 - Übergangsdomain: `mealplanner.markushartmann.dev`
-- Kernkategorie: private Küchenplanung
-- Kernzielgruppe in Phase A: food-affine Haushalte mit echtem Alltagsdruck
+- Interner Keyword-Begriff: `Wochenküche`
 
-## Begründung
+## Neue Ausrichtung
 
-- `Mealplanner` ist als Außenmarke zu beschreibend und kollisionsanfälliger.
-- `Familienküche` funktioniert sprachlich, ist aber für eine starke, exklusive Marke zu generisch.
-- `Mahlio` ist für Phase A der bevorzugte Eigenname: kurz, DACH-tauglich, im Klang nah an Essen/Mahlzeit und in der Schnellrecherche deutlich weniger kollisionsbelastet als die beiden Altbegriffe.
+- `Mahlio` ist keine beschreibende Tool-Marke und kein administratives Familien-Dashboard.
+- `Mahlio` ist die gemeinsame Wochenküche für Paare und Familien.
+- Die Marke soll kulinarisch, nahbar, begehrlich und ruhig wirken.
+- Der Einstieg verkauft nicht Architektur oder Trennung, sondern das Gefühl einer guten gemeinsamen Woche.
 
-## Shortlist
+## Zielgruppe
 
-### Favorisiert
+- Paare und Familien, die gut essen wollen, aber im Alltag wenig Lust auf verteilte Planung haben.
+- Haushalte, in denen Woche, Rezepte und Einkauf praktisch zusammengehören.
+- Menschen, die schnelle Orientierung wollen, ohne dass das Produkt technisch oder nüchtern wirkt.
 
-1. `Mahlio`
-2. `Tellerzeit`
+## Messaging-Stack
 
-### Verworfen
+- Kategorie: `Gemeinsame Wochenküche`
+- Slogan: `Die Woche schmeckt besser, wenn sie zusammenpasst.`
+- Kurzlinie: `Woche, Rezepte und Einkauf für euren gemeinsamen Tisch.`
+- Produktbeschreibung: `Mahlio bringt Gerichte, Rezepte und Einkauf in eine gemeinsame Wochenbasis für Paare und Familien.`
+- Markenversprechen: `Für Paare und Familien, die gut essen wollen, ohne jede Woche neu anzufangen.`
+- Entry-Headline: `Bringt eure Woche an einen Tisch.`
+- Entry-Subline: `Plant Gerichte, öffnet Rezepte und nehmt den Einkauf direkt mit, bevor der Alltag losgeht.`
+- Support-/Privacy-Note: `Social Login dient nur dem Zugang. Haushalt, Rezepte und Einkauf bleiben in eurem Bereich.`
 
-- `Mealplanner`: zu nah an beschreibender Funktion, erkennbares Kollisionsrisiko
-- `Familienküche`: zu generisch als Endmarke
-- `Tellero`: bereits klar anderweitig belegt
-- `Tavilo`: bereits klar anderweitig belegt
+## Beweisgründe
 
-## Sprachregeln
-
-- User-facing Oberfläche verwendet `Mahlio`.
-- `Familienküche` bleibt nur als interner Übergangsbegriff in Doku oder Naming-Entscheidungen erlaubt.
-- `Mealplanner` bleibt nur für technische Altpfade, Repo- und Domain-Kontext erhalten, bis die Domain-Migration startet.
-
-## Positionierung
-
-- `Mahlio` ist kein generischer Planer und kein nüchternes Familien-Dashboard.
-- `Mahlio` ist der ruhige Küchenfluss für Haushalte, die gut essen wollen, ohne jede Woche neu zu organisieren.
-- Die Marke soll kulinarisch, ruhig, präzise und hochwertig wirken, nicht verspielt oder administrativ.
-
-## Claims und Kernbotschaft
-
-- Primärclaim: `Gut essen. Klar planen. Ruhig durch die Woche.`
-- Kurzclaim: `Private Küchenplanung für Haushalte mit Geschmack.`
-- Produktbeschreibung: `Mahlio bringt Wochenrhythmus, Rezepte und Einkauf in einen ruhigen Küchenfluss für Haushalte mit Geschmack.`
+1. `Woche zuerst`
+   Gerichte und Tempo stehen früh fest, bevor der Alltag die Woche auseinanderzieht.
+2. `Rezepte griffbereit`
+   Ideen, Zutaten und Änderungen bleiben an derselben Stelle wie der eigentliche Plan.
+3. `Einkauf direkt mitnehmen`
+   Was auf den Tisch soll, landet ohne Umweg auf der Liste.
 
 ## Tonalität
 
-- ruhig statt laut
-- appetitlich statt dashboardig
-- präzise statt verspielt
-- produktnah statt werblich
-- zweite Person, kurze klare Sätze, wenig Füllwörter
+- warm statt defensiv
+- appetitlich statt technisch
+- klar statt sloganhaft aufgeblasen
+- produktnah statt kampagnig
+- kurze Sätze, wenig Fülltext, wenig Problembeschreibung
 
-## UI- und Copy-Leitplanken
+Nicht mehr verwenden:
 
-- Login, Header, Dashboard-Einstieg, Haushaltsprofil und Mail-Templates tragen die Markenwirkung zuerst.
-- Produktflächen sprechen in Utility Copy, aber mit kulinarischer Haltung.
-- `Premium` soll nach aufgewertetem Wochenrhythmus klingen, nicht nach technischem Feature-Badge.
-- Einladungen und Wochenplan-Mails müssen dieselbe Sprache sprechen wie die App.
+- `private Küchenplanung`
+- `ruhiger Küchenfluss`
+- `ohne Verwaltungsballast`
+- andere defensive oder systemarchitektonische Leitformulierungen als Aufmacher
+
+## Visuelle Richtung
+
+- Warme Cremeflächen mit Salbei-, Tomaten- und Zitronenakzenten statt klinischem Weiß.
+- Marke zuerst: `Mahlio` muss auf Einstiegsflächen die lauteste Ebene sein.
+- Login/Einstieg arbeitet mit einer Produktvorschau, nicht mit einer nummerierten Nutzenliste.
+- Desktop bekommt eine asymmetrische Hero-Komposition; Mobile zeigt Headline, CTA und danach die kompakte Vorschau.
+- Produktflächen bleiben utility-first, tragen aber dieselbe kulinarische Materialität und Sprachlinie.
+
+## Leitplanken für sichtbare Flächen
+
+- Login: frühes `Mit Google anmelden`, optionale Apple-Sekundäraktion, kurze Privacy-Note, klare Produktvorschau.
+- Header: ruhige Kurzlinie, keine technische Selbstbeschreibung.
+- Dashboard: utility copy mit derselben Grundidee `alles für die Woche an einem Tisch`.
+- Onboarding: Haushalt, Geschmack und Zugänge als gemeinsamer Arbeitsbereich, nicht als Verwaltungsschritt.
+- Admin, Legal und Mail-Templates sprechen dieselbe Marke, aber weiterhin in ihrer fachlichen Rolle.

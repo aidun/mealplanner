@@ -83,7 +83,7 @@ function AuthenticatedRoute({ element }: { element: ReactElement }) {
           <section className="inline-banner">
             <div>
               <h2>Session wird geprüft</h2>
-              <p>{brand.name} lädt deinen privaten Zugang.</p>
+              <p>{brand.name} bereitet euren Einstieg vor.</p>
             </div>
           </section>
         </main>

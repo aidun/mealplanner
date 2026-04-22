@@ -66,6 +66,6 @@ function baseReasonForSlot(slot: string) {
     case 'snack':
       return 'Es füllt nur dort auf, wo der Wochenplan noch einen kleinen Puffer braucht.';
     default:
-      return 'Es passt in den aktuellen Wochenrhythmus und ergänzt die anderen Gerichte sinnvoll.';
+      return 'Es passt in die aktuelle Woche und ergänzt die anderen Gerichte sinnvoll.';
   }
 }

@@ -82,6 +82,23 @@ func TestWeeklyTemplateContainsPlanURL(t *testing.T) {
 	}
 }
 
+func TestDefaultTemplatesUseRestartBrandCopy(t *testing.T) {
+	invite, ok := DefaultTemplate(TemplateKindFamilyInvite)
+	if !ok || !strings.Contains(invite.TextBody, "kommst du in euren gemeinsamen Bereich bei Mahlio") {
+		t.Fatalf("unexpected invite defaults: %#v", invite)
+	}
+
+	premium, ok := DefaultTemplate(TemplateKindPremiumInvite)
+	if !ok || premium.Subject != "Mahlio Premium ist für euren Haushalt bereit" {
+		t.Fatalf("unexpected premium defaults: %#v", premium)
+	}
+
+	weekly, ok := DefaultTemplate(TemplateKindWeeklyPlanReady)
+	if !ok || weekly.Subject != "Eure Mahlio-Woche ab {{week_start}} ist bereit" {
+		t.Fatalf("unexpected weekly defaults: %#v", weekly)
+	}
+}
+
 func TestResendPremiumInviteEmailBuildsPayload(t *testing.T) {
 	var captured string
 	client := roundTripFunc(func(req *http.Request) (*http.Response, error) {

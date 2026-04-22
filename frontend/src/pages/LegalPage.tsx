@@ -23,7 +23,7 @@ export function LegalPage({ kind }: LegalPageProps) {
           <Link to="/" className="brand-mark" aria-label={`${brand.name} Startseite`}>
             <AppLogo />
           </Link>
-          <p className="brand-subtitle">Rechtliche Angaben</p>
+          <p className="brand-subtitle">Betrieb, Kontakt und Datenschutz für {brand.name}.</p>
         </div>
       </header>
 
@@ -34,9 +34,8 @@ export function LegalPage({ kind }: LegalPageProps) {
               <p className="eyebrow">Rechtliches</p>
               <h1>{isPrivacy ? 'Datenschutz' : 'Impressum'}</h1>
               <p>
-                Diese Seite beschreibt den aktuellen Betriebsstand von {brand.name}. Die technischen Abläufe sind
-                dokumentiert; Betreiber- und Pflichtangaben werden hier aus den hinterlegten Produktionsdaten
-                veröffentlicht.
+                Diese Seite beschreibt, wie {brand.name} betrieben wird, welche Daten technisch nötig sind und wie
+                Kontakt- und Pflichtangaben aktuell hinterlegt sind.
               </p>
             </div>
           </div>
@@ -62,8 +61,8 @@ function PrivacyContent() {
 
       <h2>Login-Daten</h2>
       <p>
-        {brand.name} nutzt Social Login nur für den Zugang zum privaten Familienkonto. Dauerhaft gespeichert werden
-        nur die technisch nötigen Zuordnungen der freigegebenen Accounts; Namen, Profilbilder und ähnliche
+        {brand.name} nutzt Social Login nur für den Zugang zum gemeinsamen Haushalt. Dauerhaft gespeichert werden nur
+        die technisch nötigen Zuordnungen der freigegebenen Accounts; Namen, Profilbilder und ähnliche
         Provider-Profildaten werden nicht für die Rezeptplanung verwendet.
       </p>
 

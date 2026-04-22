@@ -308,10 +308,10 @@ export function DashboardPage() {
           <PlanBackdrop />
           <div className="plan-stage-copy plan-stage-copy-compact">
             <span className="eyebrow">Diese Woche</span>
-            <h1 id="home-title">Plan, Rezepte und Einkauf in einem ruhigen Ablauf.</h1>
+            <h1 id="home-title">Alles für die Woche liegt an einem Tisch.</h1>
             <p>
-              {brand.name} hält euren Küchenrhythmus zusammen: Tage prüfen, Gerichte schärfen und den Einkauf aus
-              derselben Woche heraus mitnehmen.
+              Mit {brand.name} prüft ihr Gerichte, passt Rezepte an und nehmt den Einkauf direkt mit, ohne zwischen
+              drei Baustellen zu wechseln.
             </p>
           </div>
           <div className="plan-stage-context" aria-label="Aktueller Fokus">

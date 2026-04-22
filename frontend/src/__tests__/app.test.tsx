@@ -403,7 +403,9 @@ describe('Mealplanner app', () => {
     renderApp('/');
 
     expect(await screen.findByRole('heading', { name: 'Mahlio' })).toBeInTheDocument();
+    expect(screen.getByText('Bringt eure Woche an einen Tisch.')).toBeInTheDocument();
     expect(await screen.findByRole('button', { name: 'Mit Google anmelden' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Produktvorschau')).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Mit Apple anmelden' })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Datenschutz' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Impressum' })).toBeInTheDocument();
@@ -1128,7 +1130,7 @@ describe('Mealplanner app', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Abmelden' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Logout gerade nicht möglich');
-    expect(screen.getByText('Plan, Rezepte und Einkauf in einem ruhigen Ablauf.')).toBeInTheDocument();
+    expect(screen.getByText('Alles für die Woche liegt an einem Tisch.')).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Mit Google anmelden' })).not.toBeInTheDocument();
   });
 
@@ -1154,7 +1156,7 @@ describe('Mealplanner app', () => {
     window.localStorage.setItem('mealplanner.promptDebug', 'true');
     renderApp('/');
 
-    expect(await screen.findByText('Plan, Rezepte und Einkauf in einem ruhigen Ablauf.')).toBeInTheDocument();
+    expect(await screen.findByText('Alles für die Woche liegt an einem Tisch.')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Prompt prüfen' })).not.toBeInTheDocument();
   });
 

@@ -295,7 +295,7 @@ export function OnboardingPage() {
           <button type="button" className="brand-mark brand-button" onClick={() => navigate('/')}>
             <AppLogo />
           </button>
-          <p className="brand-subtitle">Küchenprofil, Zugänge und Wochenrhythmus an einem Ort.</p>
+          <p className="brand-subtitle">Haushalt, Geschmack und Zugänge für euren gemeinsamen Tisch.</p>
         </div>
       </header>
 
@@ -304,7 +304,7 @@ export function OnboardingPage() {
           <div className="profile-page-intro">
             <span className="eyebrow">Küchenprofil</span>
             <h1>Haushalt & Küchenprofil</h1>
-            <p>Hier legt ihr fest, wer mitisst, wie euer Alltag tickt und welche Zugänge zum gemeinsamen Bereich gehören.</p>
+            <p>Hier legt ihr fest, wer mitisst, was im Alltag gut passt und welche Zugänge zu eurem gemeinsamen Bereich gehören.</p>
             <div className="profile-overview-grid" aria-label="Haushaltsübersicht">
               <div className="profile-overview-card">
                 <strong>{namedMembersCount}</strong>
@@ -369,7 +369,7 @@ export function OnboardingPage() {
 
           {joinedFamily ? (
             <div className="status-strip status-strip-success" role="status" aria-live="polite">
-              <span>Familienbereich aktiv. Die gemeinsamen Angaben wurden geladen und die Zugänge können jetzt sauber Personen zugeordnet werden.</span>
+              <span>Familienbereich aktiv. Angaben und Zugänge liegen jetzt an einem Ort und können sauber Personen zugeordnet werden.</span>
             </div>
           ) : null}
 
@@ -913,7 +913,7 @@ export function OnboardingPage() {
               <div className="profile-section-copy">
                 <span className="section-index">06</span>
                 <h2 id="invites-section">Einladungen & Zugänge</h2>
-                <p>Neue Logins in den gemeinsamen Bereich holen und bestehende Profile sauber zusammenführen.</p>
+                <p>Neue Logins an euren gemeinsamen Tisch holen und bestehende Profile sauber zusammenführen.</p>
               </div>
               <div className="profile-section-fields">
                 <p className="panel-feedback" role="note">

@@ -75,7 +75,7 @@ test('planner smoke path', async ({ page, context }) => {
 
   await page.goto('/');
 
-  await expect(page.getByText('Plan, Rezepte und Einkauf in einem ruhigen Ablauf.')).toBeVisible();
+  await expect(page.getByText('Alles für die Woche liegt an einem Tisch.')).toBeVisible();
 
   await page.getByLabel('Primäre Aktionen').getByRole('link', { name: 'Küchenprofil' }).click();
   await expect(page.getByText('Haushalt & Küchenprofil')).toBeVisible();
@@ -220,6 +220,7 @@ test('login and invite acceptance stay on guarded production paths', async ({ pa
   await page.goto('/');
   await expect(page.getByRole('button', { name: 'Mit Google anmelden' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Mahlio' })).toBeVisible();
+  await expect(page.getByText('Bringt eure Woche an einen Tisch.')).toBeVisible();
 
   authenticated = true;
   await page.goto('/family/invites/accept?token=invite-token');

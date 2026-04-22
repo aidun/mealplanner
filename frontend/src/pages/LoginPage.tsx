@@ -6,6 +6,16 @@ import { readableApiError } from '../lib/api-error';
 import { useState } from 'react';
 import { brand } from '../brand';
 
+const previewDays = [
+  { label: 'Mo', title: 'Pasta al Limone', note: 'mit Brokkoli & Burrata', active: true },
+  { label: 'Di', title: 'Ofengemüse-Bowl', note: 'Tahini, Kräuter, warm serviert', active: false },
+  { label: 'Mi', title: 'Tomatensuppe', note: 'mit geröstetem Brot', active: false },
+  { label: 'Do', title: 'Kartoffel-Tacos', note: 'mit Limette & Salat', active: false },
+] as const;
+
+const previewIngredients = ['Zitronen', 'Brokkoli', 'Burrata', 'Pasta', 'Basilikum'] as const;
+const previewShopping = ['Zitronen 2 Stk', 'Brokkoli 1 Kopf', 'Burrata 2 Kugeln', 'Pasta 500 g'] as const;
+
 export function LoginPage() {
   const [loginError, setLoginError] = useState('');
   const [startingGoogleLogin, setStartingGoogleLogin] = useState(false);
@@ -47,82 +57,115 @@ export function LoginPage() {
     <div className="auth-shell">
       <main className="login-panel" aria-labelledby="login-title">
         <div className="login-stage">
-          <div className="login-copy">
-            <p className="eyebrow">Private Küchenplanung</p>
-            <h1 id="login-title" aria-label={brand.name}>
-              <AppLogo />
-            </h1>
-            <p className="login-lead">{brand.description}</p>
-            <p className="login-editorial-note">
-              Gute Wochen fühlen sich besser an, wenn Planung, Rezepte und Einkauf wie ein gemeinsamer Küchenfluss
-              wirken statt wie drei getrennte Werkzeuge.
-            </p>
-            <div className="login-benefits" aria-label="Was Mahlio zusammenhält">
-              <article className="login-benefit">
-                <span>01</span>
-                <div>
-                  <strong>Woche mit Richtung</strong>
-                  <p>Ein Plan, der Vorlieben, Tempo und Alltag zusammenzieht, bevor die Woche zerfasert.</p>
-                </div>
-              </article>
-              <article className="login-benefit">
-                <span>02</span>
-                <div>
-                  <strong>Rezepte zum Nachschärfen</strong>
-                  <p>Gerichte bleiben anpassbar, damit Geschmack und Familienrealität nicht auseinanderlaufen.</p>
-                </div>
-              </article>
-              <article className="login-benefit">
-                <span>03</span>
-                <div>
-                  <strong>Einkauf ohne Reibung</strong>
-                  <p>Die Liste bleibt direkt an der Woche, statt später mühsam wieder zusammengesucht zu werden.</p>
-                </div>
-              </article>
+          <section className="login-copy">
+            <div className="login-brand-lockup">
+              <AppLogo markOnly className="login-brand-mark" />
+              <div className="login-brand-copy">
+                <p className="eyebrow">{brand.category}</p>
+                <h1 id="login-title">{brand.name}</h1>
+                <p className="login-brand-slogan">{brand.slogan}</p>
+              </div>
             </div>
-          </div>
 
-          <div className="login-actions-block">
-            <div className="login-actions-copy">
-              <p className="login-section-label">Zugang</p>
-              <h2>Privat, direkt und ohne Verwaltungsballast.</h2>
-              <p>
-                Google oder Apple öffnen nur euren Bereich. Haushalt, Rollen und Küchenprofil bleiben im Produkt sauber
-                getrennt.
-              </p>
+            <div className="login-intro">
+              <p className="login-promise">{brand.promise}</p>
+              <h2 className="login-entry-headline">{brand.entryHeadline}</h2>
+              <p className="login-lead">{brand.entrySubline}</p>
             </div>
-            <div className="login-actions" aria-label="Login-Anbieter">
-              {googleEnabled ? (
-                <button
-                  type="button"
-                  className="button button-primary login-button"
-                  onClick={() => void startGoogleLogin()}
-                  disabled={startingGoogleLogin}
-                >
-                  {startingGoogleLogin ? 'Google Login startet…' : 'Mit Google anmelden'}
-                </button>
-              ) : (
-                <button type="button" className="button button-primary login-button" disabled>
-                  Mit Google anmelden
-                </button>
-              )}
 
-              {apple?.enabled && appleStartUrl ? (
-                <a className="button button-secondary login-button" href={appleStartUrl}>
-                  Mit Apple anmelden
-                </a>
-              ) : null}
+            <div className="login-actions-block">
+              <div className="login-actions" aria-label="Login-Anbieter">
+                {googleEnabled ? (
+                  <button
+                    type="button"
+                    className="button button-primary login-button"
+                    onClick={() => void startGoogleLogin()}
+                    disabled={startingGoogleLogin}
+                  >
+                    {startingGoogleLogin ? 'Google Login startet…' : 'Mit Google anmelden'}
+                  </button>
+                ) : (
+                  <button type="button" className="button button-primary login-button" disabled>
+                    Mit Google anmelden
+                  </button>
+                )}
+
+                {apple?.enabled && appleStartUrl ? (
+                  <a className="button button-secondary login-button login-button-secondary" href={appleStartUrl}>
+                    Mit Apple anmelden
+                  </a>
+                ) : null}
+              </div>
+              <p className="login-support-copy">{brand.supportNote}</p>
             </div>
-            <div className="login-highlights" aria-label="Produktprinzipien">
-              <span>Privater Bereich</span>
-              <span>Küchenprofil & Zugänge getrennt</span>
-              <span>Feedback direkt im Produkt</span>
+
+            <div className="login-benefits" aria-label="Was Mahlio im Blick hält">
+              {brand.proofPoints.map((point) => (
+                <article key={point.title} className="login-benefit">
+                  <strong>{point.title}</strong>
+                  <p>{point.description}</p>
+                </article>
+              ))}
             </div>
-            <p className="login-support-copy">
-              {brand.name} nutzt Social Login nur für den Zugang. Woche, Rezepte, Einkauf und Einladungen bleiben im
-              gemeinsamen Mahlio-Haushalt.
-            </p>
-          </div>
+
+            <nav className="legal-links" aria-label="Rechtliches">
+              <Link to="/datenschutz">Datenschutz</Link>
+              <Link to="/impressum">Impressum</Link>
+            </nav>
+          </section>
+
+          <section className="login-preview" aria-label="Produktvorschau">
+            <div className="login-preview-copy">
+              <p className="login-section-label">Produktvorschau</p>
+              <h2>Woche, Gericht und Einkauf greifen ineinander.</h2>
+              <p>Eine gemeinsame Oberfläche für das, was diese Woche wirklich auf euren Tisch soll.</p>
+            </div>
+
+            <div className="entry-preview-shell">
+              <div className="entry-preview-overview">
+                <span className="entry-preview-label">Nächste Woche</span>
+                <strong>Zitronenpasta mit Brokkoli</strong>
+                <p>Montagabend · 4 Portionen · Einkauf direkt daneben</p>
+              </div>
+
+              <div className="entry-preview-grid">
+                <div className="entry-preview-week" aria-label="Woche">
+                  {previewDays.map((day) => (
+                    <button
+                      key={day.label}
+                      type="button"
+                      className={`entry-preview-day${day.active ? ' entry-preview-day-active' : ''}`}
+                      aria-pressed={day.active}
+                    >
+                      <span>{day.label}</span>
+                      <strong>{day.title}</strong>
+                      <small>{day.note}</small>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="entry-preview-recipe" aria-label="Gericht">
+                  <span className="entry-preview-section-title">Gericht im Fokus</span>
+                  <h3>Pasta al Limone mit Brokkoli und Burrata</h3>
+                  <p>Cremig, hell und schnell genug für einen vollen Montag.</p>
+                  <div className="entry-preview-ingredients" aria-label="Zutaten im Rezept">
+                    {previewIngredients.map((ingredient) => (
+                      <span key={ingredient}>{ingredient}</span>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="entry-preview-shopping" aria-label="Einkauf">
+                  <span className="entry-preview-section-title">Direkt auf der Liste</span>
+                  <ul>
+                    {previewShopping.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </section>
         </div>
 
         {providersQuery.isError ? (
@@ -135,11 +178,6 @@ export function LoginPage() {
             {loginError}
           </p>
         ) : null}
-
-        <nav className="legal-links" aria-label="Rechtliches">
-          <Link to="/datenschutz">Datenschutz</Link>
-          <Link to="/impressum">Impressum</Link>
-        </nav>
       </main>
     </div>
   );
