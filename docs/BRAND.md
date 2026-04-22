@@ -62,6 +62,7 @@ Nicht mehr verwenden:
 - Login/Einstieg arbeitet mit einer Produktvorschau, nicht mit einer nummerierten Nutzenliste.
 - Desktop bekommt eine asymmetrische Hero-Komposition; Mobile zeigt Headline, CTA und danach die kompakte Vorschau.
 - Produktflächen bleiben utility-first, tragen aber dieselbe kulinarische Materialität und Sprachlinie.
+- Wiederverwendbare rasterbasierte Bildquellen für Hero-/Mood-/Marketingflächen liegen unter `frontend/public/brand/`.
 
 ## Leitplanken für sichtbare Flächen
 

@@ -305,6 +305,14 @@ export function OnboardingPage() {
             <span className="eyebrow">Küchenprofil</span>
             <h1>Haushalt & Küchenprofil</h1>
             <p>Hier legt ihr fest, wer mitisst, was im Alltag gut passt und welche Zugänge zu eurem gemeinsamen Bereich gehören.</p>
+            <div className="profile-intro-gallery" aria-hidden="true">
+              <figure className="profile-intro-photo profile-intro-photo-family">
+                <img src="/brand/mahlio-photo-library.png" alt="" loading="lazy" />
+              </figure>
+              <figure className="profile-intro-photo profile-intro-photo-kitchen">
+                <img src="/brand/mahlio-moodboard.png" alt="" loading="lazy" />
+              </figure>
+            </div>
             <div className="profile-overview-grid" aria-label="Haushaltsübersicht">
               <div className="profile-overview-card">
                 <strong>{namedMembersCount}</strong>

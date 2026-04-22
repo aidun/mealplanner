@@ -344,6 +344,56 @@ h3 {
   color: rgba(255, 250, 245, 0.76);
 }
 
+.login-preview-media {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(132px, 0.8fr);
+  grid-template-rows: 168px 132px;
+  gap: 12px;
+}
+
+.login-preview-photo {
+  position: relative;
+  margin: 0;
+  overflow: hidden;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 20px 40px rgba(16, 24, 21, 0.18);
+}
+
+.login-preview-photo::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(14, 22, 18, 0.06), rgba(14, 22, 18, 0.14));
+  pointer-events: none;
+}
+
+.login-preview-photo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: saturate(0.94) contrast(1.02);
+  transform: scale(1.02);
+}
+
+.login-preview-photo-family {
+  grid-row: 1 / span 2;
+}
+
+.login-preview-photo-family img {
+  object-position: 16% 20%;
+}
+
+.login-preview-photo-ingredients img {
+  object-position: 50% 20%;
+}
+
+.login-preview-photo-pasta img {
+  object-position: 16% 78%;
+}
+
 .entry-preview-shell {
   display: grid;
   gap: 18px;
@@ -830,6 +880,33 @@ a:focus-visible {
   z-index: 1;
   display: grid;
   gap: 10px;
+}
+
+.plan-stage-photo {
+  display: none;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(19, 33, 29, 0.08);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.62);
+  box-shadow: 0 16px 34px rgba(18, 33, 29, 0.06);
+}
+
+.plan-stage-photo::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(18, 33, 29, 0.1));
+  pointer-events: none;
+}
+
+.plan-stage-photo-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 82% 78%;
+  filter: saturate(0.92);
 }
 
 .plan-focus-item {
@@ -2685,6 +2762,39 @@ a:focus-visible {
   color: var(--ink-soft);
 }
 
+.profile-intro-gallery {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  max-width: 620px;
+}
+
+.profile-intro-photo {
+  margin: 0;
+  min-height: 148px;
+  overflow: hidden;
+  border-radius: 18px;
+  border: 1px solid rgba(18, 33, 29, 0.08);
+  background: rgba(255, 255, 255, 0.76);
+  box-shadow: 0 16px 32px rgba(18, 33, 29, 0.06);
+}
+
+.profile-intro-photo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: saturate(0.94);
+}
+
+.profile-intro-photo-family img {
+  object-position: 15% 20%;
+}
+
+.profile-intro-photo-kitchen img {
+  object-position: 18% 80%;
+}
+
 .profile-overview-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -3171,8 +3281,15 @@ a:focus-visible {
   }
 
   .plan-stage-context {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     align-self: stretch;
     align-content: end;
+  }
+
+  .plan-stage-photo {
+    display: block;
+    grid-column: 1 / -1;
+    min-height: 120px;
   }
 
   .home-hero {
@@ -3718,6 +3835,16 @@ a:focus-visible {
     font-size: 1.82rem;
   }
 
+  .login-preview-media {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: 152px 112px;
+  }
+
+  .login-preview-photo-family {
+    grid-column: 1 / -1;
+    grid-row: auto;
+  }
+
   .entry-preview-shell {
     padding: 16px;
   }
@@ -3725,6 +3852,18 @@ a:focus-visible {
   .entry-preview-grid,
   .entry-preview-week {
     grid-template-columns: 1fr;
+  }
+
+  .plan-stage-photo {
+    display: none;
+  }
+
+  .profile-intro-gallery {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-intro-photo {
+    min-height: 132px;
   }
 
   .profile-page-intro {

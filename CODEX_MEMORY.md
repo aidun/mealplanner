@@ -56,6 +56,7 @@ Last updated: 2026-04-22
 - Die zentrale Brand-Definition enthaelt seit dem Neustart nicht mehr nur Name/Slogan/Description, sondern auch Kategorie, Markenversprechen, Entry-Headline, Entry-Subline, Support-Note und Proof-Points; diese Struktur wird in Frontend und Backend parallel gepflegt.
 - Login, Header, Dashboard-Einstieg, Onboarding, Legal, Admin, Frontend-Meta-Daten, Bring-Export-Texte und Mail-Template-Defaults wurden am 2026-04-22 auf die neue Linie fuer `Mahlio` als warme, kulinarische Wochenmarke gezogen; die Domainmigration bleibt weiterhin ein spaeteres Thema.
 - Mail-Template-Bestand wird seit `0010_rebrand_mail_templates` auf `Mahlio` migriert; `0011_refresh_mail_brand_copy` hob alte Defaults auf die erste Phase-A-Linie, und `0012_refresh_mail_brand_restart_copy` zieht unveraenderte Defaults fuer Einladungen, Premium und Wochenplan-Mails auf die neu gestartete Wochenkuechen-Marke, ohne manuell gepflegte Vorlagen zu ueberschreiben.
+- Seit 2026-04-22 liegt zusaetzlich ein wiederverwendbares rasterbasiertes Brand-Asset-Set unter `frontend/public/brand/`: `mahlio-photo-library.png`, `mahlio-moodboard.png` und `mahlio-brand-kit.png`. Live eingebunden sind daraus vorerst dezente Fotoanker in Login, Dashboard-Einstieg und Haushaltsprofil; das Icon-/Logo-Board dient als Source-Material, ersetzt aber nicht die repo-native SVG-/Code-Marke.
 - Fuer die spaetere Domainphase sind `mahlio.app` und `mahlio.io` aktuell als priorisierte Kandidaten vorgemerkt; `mahlio.de` ist bereits aktiv belegt.
 
 ## Wichtige Arbeitsregeln
