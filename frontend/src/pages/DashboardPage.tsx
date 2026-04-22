@@ -323,9 +323,6 @@ export function DashboardPage() {
               <span>Geöffnetes Rezept</span>
               <strong>{inspectedMeal?.title ?? 'Noch kein Gericht gewählt'}</strong>
             </div>
-            <div className="plan-stage-photo" aria-hidden="true">
-              <img src="/brand/mahlio-moodboard.png" alt="" className="plan-stage-photo-image" loading="lazy" />
-            </div>
           </div>
           <div className="plan-stage-meta" aria-label="Wochenüberblick">
             <div className="stage-stat">

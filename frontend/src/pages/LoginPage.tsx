@@ -121,18 +121,6 @@ export function LoginPage() {
               <p>Eine gemeinsame Oberfläche für das, was diese Woche wirklich auf euren Tisch soll.</p>
             </div>
 
-            <div className="login-preview-media" aria-hidden="true">
-              <figure className="login-preview-photo login-preview-photo-family">
-                <img src="/brand/mahlio-photo-library.png" alt="" loading="eager" />
-              </figure>
-              <figure className="login-preview-photo login-preview-photo-ingredients">
-                <img src="/brand/mahlio-photo-library.png" alt="" loading="lazy" />
-              </figure>
-              <figure className="login-preview-photo login-preview-photo-pasta">
-                <img src="/brand/mahlio-photo-library.png" alt="" loading="lazy" />
-              </figure>
-            </div>
-
             <div className="entry-preview-shell">
               <div className="entry-preview-overview">
                 <span className="entry-preview-label">Nächste Woche</span>
