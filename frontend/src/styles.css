@@ -136,6 +136,24 @@ h3 {
   gap: 8px;
 }
 
+.login-hero-panel {
+  display: grid;
+  gap: 4px;
+  padding: 14px 16px;
+  border: 1px solid rgba(19, 33, 29, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.76);
+}
+
+.login-hero-panel strong,
+.login-hero-panel p {
+  margin: 0;
+}
+
+.login-hero-panel p {
+  color: var(--muted);
+}
+
 .login-highlights span {
   display: inline-flex;
   align-items: center;
@@ -470,9 +488,9 @@ a:focus-visible {
 .plan-stage {
   position: relative;
   display: grid;
-  gap: 18px;
-  margin-bottom: 24px;
-  padding: 22px;
+  gap: 14px;
+  margin-bottom: 18px;
+  padding: 18px 20px;
   overflow: hidden;
   border: 1px solid rgba(18, 33, 29, 0.08);
   border-radius: var(--radius-md);
@@ -502,9 +520,9 @@ a:focus-visible {
 
 .plan-stage-copy h1 {
   margin: 0;
-  max-width: 12ch;
-  font-size: clamp(2.4rem, 7vw, 4.6rem);
-  line-height: 0.9;
+  max-width: 13ch;
+  font-size: clamp(2rem, 6vw, 4rem);
+  line-height: 0.94;
   letter-spacing: -0.01em;
 }
 
@@ -983,13 +1001,7 @@ a:focus-visible {
 }
 
 .workspace-nav-block {
-  display: grid;
-  gap: 18px;
-  margin-bottom: 22px;
-}
-
-.workspace-nav-header {
-  padding-bottom: 0;
+  margin-bottom: 14px;
 }
 
 .workspace-pane-switch {
@@ -1001,8 +1013,8 @@ a:focus-visible {
 .workspace-pane-button {
   display: grid;
   gap: 4px;
-  min-height: 112px;
-  padding: 14px;
+  min-height: 92px;
+  padding: 12px 14px;
   border: 1px solid rgba(18, 33, 29, 0.08);
   border-radius: 8px;
   background: rgba(251, 253, 251, 0.86);
@@ -1017,7 +1029,7 @@ a:focus-visible {
 
 .workspace-pane-title {
   color: var(--text);
-  font-size: 0.94rem;
+  font-size: 0.88rem;
   font-weight: 800;
 }
 
@@ -1028,8 +1040,8 @@ a:focus-visible {
 }
 
 .workspace-pane-description {
-  font-size: 0.84rem;
-  line-height: 1.4;
+  font-size: 0.8rem;
+  line-height: 1.35;
 }
 
 .workspace-pane-button-active {
@@ -1272,6 +1284,26 @@ a:focus-visible {
   gap: 10px;
 }
 
+.family-model-note,
+.profile-model-strip {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid rgba(18, 33, 29, 0.08);
+  border-radius: 8px;
+  background: rgba(248, 251, 248, 0.88);
+}
+
+.family-model-note p,
+.profile-model-strip span {
+  margin: 0;
+  color: var(--muted);
+}
+
+.profile-model-strip {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .family-roster {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1294,6 +1326,10 @@ a:focus-visible {
 .family-roster-card p {
   margin: 4px 0 0;
   color: var(--muted);
+}
+
+.family-roster-card-placeholder {
+  border-style: dashed;
 }
 
 .family-roster-mails {
@@ -1664,7 +1700,7 @@ a:focus-visible {
   display: flex;
   gap: 6px;
   overflow-x: auto;
-  padding: 0 18px 10px;
+  padding: 0 18px 8px;
   border-bottom: 1px solid rgba(19, 33, 29, 0.06);
   scrollbar-width: none;
 }
@@ -1676,10 +1712,10 @@ a:focus-visible {
 .day-tab {
   flex: 0 0 auto;
   display: grid;
-  gap: 3px;
-  min-width: 92px;
-  min-height: 52px;
-  padding: 8px 10px;
+  gap: 2px;
+  min-width: 82px;
+  min-height: 48px;
+  padding: 7px 9px;
   border: 1px solid rgba(18, 33, 29, 0.08);
   border-radius: var(--radius-sm);
   background: rgba(255, 255, 255, 0.58);
@@ -1697,11 +1733,11 @@ a:focus-visible {
 .day-tab span {
   color: var(--text);
   font-weight: 800;
-  font-size: 0.84rem;
+  font-size: 0.8rem;
 }
 
 .day-tab strong {
-  font-size: 0.74rem;
+  font-size: 0.7rem;
   font-weight: 600;
 }
 
@@ -2897,8 +2933,8 @@ a:focus-visible {
   }
 
   .plan-stage {
-    padding: 16px;
-    gap: 12px;
+    padding: 14px;
+    gap: 10px;
   }
 
   .plan-stage-mobile-hidden {
@@ -2915,8 +2951,8 @@ a:focus-visible {
   }
 
   .plan-stage-copy h1 {
-    max-width: 10ch;
-    font-size: 1.92rem;
+    max-width: 12ch;
+    font-size: 1.72rem;
     line-height: 1;
   }
 
@@ -3001,33 +3037,24 @@ a:focus-visible {
   }
 
   .workspace-nav-block {
-    gap: 0;
     margin-bottom: 10px;
-    border: 0;
-    background: transparent;
-    box-shadow: none;
-    backdrop-filter: none;
-  }
-
-  .workspace-nav-header {
-    display: none;
   }
 
   .workspace-pane-button {
-    min-height: 34px;
-    padding: 0 8px;
-    gap: 0;
-    border: 0;
+    min-height: 48px;
+    padding: 8px 6px;
+    gap: 2px;
     border-radius: 6px;
     background: transparent;
   }
 
   .workspace-pane-title {
-    font-size: 0.8rem;
+    font-size: 0.78rem;
   }
 
   .workspace-pane-meta {
-    display: none;
+    display: block;
+    font-size: 0.68rem;
   }
 
   .workspace-pane-description {
@@ -3089,17 +3116,17 @@ a:focus-visible {
   }
 
   .day-tab {
-    min-width: 68px;
-    min-height: 44px;
-    padding: 7px 8px;
+    min-width: 62px;
+    min-height: 40px;
+    padding: 6px 7px;
   }
 
   .day-tab span {
-    font-size: 0.78rem;
+    font-size: 0.72rem;
   }
 
   .day-tab strong {
-    font-size: 0.68rem;
+    font-size: 0.64rem;
   }
 
   .day-tab small {
@@ -3107,6 +3134,7 @@ a:focus-visible {
   }
 
   .family-roster,
+  .profile-model-strip,
   .prompt-debug-op,
   .prompt-debug-metrics {
     grid-template-columns: 1fr;
@@ -3281,6 +3309,10 @@ a:focus-visible {
 
   .login-copy {
     padding-bottom: 14px;
+  }
+
+  .login-hero-panel {
+    padding: 12px 14px;
   }
 
   .login-highlights span {

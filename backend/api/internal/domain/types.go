@@ -316,9 +316,9 @@ func (p Profile) Validate() error {
 
 func DefaultProfile() Profile {
 	return Profile{
-		HouseholdName: "Familie Hartmann",
+		HouseholdName: "Privater Haushalt",
 		Members: []Member{
-			{ID: "markus", Name: "Markus", Role: "Erwachsener", CaloriesTarget: 2300, Likes: "abwechslungsreiche, frische Kueche", Dislikes: "langweilige Standardgerichte"},
+			{ID: "person-1", Name: "Person 1", Alias: "Person 1", Role: "Erwachsen", CaloriesTarget: 2200},
 		},
 		Defaults: MealDefaults{
 			Breakfast: "schnell, familientauglich, nicht zu suess",
@@ -329,4 +329,24 @@ func DefaultProfile() Profile {
 		Presets: []string{"familientauglich", "ausgewogen", "saisonal", "schnell unter der Woche"},
 		Notes:   "Naehrwerte sind Schaetzungen und nicht medizinisch verbindlich.",
 	}
+}
+
+func IsPlaceholderProfile(profile Profile) bool {
+	if strings.TrimSpace(profile.HouseholdName) != "Privater Haushalt" {
+		return false
+	}
+	if len(profile.Members) != 1 {
+		return false
+	}
+	member := profile.Members[0]
+	if strings.TrimSpace(member.ID) != "person-1" {
+		return false
+	}
+	if strings.TrimSpace(member.Name) != "Person 1" {
+		return false
+	}
+	if strings.TrimSpace(member.Alias) != "Person 1" {
+		return false
+	}
+	return true
 }

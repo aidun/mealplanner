@@ -74,6 +74,16 @@ func TestRegeneratePromptDoesNotSendFullPlanOrServingNames(t *testing.T) {
 	}
 }
 
+func TestDefaultProfileStaysNeutral(t *testing.T) {
+	profile := domain.DefaultProfile()
+	if profile.HouseholdName != "Privater Haushalt" {
+		t.Fatalf("expected neutral household name, got %q", profile.HouseholdName)
+	}
+	if len(profile.Members) != 1 || profile.Members[0].Name != "Person 1" {
+		t.Fatalf("expected neutral default member, got %+v", profile.Members)
+	}
+}
+
 func TestWeekPromptIncludesFavoritesAsInspiration(t *testing.T) {
 	prompt := WeekPrompt(domain.DefaultProfile(), time.Date(2026, 4, 20, 0, 0, 0, 0, time.UTC), []domain.FavoriteRecipe{{
 		Meal: domain.Meal{Title: "Lieblingspasta", Slot: "dinner", Description: "Tomatig und schnell", Tags: []string{"favorit"}},

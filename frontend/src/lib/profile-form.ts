@@ -50,6 +50,18 @@ function objectToBlock(value: unknown) {
   return value == null ? '' : String(value);
 }
 
+function isPlaceholderProfile(profile?: Profile | null) {
+  if (!profile) return false;
+  if ((profile.householdName ?? '').trim() !== 'Privater Haushalt') return false;
+  if (!profile.members || profile.members.length !== 1) return false;
+  const [member] = profile.members;
+  return (
+    (member?.id ?? '').trim() === 'person-1' &&
+    (member?.name ?? '').trim() === 'Person 1' &&
+    (member?.alias ?? '').trim() === 'Person 1'
+  );
+}
+
 export function emptyMember(index: number): MemberFormState {
   return {
     id: `person-${index + 1}`,
@@ -82,7 +94,8 @@ export function defaultMealPlanDays(memberIds: string[] = []): MealPlanDayFormSt
 
 export function profileToForm(profile?: Profile | null): ProfileFormState {
   const noteSections = parseNoteSections(profile?.notes ?? '');
-  const members = profile?.members?.length ? profile.members.map(memberToForm) : [emptyMember(0)];
+  const members =
+    profile?.members?.length && !isPlaceholderProfile(profile) ? profile.members.map(memberToForm) : [emptyMember(0)];
   const memberIds = members.map((member) => member.id);
   const mealPlanDays = WEEKDAY_CONFIG.map(({ day, label }) => {
     const activeKey = `Aktive Mahlzeiten ${label}`;
@@ -99,7 +112,7 @@ export function profileToForm(profile?: Profile | null): ProfileFormState {
     };
   });
   return {
-    householdName: profile?.householdName ?? '',
+    householdName: isPlaceholderProfile(profile) ? '' : profile?.householdName ?? '',
     members,
     mealPlanDays,
     servingsPerMeal: noteSections['Standard-Portionen'] ?? '',

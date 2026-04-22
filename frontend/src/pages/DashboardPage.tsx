@@ -268,15 +268,13 @@ export function DashboardPage() {
   const workspaceViews = [
     {
       id: 'plan' as const,
-      title: 'Plan',
-      description: selectedDay?.label
-        ? `${selectedDay.label} ist ausgewählt.`
-        : 'Tage und Mahlzeiten im Wochenrhythmus durchgehen.',
+      title: 'Woche',
+      description: selectedDay?.label ? `${selectedDay.label} im Fokus.` : 'Tage und Mahlzeiten durchgehen.',
       meta: `${currentPlanQuery.data?.days.length ?? 0} Tage`,
     },
     {
       id: 'detail' as const,
-      title: 'Gericht',
+      title: 'Rezept',
       description: inspectedMeal?.title ?? 'Zutaten, Schritte und Anpassungen öffnen.',
       meta: inspectedMealInPlan ? 'Im Fokus' : 'Noch nichts ausgewählt',
     },
@@ -312,16 +310,16 @@ export function DashboardPage() {
           <PlanBackdrop />
           <div className="plan-stage-copy plan-stage-copy-compact">
             <span className="eyebrow">Wochenplan</span>
-            <h1 id="home-title">Diese Woche in {brand.name}.</h1>
-            <p>{brand.shortTagline} Woche, Gericht und Einkauf greifen hier direkt ineinander.</p>
+            <h1 id="home-title">Alles für diese Woche an einem Ort.</h1>
+            <p>{brand.name} hält Tage, Rezepte und Einkauf in einem ruhigen Ablauf zusammen, statt sie wie getrennte Admin-Bereiche zu behandeln.</p>
           </div>
           <div className="plan-stage-context" aria-label="Aktueller Fokus">
             <div className="plan-focus-item">
-              <span>Aktiver Tag</span>
+              <span>Heute im Blick</span>
               <strong>{selectedDay?.label ?? (selectedDay?.date ? formatDate(selectedDay.date) : 'Noch kein Tag gewählt')}</strong>
             </div>
             <div className="plan-focus-item">
-              <span>Ausgewähltes Gericht</span>
+              <span>Geöffnetes Rezept</span>
               <strong>{inspectedMeal?.title ?? 'Noch kein Gericht gewählt'}</strong>
             </div>
           </div>
@@ -337,15 +335,8 @@ export function DashboardPage() {
           </div>
         ) : null}
 
-        <section className="workspace-nav-block surface" aria-labelledby="workspace-nav-title">
-          <div className="surface-header workspace-nav-header">
-            <div>
-              <span className="eyebrow">Arbeitsbereich</span>
-              <h2 id="workspace-nav-title">Direkt zwischen Woche, Gericht und Einkauf wechseln</h2>
-              <p>Jeder Bereich behält den aktuellen Kontext, damit du nicht neu suchen musst.</p>
-            </div>
-          </div>
-          <div className="workspace-pane-switch" aria-label="Bereiche wechseln">
+        <section className="workspace-nav-block" aria-label="Bereiche wechseln">
+          <div className="workspace-pane-switch">
             {workspaceViews.map((view) => (
               <button
                 key={view.id}

@@ -52,13 +52,17 @@ export function LoginPage() {
             <AppLogo />
           </h1>
           <p className="login-lead">
-            {brand.name} hält Woche, Rezepte und Einkauf für euren Haushalt an einem Ort. Der Login schützt euren
-            privaten Bereich, ohne unnötige Profildaten aufzublähen.
+            Ruhige Wochenplanung, abgestimmte Rezepte und ein Einkauf, der wirklich zum Familienalltag passt. Der
+            Login schützt nur euren Bereich und hält den Einstieg bewusst schlank.
           </p>
+          <div className="login-hero-panel">
+            <strong>Weniger Verwaltungsgefühl, mehr Familienküche.</strong>
+            <p>Planen, verfeinern und mitnehmen, ohne zwischen mehreren Oberflächen den Faden zu verlieren.</p>
+          </div>
           <div className="login-highlights" aria-label="Vorteile">
-            <span>Woche abstimmen</span>
-            <span>Rezepte verfeinern</span>
-            <span>Einkauf mitnehmen</span>
+            <span>Woche gemeinsam führen</span>
+            <span>Rezepte im Alltag anpassen</span>
+            <span>Einkauf direkt mitnehmen</span>
           </div>
         </div>
 
@@ -82,7 +86,7 @@ export function LoginPage() {
             ) : null}
           </div>
           <p className="login-support-copy">
-            {brand.name} nutzt Social Login nur für den Zugang. Eure Planungsdaten bleiben im Familienkonto.
+            {brand.name} nutzt Social Login nur für den Zugang. Profile, Familienkonto und Wochenpläne bleiben davon fachlich getrennt.
           </p>
         </div>
 

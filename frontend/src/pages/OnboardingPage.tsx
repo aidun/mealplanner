@@ -250,6 +250,11 @@ export function OnboardingPage() {
   const favorites = favoritesQuery.data ?? [];
   const inviteSentByEmail = Boolean((inviteMutation.data as { emailSent?: boolean } | undefined)?.emailSent);
   const canManageFamilyMail = Boolean(session?.isPremium || session?.isAdmin);
+  const namedMembersCount = form.members.filter((member) => member.name.trim() !== '').length;
+  const displayHouseholdLabel = familyQuery.data?.personal
+    ? 'Persönlicher Bereich'
+    : familyQuery.data?.name || form.householdName || 'Familienkonto';
+  const hasUnconfiguredProfile = !form.householdName.trim() && namedMembersCount === 0;
 
   const statusMessage = useMemo(() => {
     if (saveMutation.isPending) return 'Angaben werden gespeichert.';
@@ -266,7 +271,7 @@ export function OnboardingPage() {
           <button type="button" className="brand-mark brand-button" onClick={() => navigate('/')}>
             <AppLogo />
           </button>
-          <p className="brand-subtitle">Personen, Aliase und Regeln für kommende Wochen.</p>
+          <p className="brand-subtitle">Profilpersonen, Login-Zugänge und Regeln für kommende Wochen.</p>
         </div>
       </header>
 
@@ -274,21 +279,25 @@ export function OnboardingPage() {
         <section className="profile-page">
           <div className="profile-page-intro">
             <span className="eyebrow">Haushalt</span>
-            <h1>Haushalt und Familie pflegen</h1>
-            <p>Hier liegen Personen, Zugänge und Regeln, nach denen neue Wochen geplant werden.</p>
+            <h1>Familie sauber aufstellen</h1>
+            <p>Profilpersonen, Login-Zugänge und Planungsregeln bleiben hier getrennt, damit neue Wochen nachvollziehbar entstehen.</p>
             <div className="profile-overview-grid" aria-label="Haushaltsübersicht">
               <div className="profile-overview-card">
-                <strong>{form.members.length}</strong>
-                <span>Personen im Haushalt</span>
+                <strong>{namedMembersCount}</strong>
+                <span>Profilpersonen</span>
               </div>
               <div className="profile-overview-card">
                 <strong>{familyQuery.data?.accounts?.length ?? 0}</strong>
-                <span>Verknüpfte Zugänge</span>
+                <span>Login-Zugänge</span>
               </div>
               <div className="profile-overview-card">
                 <strong>{familyQuery.data?.personal ? 'Privat' : 'Familie'}</strong>
-                <span>{familyQuery.data?.name || form.householdName || 'Bereich'}</span>
+                <span>{displayHouseholdLabel}</span>
               </div>
+            </div>
+            <div className="profile-model-strip" aria-label="Kontomodell">
+              <span>Profilpersonen steuern Portionen, Vorlieben und Namen im Plan.</span>
+              <span>Login-Zugänge geben Zugriff auf genau ein aktives Familienkonto.</span>
             </div>
           </div>
 
@@ -342,6 +351,12 @@ export function OnboardingPage() {
             </div>
           ) : null}
 
+          {hasUnconfiguredProfile ? (
+            <div className="status-strip" role="status" aria-live="polite">
+              <span>Dieser Bereich startet bewusst neutral. Erst wenn du Namen und Personen speicherst, erscheinen sie als feste Familienangaben.</span>
+            </div>
+          ) : null}
+
           <form
             className="profile-form"
             onSubmit={(event) => {
@@ -353,7 +368,7 @@ export function OnboardingPage() {
               <div className="profile-section-copy">
                 <span className="section-index">01</span>
                 <h2 id="household-section">Haushalt</h2>
-                <p>Name, Mitglieder und Mengenlogik für eure gemeinsamen Rezepte.</p>
+                <p>Nur echte Profilpersonen gehören hier hinein. Sie steuern Portionsgrößen, Vorlieben und die Namen im Plan.</p>
               </div>
               <div className="profile-section-fields">
                 <label className="field">
@@ -476,8 +491,7 @@ export function OnboardingPage() {
                           Zutat vor dem Kochen noch einmal kontrollieren.
                         </p>
                         <p className="profile-inline-note member-grid-wide">
-                          Der volle Name bleibt die eindeutige Person im Haushalt. Die Anrede wird in Prompts und im Plan bevorzugt
-                          verwendet, wenn sie gesetzt ist.
+                          Der volle Name beschreibt die echte Person im Haushalt. Die Anrede ist nur die kurze Form, die in Plan und Prompts bevorzugt erscheint.
                         </p>
                       </div>
                     </article>
@@ -508,7 +522,7 @@ export function OnboardingPage() {
               <div className="profile-section-copy">
                 <span className="section-index">02</span>
                 <h2 id="family-section">Familienkonto</h2>
-                <p>Login-Mails sichtbar halten, Accounts zuordnen und Einladungen versenden.</p>
+                <p>Hier liegen nur Zugänge. Jede Login-Mail gehört genau einem aktiven Familienkonto und kann einer Profilperson zugeordnet werden.</p>
               </div>
               <div className="profile-section-fields">
                 <div className="family-overview" aria-label="Familienkonto Übersicht">
@@ -516,13 +530,18 @@ export function OnboardingPage() {
                   {familyQuery.data?.mergedWarning ? <p>{familyQuery.data.mergedWarning}</p> : null}
                   <div className="family-summary-row">
                     <span>{linkedAccountsCount} von {linkedMembers.length} Logins zugeordnet</span>
-                    <span>{memberOptions.length} Personen aktiv</span>
+                    <span>{namedMembersCount} Profilpersonen sichtbar</span>
                     {unassignedAccountsCount > 0 ? <span>{unassignedAccountsCount} Logins brauchen noch eine Person</span> : null}
                   </div>
                 </div>
 
+                <div className="family-model-note">
+                  <strong>Kontoregel</strong>
+                  <p>Ein Login gehört genau zu einem aktiven Familienkonto. Wer eine Einladung annimmt, arbeitet danach in diesem gemeinsamen Konto weiter.</p>
+                </div>
+
                 <div className="family-roster" aria-label="Wer gehört zum Familienkonto">
-                  {familyRoster.map((member) => (
+                  {familyRoster.length > 0 ? familyRoster.map((member) => (
                     <article key={member.id} className="family-roster-card">
                       <div>
                         <strong>{member.label}</strong>
@@ -540,7 +559,14 @@ export function OnboardingPage() {
                         <p className="muted">Noch kein Login zugeordnet.</p>
                       )}
                     </article>
-                  ))}
+                  )) : (
+                    <article className="family-roster-card family-roster-card-placeholder">
+                      <div>
+                        <strong>Noch keine Profilpersonen benannt</strong>
+                        <p>Lege oben zuerst die Personen fest, die im Familienplan auftauchen sollen.</p>
+                      </div>
+                    </article>
+                  )}
                 </div>
 
                 <div className="family-account-list">

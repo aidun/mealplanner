@@ -47,7 +47,7 @@ export function MealBoard({
       <div className="surface-header">
         <div>
           <h2>Diese Woche auf dem Tisch</h2>
-          <p>Tag wählen, Gericht öffnen und Details direkt daneben anpassen.</p>
+          <p>Tag wählen, Gericht öffnen und direkt weiterarbeiten.</p>
         </div>
         {days.length > 0 ? (
           <div className="carousel-actions" aria-label="Tage wechseln">
@@ -71,8 +71,8 @@ export function MealBoard({
             onClick={() => selectDay(index)}
           >
             <span>{day.label ?? formatDate(day.date)}</span>
-            <strong>{formatDate(day.date)}</strong>
-            <small>{day.meals.length} Mahlzeiten</small>
+            <strong>{formatDayBadge(day.date)}</strong>
+            {day.meals.length > 0 ? <small>{day.meals.length} offen</small> : null}
           </button>
         ))}
       </div>
@@ -88,7 +88,7 @@ export function MealBoard({
             <header className="day-header">
               <div>
                 <h3>{activeDay.label ?? formatDate(activeDay.date)}</h3>
-                <p>{formatDate(activeDay.date)} · {activeDay.meals.length} Mahlzeiten</p>
+                <p>{formatDate(activeDay.date)} · {activeDay.meals.length} geplant</p>
               </div>
               <BringLink
                 planId={planId}
@@ -159,4 +159,13 @@ function slotLabel(slot?: string) {
     default:
       return slot || 'Mahlzeit';
   }
+}
+
+function formatDayBadge(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat('de-DE', {
+    day: '2-digit',
+    month: '2-digit',
+  }).format(date);
 }

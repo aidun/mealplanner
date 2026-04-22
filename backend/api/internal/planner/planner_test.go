@@ -201,7 +201,7 @@ func TestWeekPromptIncludesMinimizedProfile(t *testing.T) {
 	if strings.Contains(prompt, "Familie Hartmann") || strings.Contains(prompt, `"name"`) {
 		t.Fatalf("prompt should not include personal profile names: %s", prompt)
 	}
-	if !strings.Contains(prompt, "privater Haushalt") || !strings.Contains(prompt, "familientauglich") || !strings.Contains(prompt, `"alias": "Markus"`) {
+	if !strings.Contains(prompt, "privater Haushalt") || !strings.Contains(prompt, "familientauglich") || !strings.Contains(prompt, `"alias": "Person 1"`) {
 		t.Fatalf("prompt should include minimized meal planning profile: %s", prompt)
 	}
 }

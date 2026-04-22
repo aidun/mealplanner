@@ -36,7 +36,16 @@ Last updated: 2026-04-22
 - Seit 2026-04-22 hat Feedback einen echten Admin-Workflow: `feedback_entries` tragen `status`, `resolved_at` und `resolved_by_user_id`; `/api/admin/overview` liefert offene Punkte standardmäßig und optional Archivpunkte über `includeResolved=true`, plus `POST /api/admin/feedback/{id}/resolve` zum sauberen Ausblenden gelöster Punkte.
 - Die Admin-Oberfläche zeigt offene und gelöste Feedbacks getrennt, Mail-Templates bewusst nur als Plain-Text/HTML-Editor mit Vorschau und kein WYSIWYG; parallel wurden Login-, Header-, Profil- und Mobile-Copy auf `Familienküche`/ruhigere Bedienung nachgezogen.
 - Seit 2026-04-22 speichert die Profilseite offene Profil-Aenderungen automatisch mit, bevor ein Login ueber `PUT /api/family/member-links` einem Profilmitglied zugeordnet wird. Das behebt den Fall, dass lokale Mitglieder-Aenderungen im Frontend weiter waren als das im Backend gespeicherte Profil.
+- Seit 2026-04-22 ist das neutrale Erstprofil wieder sauber vom echten Familienzustand getrennt: `domain.DefaultProfile()` nutzt nur noch Platzhalter (`Privater Haushalt`, `Person 1`), `domain.IsPlaceholderProfile()` erkennt diesen Zustand, und die Familienübersicht behandelt Placeholder nicht mehr als echte Profilpersonen.
+- Onboarding und Familienkonto wurden am 2026-04-22 stärker getrennt: Profilpersonen steuern Portionen und Planungslogik, Login-Zugänge leben separat im Familienkonto, und die Regel `ein Login -> ein aktives Familienkonto` wird in der Oberfläche ausdrücklich erklärt.
+- Der Planner-Workspace wurde am 2026-04-22 kompakter gezogen: Hero ruhiger, Bereichswechsel dichter, mobile Wochentage kleiner und die Bereiche heißen nun sichtbarer `Woche`, `Rezept`, `Einkauf` statt dashboardiger zu wirken.
+- Die Login-Seite betont seit 2026-04-22 stärker den Produkteinstieg und weniger Verwaltungslogik; der Text beschreibt den Social Login jetzt klar als reinen Zugangsschutz für einen getrennten Familienbereich.
 - Die Backend-API-Dokumentation liegt jetzt unter `docs/API.md` und muss bei Endpunkt-, Payload- oder Auth-Aenderungen mitgezogen werden.
+- Seit `bc6188f` laeuft das Phase-A-Rebranding sichtbar auf `Mahlio`: zentrale Brand-Konstanten liegen in `frontend/src/brand.ts` und `backend/api/internal/brand/brand.go`, die Uebergangs-Domain bleibt aber `mealplanner.markushartmann.dev`.
+- `docs/BRAND.md` dokumentiert den aktuellen Naming-Stand: `Mahlio` als Phase-A-Primärmarke, `Familienküche` nur noch als Uebergangslabel, `Mealplanner` nur noch als technischer Altname.
+- Das Rebranding hat Frontend-Meta-Daten, Logo/Wordmark, Login, Header, Dashboard, Onboarding, Admin, Legal-Copy, Bring-Export-Texte und Mail-Template-Defaults auf `Mahlio` umgestellt; Phase-B-Domainmigration steht noch aus.
+- Mail-Template-Bestand wird seit `0010_rebrand_mail_templates` auch fuer bestehende `mail_templates` auf den neuen Markennamen migriert, solange alte Default-Texte noch unveraendert gespeichert sind.
+- Fuer die spaetere Domainphase sind `mahlio.app` und `mahlio.io` aktuell als priorisierte Kandidaten vorgemerkt; `mahlio.de` ist bereits aktiv belegt.
 
 ## Wichtige Arbeitsregeln
 

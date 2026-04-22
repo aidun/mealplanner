@@ -471,7 +471,7 @@ describe('Mealplanner app', () => {
     expect(await screen.findByText('Diese Woche auf dem Tisch')).toBeInTheDocument();
     expect(screen.getAllByRole('link', { name: 'Haushalt' })).toHaveLength(1);
     expect(screen.getAllByRole('button', { name: /Wochenplan erstellen/i })).toHaveLength(1);
-    expect(screen.getByRole('heading', { name: /Direkt zwischen Woche, Gericht und Einkauf wechseln/i })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Bereiche wechseln' })).toBeInTheDocument();
     expect(fetchMock.mock.calls.filter(([url]) => String(url).includes('/api/session'))).toHaveLength(1);
     const mealButton = (await screen.findAllByRole('button', { name: /Pasta mit Gemüse/ }))[0]!;
     expect(mealButton).toBeInTheDocument();
@@ -669,7 +669,7 @@ describe('Mealplanner app', () => {
   it('opens onboarding and saves the profile', async () => {
     renderApp('/onboarding');
 
-    expect(await screen.findByText('Haushalt und Familie pflegen')).toBeInTheDocument();
+    expect(await screen.findByText('Familie sauber aufstellen')).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Haushaltsname'), { target: { value: 'Familie Weber' } });
     fireEvent.change(screen.getAllByLabelText('Anrede im Plan')[0]!, { target: { value: 'Mama' } });
     fireEvent.change(screen.getByLabelText('Standard-Portionen'), { target: { value: '4' } });
@@ -794,6 +794,33 @@ describe('Mealplanner app', () => {
 
     expect(await screen.findByText('Verknüpft mit Mama')).toBeInTheDocument();
     expect(screen.getByText('Verknüpft mit Ben')).toBeInTheDocument();
+  });
+
+  it('keeps placeholder family data neutral until real names are saved', async () => {
+    vi.stubGlobal(
+      'fetch',
+      createFetchMock({
+        profileOverride: {
+          householdName: 'Privater Haushalt',
+          members: [{ id: 'person-1', name: 'Person 1', alias: 'Person 1', role: 'Erwachsen', likes: '' }],
+          defaults: profile.defaults,
+          presets: profile.presets,
+          notes: profile.notes,
+        },
+        familyOverride: {
+          ...family,
+          personal: true,
+          name: 'Persoenliche Familie',
+          members: [],
+        },
+      })
+    );
+
+    renderApp('/onboarding');
+
+    expect(await screen.findByText(/Dieser Bereich startet bewusst neutral/)).toBeInTheDocument();
+    expect(screen.getByLabelText('Haushaltsname')).toHaveValue('');
+    expect(screen.queryByDisplayValue('Person 1')).not.toBeInTheDocument();
   });
 
   it('highlights unassigned family accounts', async () => {
@@ -939,7 +966,7 @@ describe('Mealplanner app', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Familienkonto beitreten' }));
 
     expect(await screen.findByText(/Familienbereich aktiv\./)).toBeInTheDocument();
-    expect(await screen.findByText('Haushalt und Familie pflegen')).toBeInTheDocument();
+    expect(await screen.findByText('Familie sauber aufstellen')).toBeInTheDocument();
   });
 
   it('shows feedback when plan generation fails', async () => {
@@ -1074,7 +1101,7 @@ describe('Mealplanner app', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Abmelden' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Logout gerade nicht möglich');
-    expect(screen.getByText('Diese Woche in Mahlio.')).toBeInTheDocument();
+    expect(screen.getByText('Alles für diese Woche an einem Ort.')).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Mit Google anmelden' })).not.toBeInTheDocument();
   });
 
@@ -1100,7 +1127,7 @@ describe('Mealplanner app', () => {
     window.localStorage.setItem('mealplanner.promptDebug', 'true');
     renderApp('/');
 
-    expect(await screen.findByText('Diese Woche in Mahlio.')).toBeInTheDocument();
+    expect(await screen.findByText('Alles für diese Woche an einem Ort.')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Prompt prüfen' })).not.toBeInTheDocument();
   });
 

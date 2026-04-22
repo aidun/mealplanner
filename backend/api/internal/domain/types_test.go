@@ -7,6 +7,9 @@ func TestProfileValidate(t *testing.T) {
 	if err := profile.Validate(); err != nil {
 		t.Fatalf("default profile should validate: %v", err)
 	}
+	if !IsPlaceholderProfile(profile) {
+		t.Fatal("default profile should be recognized as placeholder profile")
+	}
 
 	profile.Members = nil
 	if err := profile.Validate(); err == nil {
