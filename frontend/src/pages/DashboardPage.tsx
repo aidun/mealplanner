@@ -1,4 +1,4 @@
-import { startTransition, useEffect, useMemo, useState } from 'react';
+import { startTransition, useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams, type SetURLSearchParams } from 'react-router-dom';
 import { Header } from '../components/Header';
@@ -38,7 +38,10 @@ export function DashboardPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const promptDebug = promptDebugEnabled();
   const [loggedOut, setLoggedOut] = useState(false);
-  const [mobileTopPanelHidden, setMobileTopPanelHidden] = useState(false);
+  const [mobileMenuHidden, setMobileMenuHidden] = useState(false);
+  const lastScrollYRef = useRef(0);
+  const scrollTickingRef = useRef(false);
+  const mobileMenuHiddenRef = useRef(false);
   const activeWorkspacePane = parsePane(searchParams.get('pane'));
   const selectedMealId = searchParams.get('meal') ?? undefined;
   const selectedDayParam = searchParams.get('day') ?? undefined;
@@ -179,49 +182,61 @@ export function DashboardPage() {
   }, [allMeals, currentPlanQuery.data?.days, selectedMealId, setSearchParams]);
 
   useEffect(() => {
-    let lastY = window.scrollY;
+    lastScrollYRef.current = Math.max(window.scrollY, 0);
+
+    const updateMenuVisibility = (nextHidden: boolean) => {
+      if (mobileMenuHiddenRef.current === nextHidden) {
+        return;
+      }
+      mobileMenuHiddenRef.current = nextHidden;
+      setMobileMenuHidden(nextHidden);
+    };
+
+    const flushScroll = () => {
+      scrollTickingRef.current = false;
+      const isMobile =
+        typeof window.matchMedia === 'function'
+          ? window.matchMedia('(max-width: 760px)').matches
+          : window.innerWidth <= 760;
+      const nextY = Math.max(window.scrollY, 0);
+
+      if (!isMobile) {
+        updateMenuVisibility(false);
+        lastScrollYRef.current = nextY;
+        return;
+      }
+
+      if (nextY <= 48) {
+        updateMenuVisibility(false);
+        lastScrollYRef.current = nextY;
+        return;
+      }
+
+      const delta = nextY - lastScrollYRef.current;
+      if (delta > 12 && nextY > 140) {
+        updateMenuVisibility(true);
+      } else if (delta < -18) {
+        updateMenuVisibility(false);
+      }
+
+      lastScrollYRef.current = nextY;
+    };
 
     const onScroll = () => {
-      const isMobile = window.innerWidth <= 760;
-      const nextY = window.scrollY;
-      if (!isMobile) {
-        if (mobileTopPanelHidden) {
-          setMobileTopPanelHidden(false);
-        }
-        lastY = nextY;
+      if (scrollTickingRef.current) {
         return;
       }
-
-      if (nextY <= 24) {
-        if (mobileTopPanelHidden) {
-          setMobileTopPanelHidden(false);
-        }
-        lastY = nextY;
-        return;
-      }
-
-      if (nextY > lastY + 8 && nextY > 80) {
-        if (!mobileTopPanelHidden) {
-          setMobileTopPanelHidden(true);
-        }
-      } else if (nextY < lastY - 12) {
-        if (mobileTopPanelHidden) {
-          setMobileTopPanelHidden(false);
-        }
-      }
-
-      lastY = nextY;
+      scrollTickingRef.current = true;
+      window.requestAnimationFrame(flushScroll);
     };
 
     window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', onScroll);
-    onScroll();
+    flushScroll();
 
     return () => {
       window.removeEventListener('scroll', onScroll);
-      window.removeEventListener('resize', onScroll);
     };
-  }, [mobileTopPanelHidden]);
+  }, []);
 
   const handleRegenerate = (note: string) => {
     const plan = currentPlanQuery.data;
@@ -288,6 +303,12 @@ export function DashboardPage() {
   ];
   const stageDays = allDays.slice(0, 4);
   const stageIngredients = inspectedMeal?.ingredients.slice(0, 4) ?? [];
+  const stageNarrative = useMemo(() => {
+    if (selectedDay?.label && inspectedMeal?.title) {
+      return `${selectedDay.label} steht ${inspectedMeal.title} auf dem Plan. Rezept, Zutaten und Einkauf bleiben direkt an diesem Tag.`;
+    }
+    return `${brand.name} hält Gerichte, Rezepte und Einkauf in einer ruhigen gemeinsamen Wochenansicht.`;
+  }, [inspectedMeal?.title, selectedDay?.label]);
 
   return loggedOut ? (
     <LoginPage />
@@ -303,15 +324,12 @@ export function DashboardPage() {
       />
 
       <main className="app-main">
-        <section
-          className={`plan-stage${mobileTopPanelHidden ? ' plan-stage-mobile-hidden' : ''}`}
-          aria-labelledby="home-title"
-        >
+        <section className="plan-stage" aria-labelledby="home-title">
           <PlanBackdrop />
           <div className="plan-stage-copy">
             <span className="eyebrow">Wochenfläche</span>
             <h1 id="home-title">Alles für die Woche liegt an einem Tisch.</h1>
-            <p>{brand.name} hält Gerichte, Rezepte und Einkauf in einer ruhigen gemeinsamen Wochenansicht.</p>
+            <p>{stageNarrative}</p>
           </div>
 
           <div className="plan-stage-tableau" aria-label="Aktueller Fokus">
@@ -339,7 +357,7 @@ export function DashboardPage() {
                     >
                       <span>{formatDate(day.date)}</span>
                       <strong>{leadMeal?.title ?? 'Noch offen'}</strong>
-                      <small>{leadMeal ? `${day.meals.length} Gericht${day.meals.length > 1 ? 'e' : ''} im Tag` : 'Gericht öffnen und ausarbeiten.'}</small>
+                      <small>{leadMeal ? `${day.meals.length} Gericht${day.meals.length > 1 ? 'e' : ''} im Tag` : 'Zum Beispiel Pasta, Suppe oder Ofengemüse.'}</small>
                     </article>
                   );
                 })}
@@ -400,7 +418,11 @@ export function DashboardPage() {
           </div>
         ) : null}
 
-        <section className="workspace-nav-block" aria-label="Bereiche wechseln">
+        <section
+          className={`workspace-nav-block${mobileMenuHidden ? ' workspace-nav-block-hidden' : ''}`}
+          aria-label="Bereiche wechseln"
+          data-scroll-state={mobileMenuHidden ? 'hidden' : 'visible'}
+        >
           <div className="workspace-pane-switch">
             {workspaceViews.map((view) => (
               <button

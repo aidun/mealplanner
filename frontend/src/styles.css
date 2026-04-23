@@ -1789,6 +1789,14 @@ a:focus-visible {
 
 .workspace-nav-block {
   margin-bottom: 14px;
+  transition:
+    transform 180ms ease,
+    opacity 180ms ease;
+  will-change: transform, opacity;
+}
+
+.workspace-nav-block-hidden {
+  pointer-events: none;
 }
 
 .workspace-pane-switch {
@@ -3839,19 +3847,6 @@ a:focus-visible {
     gap: 10px;
   }
 
-  .plan-stage-mobile-hidden {
-    opacity: 0;
-    transform: translateY(-18px);
-    max-height: 0;
-    margin-bottom: 0;
-    padding-top: 0;
-    padding-bottom: 0;
-    overflow: hidden;
-    pointer-events: none;
-    border-width: 0;
-    box-shadow: none;
-  }
-
   .plan-stage-copy h1 {
     max-width: 12ch;
     font-size: 1.72rem;
@@ -3936,7 +3931,28 @@ a:focus-visible {
   }
 
   .workspace-nav-block {
+    position: sticky;
+    top: calc(72px + env(safe-area-inset-top));
+    z-index: 11;
     margin-bottom: 10px;
+    padding-top: 2px;
+    background: transparent;
+  }
+
+  .workspace-nav-block::before {
+    content: "";
+    position: absolute;
+    inset: -4px -6px;
+    border-radius: 12px;
+    background: linear-gradient(180deg, rgba(248, 241, 232, 0.96), rgba(248, 241, 232, 0.66));
+    backdrop-filter: blur(14px);
+    z-index: -1;
+    pointer-events: none;
+  }
+
+  .workspace-nav-block-hidden {
+    opacity: 0;
+    transform: translateY(-120%);
   }
 
   .workspace-pane-button {

@@ -26,6 +26,12 @@ export function MealBoard({
   const safeDayIndex =
     days.length === 0 ? 0 : resolvedDayIndex >= 0 ? resolvedDayIndex : 0;
   const activeDay = days[safeDayIndex];
+  const leadMeal = activeDay?.meals[0];
+  const boardNarrative = activeDay
+    ? leadMeal
+      ? `${activeDay.label ?? formatDate(activeDay.date)} startet mit ${leadMeal.title}. Weitere Gerichte und der Einkauf bleiben direkt in derselben Woche.`
+      : `${activeDay.label ?? formatDate(activeDay.date)} ist noch offen. Zum Beispiel Pasta al Limone, Ofengemüse oder eine schnelle Suppe passen gut in die Woche.`
+    : 'Öffnet jeden Tag direkt aus der Woche und behaltet Rezept sowie Einkauf ohne Umweg zusammen.';
 
   const selectDay = (index: number) => {
     const day = days[index];
@@ -47,7 +53,7 @@ export function MealBoard({
       <div className="surface-header">
         <div>
           <h2>Diese Woche auf dem Tisch</h2>
-          <p>Tag öffnen, Gericht lesen und den Einkauf ohne Sprung aus derselben Woche weiterführen.</p>
+          <p>{boardNarrative}</p>
         </div>
         {days.length > 0 ? (
           <div className="carousel-actions" aria-label="Tage wechseln">
@@ -81,14 +87,18 @@ export function MealBoard({
         {days.length === 0 ? (
           <div className="empty-state">
             <h3>Noch kein Wochenplan</h3>
-            <p>Plant eine neue Woche mit Gerichten, die zu eurem Tempo und Geschmack passen.</p>
+            <p>Zum Beispiel: Montag Pasta al Limone, Dienstag Ofengemüse und Freitag eine schnelle Suppe.</p>
           </div>
         ) : activeDay ? (
           <section key={activeDay.date} className="day-column" aria-label={activeDay.label ?? activeDay.date}>
             <header className="day-header">
               <div className="day-header-copy">
                 <h3>{activeDay.label ?? formatDate(activeDay.date)}</h3>
-                <p>{formatDate(activeDay.date)} · {activeDay.meals.length} geplant</p>
+                <p>
+                  {leadMeal
+                    ? `${formatDate(activeDay.date)} · ${leadMeal.title}`
+                    : `${formatDate(activeDay.date)} · Noch offen für euer nächstes Familiengericht`}
+                </p>
               </div>
               <div className="day-header-meta">
                 <span className="day-header-badge">

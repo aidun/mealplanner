@@ -133,12 +133,14 @@ test('planner stays stable across desktop tablet and mobile breakpoints', async 
   const viewports = [
     { name: 'desktop', size: { width: 1440, height: 1100 } },
     { name: 'tablet', size: { width: 1024, height: 1180 } },
-    { name: 'mobile', size: { width: 390, height: 844 } },
+    { name: 'mobile', size: { width: 393, height: 852 } },
   ];
 
   for (const viewport of viewports) {
     await page.setViewportSize(viewport.size);
     await page.goto('/');
+    await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'auto' }));
+    await page.waitForTimeout(80);
     await expect(page.getByText('Diese Woche auf dem Tisch')).toBeVisible();
     await expect(page.getByRole('textbox', { name: 'Feedback' })).toHaveCount(0);
 
@@ -166,8 +168,12 @@ test('planner stays stable across desktop tablet and mobile breakpoints', async 
     }
 
     if (viewport.name === 'mobile') {
-      await expect(page.getByLabel('Bereiche wechseln')).toBeVisible();
+      const menu = page.getByLabel('Bereiche wechseln');
+      await expect(menu).toBeVisible();
       await expect(page.getByRole('button', { name: 'Einkauf' })).toBeVisible();
+      await page.evaluate(() => window.scrollTo({ top: 720, behavior: 'auto' }));
+      await page.waitForTimeout(180);
+      expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(600);
     }
   }
 });
