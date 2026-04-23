@@ -29,9 +29,9 @@ export function MealBoard({
   const leadMeal = activeDay?.meals[0];
   const boardNarrative = activeDay
     ? leadMeal
-      ? `${activeDay.label ?? formatDate(activeDay.date)} startet mit ${leadMeal.title}. Weitere Gerichte und der Einkauf bleiben direkt in derselben Woche.`
-      : `${activeDay.label ?? formatDate(activeDay.date)} ist noch offen. Zum Beispiel Pasta al Limone, Ofengemüse oder eine schnelle Suppe passen gut in die Woche.`
-    : 'Öffnet jeden Tag direkt aus der Woche und behaltet Rezept sowie Einkauf ohne Umweg zusammen.';
+      ? `${activeDay.label ?? formatDate(activeDay.date)} startet mit ${leadMeal.title}.`
+      : `${activeDay.label ?? formatDate(activeDay.date)} ist noch offen.`
+    : 'Öffnet jeden Tag direkt aus der Woche.';
 
   const selectDay = (index: number) => {
     const day = days[index];
@@ -67,7 +67,7 @@ export function MealBoard({
         ) : null}
       </div>
 
-      <div className="day-tabs" aria-label="Wochentage">
+      <div className="day-overview-grid" aria-label="Wochentage">
         {days.map((day, index) => (
           <button
             key={day.date}
@@ -77,8 +77,10 @@ export function MealBoard({
             onClick={() => selectDay(index)}
           >
             <span>{day.label ?? formatDate(day.date)}</span>
-            <strong>{formatDayBadge(day.date)}</strong>
-            {day.meals.length > 0 ? <small>{day.meals.length} offen</small> : null}
+            <strong>{day.meals[0]?.title ?? 'Noch offen'}</strong>
+            <small>
+              {day.meals.length > 0 ? `${day.meals.length} Gericht${day.meals.length > 1 ? 'e' : ''}` : formatDayBadge(day.date)}
+            </small>
           </button>
         ))}
       </div>

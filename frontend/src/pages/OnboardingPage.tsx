@@ -1180,8 +1180,7 @@ export function OnboardingPage() {
                   />
                 </label>
                 <p className="profile-inline-note two-column-note">
-                  Hinweis: Auch bei klaren Regeln und Ausschlüssen prüft {brand.name} Rezepte nicht als rechtssicheren
-                  Allergie-Check. Kritische Zutaten müssen vor dem Einkauf und Kochen manuell bestätigt werden.
+                  Kritische Zutaten und Marken bitte vor Einkauf und Kochen noch einmal kurz gegen euren Alltag prüfen.
                 </p>
               </div>
             </section>

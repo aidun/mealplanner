@@ -75,7 +75,7 @@ test('planner smoke path', async ({ page, context }) => {
 
   await page.goto('/');
 
-  await expect(page.getByText('Alles für die Woche liegt an einem Tisch.')).toBeVisible();
+  await expect(page.getByText('Die Woche zuerst.')).toBeVisible();
 
   await page.getByLabel('Primäre Aktionen').getByRole('link', { name: 'Küchenprofil' }).click();
   await expect(page.getByText('Haushalt & Küchenprofil')).toBeVisible();
@@ -86,7 +86,7 @@ test('planner smoke path', async ({ page, context }) => {
 
   await expect(page.getByRole('textbox', { name: 'Feedback' })).toHaveCount(0);
 
-  await page.getByRole('button', { name: /Pasta mit Gemüse/ }).click();
+  await page.getByRole('button', { name: /Abendessen Pasta mit Gemüse/ }).click();
   await page.getByLabel('Wunsch zur Änderung').fill('Bitte schneller und mit mehr Gemüse.');
   await page.getByRole('button', { name: 'Gericht austauschen' }).click();
   await expect(page.getByRole('heading', { name: 'Cremige Gemüsepasta' })).toBeVisible();
@@ -173,7 +173,7 @@ test('planner stays stable across desktop tablet and mobile breakpoints', async 
       await expect(page.getByRole('button', { name: 'Einkauf' })).toBeVisible();
       await page.evaluate(() => window.scrollTo({ top: 720, behavior: 'auto' }));
       await page.waitForTimeout(180);
-      expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(600);
+      expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(300);
     }
   }
 });

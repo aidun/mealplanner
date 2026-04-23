@@ -532,11 +532,9 @@ describe('Mealplanner app', () => {
     expect(mealButton).toBeInTheDocument();
     expect(within(mealButton).queryByText('Familienfreundlich und schnell.')).not.toBeInTheDocument();
     expect(await screen.findByText('Familienfreundlich und schnell.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Einordnung anzeigen' })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Einordnung anzeigen' }));
+    fireEvent.click(screen.getByText('Herkunft & Einordnung'));
     expect(screen.getByText(/wurde aus eurer Favoriten-Sammlung wieder aufgegriffen/i)).toBeInTheDocument();
-    expect(screen.getByText(/Einordnung:/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Warum dieses Gericht anzeigen' }));
+    fireEvent.click(screen.getByText('Warum dieses Gericht'));
     expect(screen.getByText(/Es wurde aus eurer gespeicherten Sammlung wieder aufgenommen./)).toBeInTheDocument();
     expect(await screen.findByText('Einkauf für diese Woche')).toBeInTheDocument();
     expect(await screen.findByRole('link', { name: 'Woche zu Bring' })).toBeInTheDocument();
@@ -553,9 +551,7 @@ describe('Mealplanner app', () => {
     expect(screen.getByText(/392 kcal/)).toBeInTheDocument();
     expect(screen.getByText('1 Artikel · 1 Abteilung')).toBeInTheDocument();
     expect(screen.getByText('Zucchini')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Liste aufklappen' })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Liste aufklappen' }));
-    expect(screen.getByText(/Vor dem Einkauf prüfen/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Liste einklappen' })).toBeInTheDocument();
     expect(screen.getByRole('complementary', { name: 'Premium Feedback' })).toBeInTheDocument();
   });
 
@@ -684,7 +680,7 @@ describe('Mealplanner app', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
 
     expect((await screen.findAllByRole('button', { name: /Beeren-Porridge/ })).length).toBeGreaterThan(0);
-    expect(screen.queryAllByRole('button', { name: /Pasta mit Gemüse/ })).toHaveLength(0);
+    expect(screen.queryAllByRole('button', { name: /Abendessen Pasta mit Gemüse/ })).toHaveLength(0);
   });
 
   it('reads dashboard focus from the url', async () => {
@@ -717,7 +713,7 @@ describe('Mealplanner app', () => {
     expect(styles).toContain('.workspace-main > *,\n.workspace-side > * {\n  min-width: 0;');
     expect(styles).toContain('.surface-actions,\n  .bring-export-button {\n    width: 100%;');
     expect(styles).toContain('.board-carousel');
-    expect(styles).toContain('.day-tabs');
+    expect(styles).toContain('.day-overview-grid');
     expect(styles).toContain('.workspace-pane-switch');
   });
 
@@ -756,7 +752,7 @@ describe('Mealplanner app', () => {
 
     expect(await screen.findByRole('complementary', { name: 'Premium Feedback' })).toBeInTheDocument();
     fireEvent.click(await screen.findByRole('link', { name: 'Admin' }));
-    expect(await screen.findByRole('heading', { name: 'Marke, Premium & Support' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Betrieb, Freigaben und Feedback' })).toBeInTheDocument();
     expect(await screen.findByText('Letzter Test-Deploy')).toBeInTheDocument();
     expect(await screen.findByText('Build-ID')).toBeInTheDocument();
     expect(await screen.findByText('premium@example.test')).toBeInTheDocument();
@@ -1185,7 +1181,7 @@ describe('Mealplanner app', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Abmelden' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Logout gerade nicht möglich');
-    expect(screen.getByText('Alles für die Woche liegt an einem Tisch.')).toBeInTheDocument();
+    expect(screen.getByText('Die Woche zuerst.')).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Mit Google anmelden' })).not.toBeInTheDocument();
   });
 
@@ -1211,7 +1207,7 @@ describe('Mealplanner app', () => {
     window.localStorage.setItem('mealplanner.promptDebug', 'true');
     renderApp('/');
 
-    expect(await screen.findByText('Alles für die Woche liegt an einem Tisch.')).toBeInTheDocument();
+    expect(await screen.findByText('Die Woche zuerst.')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Prompt prüfen' })).not.toBeInTheDocument();
   });
 
@@ -1219,6 +1215,6 @@ describe('Mealplanner app', () => {
     renderApp('/onboarding');
 
     expect(await screen.findByText(/Allergien und Unverträglichkeiten werden in Rezepten nicht verbindlich geprüft/)).toBeInTheDocument();
-    expect(screen.getByText(/Mahlio Rezepte nicht als rechtssicheren Allergie-Check/)).toBeInTheDocument();
+    expect(screen.getByText(/Kritische Zutaten und Marken bitte vor Einkauf und Kochen noch einmal kurz gegen euren Alltag prüfen/)).toBeInTheDocument();
   });
 });

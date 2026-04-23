@@ -68,7 +68,6 @@ export function LoginPage() {
             </div>
 
             <div className="login-intro">
-              <p className="login-promise">{brand.promise}</p>
               <h2 className="login-entry-headline">{brand.entryHeadline}</h2>
               <p className="login-lead">{brand.entrySubline}</p>
             </div>
@@ -97,30 +96,14 @@ export function LoginPage() {
                 ) : null}
               </div>
               <p className="login-support-copy">{brand.supportNote}</p>
+              <nav className="legal-links" aria-label="Rechtliches">
+                <Link to="/datenschutz">Datenschutz</Link>
+                <Link to="/impressum">Impressum</Link>
+              </nav>
             </div>
-
-            <div className="login-benefits" aria-label="Was Mahlio im Blick hält">
-              {brand.proofPoints.map((point) => (
-                <article key={point.title} className="login-benefit">
-                  <strong>{point.title}</strong>
-                  <p>{point.description}</p>
-                </article>
-              ))}
-            </div>
-
-            <nav className="legal-links" aria-label="Rechtliches">
-              <Link to="/datenschutz">Datenschutz</Link>
-              <Link to="/impressum">Impressum</Link>
-            </nav>
           </section>
 
           <section className="login-preview" aria-label="Produktvorschau">
-            <div className="login-preview-copy">
-              <p className="login-section-label">Am Tisch gedacht</p>
-              <h2>Die Woche in einer klaren Linie.</h2>
-              <p>Gerichte, Rezepte und Einkauf greifen sauber ineinander und bleiben jederzeit lesbar.</p>
-            </div>
-
             <div className="entry-tableau">
               <div className="entry-tableau-overview">
                 <div>
@@ -168,12 +151,6 @@ export function LoginPage() {
                     </ul>
                   </div>
                 </div>
-              </div>
-
-              <div className="entry-tableau-foot">
-                <span>Woche zuerst</span>
-                <span>Rezepte im Blick</span>
-                <span>Einkauf vorbereitet</span>
               </div>
             </div>
           </section>

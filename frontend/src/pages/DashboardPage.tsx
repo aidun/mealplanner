@@ -285,30 +285,45 @@ export function DashboardPage() {
     {
       id: 'plan' as const,
       title: 'Woche',
-      description: selectedDay?.label ? `${selectedDay.label} zuerst im Blick.` : 'Die Woche im Blick behalten.',
-      meta: `${currentPlanQuery.data?.days.length ?? 0} Tage`,
+      description: selectedDay?.label ? `${selectedDay.label} im Fokus` : 'Woche im Blick',
+      meta: `${currentPlanQuery.data?.days.length ?? 0}`,
     },
     {
       id: 'detail' as const,
       title: 'Rezept',
-      description: inspectedMeal?.title ?? 'Rezept und Zutaten öffnen.',
-      meta: inspectedMealInPlan ? 'Im Fokus' : 'Noch nichts ausgewählt',
+      description: inspectedMeal?.title ?? 'Gericht öffnen',
+      meta: inspectedMealInPlan ? 'Aktiv' : 'Offen',
     },
     {
       id: 'shopping' as const,
       title: 'Einkauf',
-      description: shoppingItemCount > 0 ? `${shoppingItemCount} Positionen für diese Woche.` : 'Alles für diese Woche gesammelt.',
-      meta: `${shoppingItemCount} Produkte`,
+      description: shoppingItemCount > 0 ? `${shoppingItemCount} Positionen` : 'Noch leer',
+      meta: `${shoppingItemCount}`,
     },
   ];
-  const stageDays = allDays.slice(0, 4);
-  const stageIngredients = inspectedMeal?.ingredients.slice(0, 4) ?? [];
   const stageNarrative = useMemo(() => {
     if (selectedDay?.label && inspectedMeal?.title) {
-      return `${selectedDay.label} steht ${inspectedMeal.title} auf dem Plan. Rezept, Zutaten und Einkauf bleiben direkt an diesem Tag.`;
+      return `${selectedDay.label}: ${inspectedMeal.title}`;
     }
-    return `${brand.name} hält Gerichte, Rezepte und Einkauf in einer ruhigen gemeinsamen Wochenansicht.`;
+    if (selectedDay?.label) {
+      return `${selectedDay.label} ist offen für euren nächsten Wochenmoment.`;
+    }
+    return `${brand.shortTagline}`;
   }, [inspectedMeal?.title, selectedDay?.label]);
+  const quickFacts = [
+    {
+      label: 'Woche',
+      value: formatWeekRange(currentPlanQuery.data?.weekStart),
+    },
+    {
+      label: 'Tage',
+      value: String(currentPlanQuery.data?.days.length ?? 0),
+    },
+    {
+      label: 'Einkauf',
+      value: shoppingItemCount > 0 ? `${shoppingItemCount} Artikel` : 'Noch leer',
+    },
+  ];
 
   return loggedOut ? (
     <LoginPage />
@@ -326,84 +341,19 @@ export function DashboardPage() {
       <main className="app-main">
         <section className="plan-stage" aria-labelledby="home-title">
           <PlanBackdrop />
-          <div className="plan-stage-copy">
-            <span className="eyebrow">Wochenfläche</span>
-            <h1 id="home-title">Alles für die Woche liegt an einem Tisch.</h1>
-            <p>{stageNarrative}</p>
-          </div>
-
-          <div className="plan-stage-tableau" aria-label="Aktueller Fokus">
-            <div className="plan-stage-overview">
-              <div className="plan-stage-overview-head">
-                <span className="entry-preview-label">Aktive Woche</span>
-                <strong>{formatWeekRange(currentPlanQuery.data?.weekStart)}</strong>
-              </div>
-              <p>
-                {selectedDay?.label ?? (selectedDay?.date ? formatDate(selectedDay.date) : 'Noch kein Tag gewählt')}
-                {' · '}
-                {inspectedMeal?.title ?? 'Noch kein Gericht gewählt'}
-              </p>
+          <div className="plan-stage-head">
+            <div className="plan-stage-copy">
+              <span className="eyebrow">Wochenfläche</span>
+              <h1 id="home-title">Die Woche zuerst.</h1>
+              <p>{stageNarrative}</p>
             </div>
-
-            <div className="plan-stage-grid">
-              <div className="plan-stage-days" aria-label="Wochenauszug">
-                {stageDays.map((day) => {
-                  const leadMeal = day.meals[0];
-                  const isActive = day.date === activeDayDate;
-                  return (
-                    <article
-                      key={day.date}
-                      className={`plan-stage-day${isActive ? ' plan-stage-day-active' : ''}`}
-                    >
-                      <span>{formatDate(day.date)}</span>
-                      <strong>{leadMeal?.title ?? 'Noch offen'}</strong>
-                      <small>{leadMeal ? `${day.meals.length} Gericht${day.meals.length > 1 ? 'e' : ''} im Tag` : 'Zum Beispiel Pasta, Suppe oder Ofengemüse.'}</small>
-                    </article>
-                  );
-                })}
-              </div>
-
-              <div className="plan-stage-focus">
-                <div className="plan-stage-focus-sheet">
-                  <span className="entry-preview-section-title">Gericht im Fokus</span>
-                  <p className="plan-stage-focus-title">{inspectedMeal?.title ?? 'Noch kein Gericht gewählt'}</p>
-                  <p>
-                    {inspectedMeal
-                      ? 'Zutaten, Rezept und nächste Schritte liegen direkt beieinander.'
-                      : 'Wählt ein Gericht, um Rezept und Einkauf für die Woche zu öffnen.'}
-                  </p>
-                  <div className="plan-stage-ingredient-row">
-                    {stageIngredients.length > 0 ? (
-                      stageIngredients.map((ingredient) => (
-                        <span key={`${inspectedMeal?.id}-${ingredient.name}`}>{ingredient.name}</span>
-                      ))
-                    ) : (
-                      <span>Wählt ein Gericht, um Zutaten im Kontext zu sehen.</span>
-                    )}
-                  </div>
-                </div>
-
-                <div className="plan-stage-shopping-note">
-                  <span className="entry-preview-section-title">Einkauf</span>
-                  <strong>{shoppingItemCount > 0 ? `${shoppingItemCount} Positionen für diese Woche` : 'Noch keine Einkaufsliste geladen'}</strong>
-                  <p>Alles Nötige für den Wocheneinkauf liegt direkt am Plan.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="plan-stage-meta" aria-label="Wochenüberblick">
-            <div className="stage-stat">
-              <strong>{currentPlanQuery.data?.days.length ?? 0}</strong>
-              <span>Tage geplant</span>
-            </div>
-            <div className="stage-stat">
-              <strong>{allMeals.length}</strong>
-              <span>Gerichte in Arbeit</span>
-            </div>
-            <div className="stage-stat">
-              <strong>{shoppingItemCount}</strong>
-              <span>Einkaufspositionen</span>
+            <div className="plan-stage-facts" aria-label="Wochenüberblick">
+              {quickFacts.map((fact) => (
+                <article key={fact.label} className="stage-stat">
+                  <span>{fact.label}</span>
+                  <strong>{fact.value}</strong>
+                </article>
+              ))}
             </div>
           </div>
         </section>

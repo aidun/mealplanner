@@ -23,7 +23,7 @@ export function FeedbackWidget() {
 
   const statusCopy = useMemo(() => {
     if (feedbackMutation.isSuccess) {
-      return 'Feedback gespeichert. Ich kann das später mit dir durchgehen.';
+      return 'Feedback gespeichert.';
     }
     if (feedbackMutation.isError) {
       return readableApiError(feedbackMutation.error, 'Feedback konnte nicht gespeichert werden.');
@@ -59,9 +59,7 @@ export function FeedbackWidget() {
         </button>
         {open ? (
           <div id="feedback-widget-panel" className="feedback-widget-panel">
-            <p className="feedback-widget-copy">
-              Schreib auf, was hakt oder besser werden sollte. Ich lese das aus und gehe die Punkte danach mit dir durch.
-            </p>
+            <p className="feedback-widget-copy">Was stört, fehlt oder enger geführt werden sollte.</p>
             <label className="field">
               <span className="sr-only">Feedback</span>
               <textarea
@@ -72,7 +70,7 @@ export function FeedbackWidget() {
                 maxLength={maxLength}
                 value={message}
                 onChange={(event) => setMessage(event.target.value)}
-                placeholder="Was passt noch nicht?"
+                placeholder="Zum Beispiel: Profil ist zu versteckt, Mobile Header zu dicht, mehr Kontext pro Tag."
               />
             </label>
             <div className="feedback-widget-footer">

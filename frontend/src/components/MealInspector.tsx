@@ -3,7 +3,7 @@ import type { Meal } from '../types';
 import { formatNutrition, formatNutritionPerPortion, scaleNutrition } from '../lib/format';
 import { detectCriticalAllergens, inferSelectionReason } from '../lib/meal-insights';
 import { BringLink } from './BringLink';
-import { HeartIcon, InfoIcon, RefreshIcon, ShieldIcon, SparkIcon } from './icons';
+import { HeartIcon, RefreshIcon, ShieldIcon } from './icons';
 
 interface MealInspectorProps {
   planId?: string;
@@ -31,8 +31,6 @@ export function MealInspector({
   isFavoriteBusy,
 }: MealInspectorProps) {
   const [note, setNote] = useState('');
-  const [showRecipeContext, setShowRecipeContext] = useState(false);
-  const [showSelectionReason, setShowSelectionReason] = useState(false);
   const allergens = meal ? detectCriticalAllergens(meal.ingredients) : [];
   const visibleWarnings = meal ? filterVisibleWarnings(meal.warnings) : [];
   const selectionReason = meal ? inferSelectionReason(meal) : '';
@@ -59,8 +57,6 @@ export function MealInspector({
 
   useEffect(() => {
     setNote('');
-    setShowRecipeContext(false);
-    setShowSelectionReason(false);
   }, [meal?.id]);
 
   if (!meal) {
@@ -121,17 +117,6 @@ export function MealInspector({
             ))}
           </div>
           <div className="surface-actions inspector-actions">
-            <button
-              type="button"
-              className={`button button-secondary compact-action inspector-action-button${showSelectionReason ? ' inspector-action-button-active' : ''}`}
-              onClick={() => setShowSelectionReason((current) => !current)}
-              aria-pressed={showSelectionReason}
-              aria-label="Warum dieses Gericht anzeigen"
-              title="Warum dieses Gericht anzeigen"
-            >
-              <SparkIcon className="action-icon" />
-              Warum dieses Gericht
-            </button>
             <BringLink
               planId={planId}
               scope={{ day: dayDate, meal: meal.id }}
@@ -151,45 +136,32 @@ export function MealInspector({
               <HeartIcon className="action-icon" />
               {favoriteId ? 'Favorit' : 'Merken'}
             </button>
-            <button
-              type="button"
-              className={`button button-secondary compact-action inspector-action-button${showRecipeContext ? ' inspector-action-button-active' : ''}`}
-              onClick={() => setShowRecipeContext((current) => !current)}
-              aria-pressed={showRecipeContext}
-              aria-label="Einordnung anzeigen"
-              title="Einordnung anzeigen"
-            >
-              <InfoIcon className="action-icon" />
-              Einordnung
-            </button>
           </div>
         </div>
       </section>
 
-      {showRecipeContext ? (
-        <div className="inspector-info-panel" role="note">
-          <p>
-            <strong>Einordnung:</strong> {mealOriginLabel(meal)}
-          </p>
-          {meal.meta?.favoriteReuse ? (
-            <p>
-              {meal.meta.favoriteReuse === 'variant'
-                ? 'Dieses Gericht lehnt sich an einen vorhandenen Favoriten an.'
-                : 'Dieses Gericht wurde aus eurer Favoriten-Sammlung wieder aufgegriffen.'}
-              {meal.meta.favoriteTitle ? ` Bezug: ${meal.meta.favoriteTitle}.` : ''}
-            </p>
-          ) : null}
-          {meal.regenerationNote ? <p>Berücksichtigt: {meal.regenerationNote}</p> : null}
-          {!canActOnMeal ? <p>Dieses Rezept liegt aktuell in eurer Sammlung.</p> : null}
-        </div>
-      ) : null}
-      {showSelectionReason ? (
-        <div className="inspector-info-panel" role="note">
-          <p>{selectionReason}</p>
-        </div>
-      ) : null}
-
       <div className="stack inspector-stack">
+        <section className="inspector-section inspector-section-context">
+          <details className="inspector-detail-block">
+            <summary>Warum dieses Gericht</summary>
+            <p>{selectionReason}</p>
+          </details>
+          <details className="inspector-detail-block">
+            <summary>Herkunft & Einordnung</summary>
+            <p>{mealOriginLabel(meal)}</p>
+            {meal.meta?.favoriteReuse ? (
+              <p>
+                {meal.meta.favoriteReuse === 'variant'
+                  ? 'Dieses Gericht lehnt sich an einen vorhandenen Favoriten an.'
+                  : 'Dieses Gericht wurde aus eurer Favoriten-Sammlung wieder aufgegriffen.'}
+                {meal.meta.favoriteTitle ? ` Bezug: ${meal.meta.favoriteTitle}.` : ''}
+              </p>
+            ) : null}
+            {meal.regenerationNote ? <p>Berücksichtigt: {meal.regenerationNote}</p> : null}
+            {!canActOnMeal ? <p>Dieses Rezept liegt aktuell in eurer Sammlung.</p> : null}
+          </details>
+        </section>
+
         <section className="inspector-section inspector-section-recipe">
           <div className="inspector-recipe-grid">
             <section className="inspector-subsection">
@@ -260,7 +232,7 @@ export function MealInspector({
                 </div>
                 <p>
                   Möglicherweise enthalten: {allergens.join(', ')}. Dieser Hinweis wird automatisch aus den Zutaten
-                  abgeleitet und ersetzt keine manuelle Allergieprüfung.
+                  abgeleitet. Kritische Zutaten bitte vor dem Kochen noch einmal kurz prüfen.
                 </p>
               </div>
             ) : null}
