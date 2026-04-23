@@ -47,7 +47,7 @@ export function MealBoard({
       <div className="surface-header">
         <div>
           <h2>Diese Woche auf dem Tisch</h2>
-          <p>Tag wählen, Gericht öffnen und die Woche ohne Medienbruch weiterführen.</p>
+          <p>Tag öffnen, Gericht lesen und den Einkauf ohne Sprung aus derselben Woche weiterführen.</p>
         </div>
         {days.length > 0 ? (
           <div className="carousel-actions" aria-label="Tage wechseln">
@@ -86,9 +86,14 @@ export function MealBoard({
         ) : activeDay ? (
           <section key={activeDay.date} className="day-column" aria-label={activeDay.label ?? activeDay.date}>
             <header className="day-header">
-              <div>
+              <div className="day-header-copy">
                 <h3>{activeDay.label ?? formatDate(activeDay.date)}</h3>
                 <p>{formatDate(activeDay.date)} · {activeDay.meals.length} geplant</p>
+              </div>
+              <div className="day-header-meta">
+                <span className="day-header-badge">
+                  {activeDay.meals.length > 0 ? `${activeDay.meals.length} Gericht${activeDay.meals.length > 1 ? 'e' : ''}` : 'Noch offen'}
+                </span>
               </div>
               <BringLink
                 planId={planId}
@@ -134,6 +139,15 @@ export function MealBoard({
                         </div>
                         {active ? <span className="meal-row-state">Aktiv</span> : null}
                       </div>
+                      {meal.tags.length > 0 ? (
+                        <div className="meal-tag-row" aria-label="Gerichtsmarkierungen">
+                          {meal.tags.slice(0, 3).map((tag) => (
+                            <span key={`${meal.id}-${tag}`} className="meal-tag">
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
                     </button>
                   );
                 })

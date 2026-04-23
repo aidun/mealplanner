@@ -17,6 +17,9 @@ export function ShoppingListPanel({ planId, shoppingList, loading }: ShoppingLis
   const prominentCategories = categories.slice(0, 3);
   const summary = !Array.isArray(shoppingList) ? shoppingList?.summary : undefined;
   const canExport = Boolean(planId && items.length > 0);
+  const checkedItems = items.filter((item) => item.checked).length;
+  const remainingItems = Math.max(0, items.length - checkedItems);
+  const progress = items.length > 0 ? Math.round((checkedItems / items.length) * 100) : 0;
 
   return (
     <section className="surface shopping-list-panel">
@@ -49,6 +52,19 @@ export function ShoppingListPanel({ planId, shoppingList, loading }: ShoppingLis
         <div className="stack shopping-list-stack">
           <div className="shopping-list-preview">
             {summary ? <p className="shopping-list-summary">{summary}</p> : null}
+            <div className="shopping-progress" aria-label="Einkaufsfortschritt">
+              <div className="shopping-progress-copy">
+                <strong>{remainingItems > 0 ? `${remainingItems} noch offen` : 'Liste bereit'}</strong>
+                <span>
+                  {items.length > 0
+                    ? `${checkedItems} von ${items.length} Positionen erledigt`
+                    : 'Sobald ein Wochenplan vorliegt, entsteht hier euer Einkauf.'}
+                </span>
+              </div>
+              <div className="shopping-progress-track" aria-hidden="true">
+                <span className="shopping-progress-fill" style={{ width: `${progress}%` }} />
+              </div>
+            </div>
             <div className="shopping-list-glance" aria-label="Einkaufslisten Übersicht">
               <div className="shopping-list-metric">
                 <strong>{items.length}</strong>
@@ -89,10 +105,14 @@ export function ShoppingListPanel({ planId, shoppingList, loading }: ShoppingLis
               <div className="shopping-list-groups">
                 {groupedItems.map((group) => (
                   <section key={group.title} className="shopping-list-group">
-                    <h3>{group.title}</h3>
+                    <div className="shopping-list-group-head">
+                      <h3>{group.title}</h3>
+                      <span>{group.items.length} Position{group.items.length > 1 ? 'en' : ''}</span>
+                    </div>
                     <ul className="list ingredient-list shopping-list-items">
                       {group.items.map((item, index) => (
                         <li key={`${group.title}-${item.name}-${index}`} className="ingredient-row shopping-list-row">
+                          <span className={`shopping-item-check${item.checked ? ' shopping-item-check-done' : ''}`} aria-hidden="true" />
                           <span className="ingredient-amount">{item.amount ? `${item.amount}${item.unit ? ` ${item.unit}` : ''}` : 'offen'}</span>
                           <div className="ingredient-copy">
                             <strong>{item.name}</strong>

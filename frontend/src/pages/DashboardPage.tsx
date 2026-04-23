@@ -351,7 +351,7 @@ export function DashboardPage() {
               <div className="plan-stage-focus">
                 <div className="plan-stage-focus-sheet">
                   <span className="entry-preview-section-title">Gericht im Fokus</span>
-                  <h2>{inspectedMeal?.title ?? 'Noch kein Gericht gewählt'}</h2>
+                  <p className="plan-stage-focus-title">{inspectedMeal?.title ?? 'Noch kein Gericht gewählt'}</p>
                   <p>
                     {inspectedMeal
                       ? 'Geöffnet, kontextnah und direkt mit Zutaten sowie Einkauf verknüpft.'

@@ -9,9 +9,9 @@ interface AppLogoProps extends HTMLAttributes<HTMLSpanElement> {
 
 export function AppLogo({ compact = false, markOnly = false, tone = 'brand', className = '', ...props }: AppLogoProps) {
   const markId = tone === 'mono' ? 'mahlio-logo-mono' : 'mahlio-logo-fill';
-  const stroke = tone === 'mono' ? 'currentColor' : '#0d8a63';
-  const tomato = tone === 'mono' ? 'currentColor' : '#df6a46';
-  const lemon = tone === 'mono' ? 'currentColor' : '#f2c76e';
+  const stroke = tone === 'mono' ? 'currentColor' : '#556b2f';
+  const tomato = tone === 'mono' ? 'currentColor' : '#b9311b';
+  const lemon = tone === 'mono' ? 'currentColor' : '#e5c36f';
   return (
     <span
       className={`app-logo app-logo-tone-${tone}${compact ? ' app-logo-compact' : ''}${className ? ` ${className}` : ''}`}
@@ -26,8 +26,9 @@ export function AppLogo({ compact = false, markOnly = false, tone = 'brand', cla
         <circle cx="40" cy="36.5" r="2.6" fill={lemon} />
         <defs>
           <linearGradient id="mahlio-logo-fill" x1="12" y1="10" x2="55" y2="55" gradientUnits="userSpaceOnUse">
-            <stop stopColor="#0d8a63" />
-            <stop offset="1" stopColor="#56b68b" />
+            <stop stopColor="#556b2f" />
+            <stop offset="0.55" stopColor="#6f7a43" />
+            <stop offset="1" stopColor="#8d8a5e" />
           </linearGradient>
           <linearGradient id="mahlio-logo-mono" x1="12" y1="10" x2="55" y2="55" gradientUnits="userSpaceOnUse">
             <stop stopColor="currentColor" />

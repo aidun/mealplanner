@@ -36,6 +36,7 @@ export function MealInspector({
   const allergens = meal ? detectCriticalAllergens(meal.ingredients) : [];
   const visibleWarnings = meal ? filterVisibleWarnings(meal.warnings) : [];
   const selectionReason = meal ? inferSelectionReason(meal) : '';
+  const ingredientPreview = meal?.ingredients.slice(0, 5) ?? [];
   const summaryFacts = meal
     ? [
         {
@@ -78,60 +79,92 @@ export function MealInspector({
 
   return (
     <section className="surface inspector">
-      <div className="surface-header">
-        <div className="inspector-header-copy">
+      <section className="inspector-hero">
+        <div className="inspector-hero-copy">
           <span className="eyebrow">Gericht im Fokus</span>
           <h2>{meal.title}</h2>
-          <p>
+          <p className="inspector-hero-meta">
             {slotLabel(meal.slot)}
             {contextNote ? ` · ${contextNote}` : ''}
           </p>
           {meal.description ? <p className="inspector-description">{meal.description}</p> : null}
+          <div className="inspector-hero-tags">
+            <span className="inspector-meta-pill">
+              {meal.servings.length > 0 ? `${meal.servings.length} Portionen` : 'Portion offen'}
+            </span>
+            {formatNutritionPerPortion(meal.nutrition) ? (
+              <span className="inspector-meta-pill">{formatNutritionPerPortion(meal.nutrition)}</span>
+            ) : null}
+            {visibleWarnings.length > 0 || allergens.length > 0 ? (
+              <span className="inspector-meta-pill inspector-meta-pill-warning">
+                {visibleWarnings.length + allergens.length} Hinweis{visibleWarnings.length + allergens.length > 1 ? 'e' : ''}
+              </span>
+            ) : null}
+          </div>
+          {ingredientPreview.length > 0 ? (
+            <div className="inspector-ingredient-preview" aria-label="Zutatenvorschau">
+              {ingredientPreview.map((ingredient, index) => (
+                <span key={`${ingredient.name}-${index}`}>{ingredient.name}</span>
+              ))}
+            </div>
+          ) : null}
         </div>
-        <div className="surface-actions inspector-actions">
-          <button
-            type="button"
-            className={`button button-secondary compact-action inspector-action-button${showSelectionReason ? ' inspector-action-button-active' : ''}`}
-            onClick={() => setShowSelectionReason((current) => !current)}
-            aria-pressed={showSelectionReason}
-            aria-label="Warum ausgewählt anzeigen"
-            title="Warum ausgewählt anzeigen"
-          >
-            <SparkIcon className="action-icon" />
-            Auswahlgrund
-          </button>
-          <BringLink
-            planId={planId}
-            scope={{ day: dayDate, meal: meal.id }}
-            label="Rezept zu Bring"
-            className="button button-secondary bring-export-button compact-action"
-            disabled={!canActOnMeal}
-          />
-          <button
-            type="button"
-            className={`button button-secondary compact-action inspector-action-button${favoriteId ? ' inspector-action-button-active' : ''}`}
-            onClick={() => onToggleFavorite?.(meal, favoriteId)}
-            disabled={!onToggleFavorite || isFavoriteBusy}
-            aria-pressed={Boolean(favoriteId)}
-            aria-label={favoriteId ? 'Favorit entfernen' : 'Als Favorit merken'}
-            title={favoriteId ? 'Favorit entfernen' : 'Als Favorit merken'}
-          >
-            <HeartIcon className="action-icon" />
-            {favoriteId ? 'Favorit' : 'Merken'}
-          </button>
-          <button
-            type="button"
-            className={`button button-secondary compact-action inspector-action-button${showRecipeContext ? ' inspector-action-button-active' : ''}`}
-            onClick={() => setShowRecipeContext((current) => !current)}
-            aria-pressed={showRecipeContext}
-            aria-label="Rezeptkontext anzeigen"
-            title="Rezeptkontext anzeigen"
-          >
-            <InfoIcon className="action-icon" />
-            Herkunft
-          </button>
+
+        <div className="inspector-hero-side">
+          <div className="inspector-summary-grid">
+            {summaryFacts.map((fact) => (
+              <div key={fact.label} className="inspector-summary-card">
+                <span>{fact.label}</span>
+                <strong>{fact.value}</strong>
+                <p className="inspector-summary-copy">{fact.hint}</p>
+              </div>
+            ))}
+          </div>
+          <div className="surface-actions inspector-actions">
+            <button
+              type="button"
+              className={`button button-secondary compact-action inspector-action-button${showSelectionReason ? ' inspector-action-button-active' : ''}`}
+              onClick={() => setShowSelectionReason((current) => !current)}
+              aria-pressed={showSelectionReason}
+              aria-label="Warum ausgewählt anzeigen"
+              title="Warum ausgewählt anzeigen"
+            >
+              <SparkIcon className="action-icon" />
+              Auswahlgrund
+            </button>
+            <BringLink
+              planId={planId}
+              scope={{ day: dayDate, meal: meal.id }}
+              label="Rezept zu Bring"
+              className="button button-secondary bring-export-button compact-action"
+              disabled={!canActOnMeal}
+            />
+            <button
+              type="button"
+              className={`button button-secondary compact-action inspector-action-button${favoriteId ? ' inspector-action-button-active' : ''}`}
+              onClick={() => onToggleFavorite?.(meal, favoriteId)}
+              disabled={!onToggleFavorite || isFavoriteBusy}
+              aria-pressed={Boolean(favoriteId)}
+              aria-label={favoriteId ? 'Favorit entfernen' : 'Als Favorit merken'}
+              title={favoriteId ? 'Favorit entfernen' : 'Als Favorit merken'}
+            >
+              <HeartIcon className="action-icon" />
+              {favoriteId ? 'Favorit' : 'Merken'}
+            </button>
+            <button
+              type="button"
+              className={`button button-secondary compact-action inspector-action-button${showRecipeContext ? ' inspector-action-button-active' : ''}`}
+              onClick={() => setShowRecipeContext((current) => !current)}
+              aria-pressed={showRecipeContext}
+              aria-label="Rezeptkontext anzeigen"
+              title="Rezeptkontext anzeigen"
+            >
+              <InfoIcon className="action-icon" />
+              Herkunft
+            </button>
+          </div>
         </div>
-      </div>
+      </section>
 
       {showRecipeContext ? (
         <div className="inspector-info-panel" role="note">
@@ -155,16 +188,6 @@ export function MealInspector({
           <p>{selectionReason}</p>
         </div>
       ) : null}
-
-      <div className="inspector-summary-grid">
-        {summaryFacts.map((fact) => (
-          <div key={fact.label} className="inspector-summary-card">
-            <span>{fact.label}</span>
-            <strong>{fact.value}</strong>
-            <p className="inspector-summary-copy">{fact.hint}</p>
-          </div>
-        ))}
-      </div>
 
       <div className="stack inspector-stack">
         <section className="inspector-section inspector-section-recipe">

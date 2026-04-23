@@ -1,3 +1,5 @@
+@import url("https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,600;6..72,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap");
+
 :root {
   color-scheme: light;
   font-family: "Avenir Next", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
@@ -1345,13 +1347,13 @@ a:focus-visible {
   box-shadow: 0 12px 26px rgba(18, 33, 29, 0.05);
 }
 
-.plan-stage-focus-sheet h2,
+.plan-stage-focus-title,
 .plan-stage-shopping-note strong,
 .plan-stage-shopping-note p {
   margin: 0;
 }
 
-.plan-stage-focus-sheet h2 {
+.plan-stage-focus-title {
   font-family: var(--font-display);
   font-size: clamp(1.8rem, 3vw, 2.5rem);
   line-height: 0.96;
@@ -4434,5 +4436,808 @@ a:focus-visible {
 
   .profile-tab-button {
     flex-basis: 100%;
+  }
+}
+
+/* Redesign Draft 2026-04-23 */
+
+:root {
+  --font-display: "Newsreader", "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  font-family: "Plus Jakarta Sans", "Avenir Next", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  color: #1b1c1a;
+  background: #fbf9f5;
+  --bg: #fbf9f5;
+  --surface: rgba(251, 249, 245, 0.92);
+  --surface-soft: rgba(245, 243, 239, 0.86);
+  --line: rgba(69, 72, 60, 0.12);
+  --text: #1b1c1a;
+  --muted: #686344;
+  --accent: #556b2f;
+  --accent-strong: #394d14;
+  --accent-soft: #e6edd6;
+  --warn: #b9311b;
+  --shadow: 0 18px 44px rgba(27, 28, 26, 0.08);
+  --shadow-strong: 0 34px 96px rgba(27, 28, 26, 0.14);
+  --tomato: #b9311b;
+  --lemon: #e8d28f;
+  --ink-soft: rgba(27, 28, 26, 0.72);
+  --radius-sm: 14px;
+  --radius-md: 26px;
+  --radius-lg: 34px;
+  --page-max: 1420px;
+}
+
+body {
+  font-family: "Plus Jakarta Sans", "Avenir Next", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(232, 210, 143, 0.28), transparent 24rem),
+    radial-gradient(circle at 100% 0%, rgba(85, 107, 47, 0.12), transparent 28rem),
+    radial-gradient(circle at 100% 100%, rgba(185, 49, 27, 0.08), transparent 26rem),
+    linear-gradient(180deg, #fdfbf7 0%, #f7f2e9 52%, #f1efe8 100%);
+}
+
+.button-primary {
+  color: #ffffff;
+  background: linear-gradient(135deg, #556b2f 0%, #6d7d43 54%, #8c8b62 100%);
+  box-shadow: 0 14px 30px rgba(85, 107, 47, 0.2);
+}
+
+.button-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #394d14 0%, #556b2f 100%);
+}
+
+.button-secondary {
+  border-color: rgba(69, 72, 60, 0.12);
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--text);
+}
+
+.button-secondary:hover:not(:disabled) {
+  border-color: rgba(85, 107, 47, 0.28);
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.app-logo-mark {
+  filter: drop-shadow(0 16px 28px rgba(85, 107, 47, 0.16));
+}
+
+.app-header {
+  gap: 14px;
+  padding: calc(12px + env(safe-area-inset-top)) 20px 14px;
+  border-bottom-color: rgba(69, 72, 60, 0.08);
+  background: rgba(252, 249, 244, 0.84);
+  backdrop-filter: blur(18px) saturate(1.02);
+}
+
+.brand-subtitle {
+  max-width: 42ch;
+  font-size: 0.88rem;
+  color: rgba(69, 72, 60, 0.9);
+}
+
+.week-chip {
+  gap: 10px;
+  padding: 10px 14px;
+  border-color: rgba(69, 72, 60, 0.1);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: none;
+}
+
+.week-chip-label {
+  letter-spacing: 0.08em;
+}
+
+.header-actions {
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+}
+
+.auth-shell {
+  padding: 28px;
+  background:
+    radial-gradient(circle at 6% 8%, rgba(232, 210, 143, 0.34), transparent 18rem),
+    radial-gradient(circle at 96% 8%, rgba(85, 107, 47, 0.18), transparent 24rem),
+    linear-gradient(180deg, #fdfaf5 0%, #f5efe5 100%);
+}
+
+.login-panel {
+  min-height: calc(100vh - 56px);
+  padding: clamp(24px, 3.8vw, 42px);
+  border: 0;
+  border-radius: 40px;
+  background: rgba(255, 252, 248, 0.62);
+  box-shadow: 0 34px 96px rgba(27, 28, 26, 0.12);
+  backdrop-filter: blur(20px);
+}
+
+.login-stage {
+  grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+  gap: 30px;
+}
+
+.login-copy h1 {
+  font-size: clamp(4.6rem, 10vw, 7.4rem);
+  letter-spacing: -0.045em;
+}
+
+.login-brand-slogan,
+.login-lead,
+.login-benefit p,
+.login-support-copy {
+  color: rgba(69, 72, 60, 0.88);
+}
+
+.login-benefits {
+  gap: 16px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(69, 72, 60, 0.08);
+}
+
+.login-preview {
+  min-height: 100%;
+  align-content: space-between;
+  background:
+    linear-gradient(180deg, rgba(17, 25, 15, 0.56), rgba(17, 25, 15, 0.72)),
+    url('/brand/mahlio-photo-library.png') center center / cover no-repeat,
+    linear-gradient(160deg, #2e371e 0%, #535b34 52%, #8b7e58 100%);
+}
+
+.login-preview-copy h2 {
+  max-width: 10ch;
+  font-size: clamp(2.5rem, 4vw, 3.7rem);
+}
+
+.entry-tableau {
+  padding: 24px;
+  border: 1px solid rgba(255, 250, 243, 0.12);
+  border-radius: 30px;
+  background:
+    linear-gradient(180deg, rgba(255, 252, 246, 0.12), rgba(255, 252, 246, 0.04)),
+    rgba(255, 255, 255, 0.04);
+}
+
+.entry-tableau-grid {
+  grid-template-columns: minmax(0, 0.84fr) minmax(0, 1.16fr);
+  align-items: start;
+}
+
+.entry-tableau-week {
+  gap: 12px;
+}
+
+.entry-tableau-day,
+.entry-tableau-recipe,
+.entry-tableau-shopping {
+  border: 0;
+  box-shadow: inset 0 0 0 1px rgba(255, 250, 243, 0.08);
+}
+
+.entry-tableau-recipe,
+.entry-tableau-shopping {
+  background: rgba(15, 19, 12, 0.3);
+}
+
+.app-main {
+  width: min(100%, var(--page-max));
+  padding: 24px 20px 64px;
+}
+
+.plan-stage {
+  gap: 24px;
+  margin-bottom: 22px;
+  padding: 30px;
+  border: 0;
+  border-radius: 40px;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(232, 210, 143, 0.2), transparent 20rem),
+    radial-gradient(circle at 100% 0%, rgba(85, 107, 47, 0.12), transparent 22rem),
+    linear-gradient(180deg, rgba(253, 251, 247, 0.96), rgba(246, 243, 237, 0.88));
+  box-shadow: 0 30px 80px rgba(27, 28, 26, 0.1);
+}
+
+.plan-stage-copy h1 {
+  max-width: 10ch;
+  font-size: clamp(2.9rem, 6vw, 5.4rem);
+  letter-spacing: -0.04em;
+}
+
+.plan-stage-copy p {
+  max-width: 46ch;
+  font-size: 1.04rem;
+  line-height: 1.65;
+}
+
+.plan-stage-grid {
+  grid-template-columns: minmax(0, 0.86fr) minmax(0, 1.14fr);
+  gap: 18px;
+}
+
+.plan-stage-day,
+.plan-stage-focus-sheet,
+.plan-stage-shopping-note,
+.stage-stat,
+.surface,
+.workspace-pane-switch {
+  border: 0;
+  box-shadow: inset 0 0 0 1px rgba(69, 72, 60, 0.08);
+}
+
+.plan-stage-day,
+.plan-stage-focus-sheet,
+.plan-stage-shopping-note,
+.stage-stat {
+  background: rgba(255, 255, 255, 0.62);
+  backdrop-filter: blur(12px);
+}
+
+.plan-stage-day-active {
+  background: linear-gradient(180deg, rgba(230, 237, 214, 0.98), rgba(255, 255, 255, 0.78));
+  border-color: transparent;
+}
+
+.plan-stage-focus-sheet {
+  position: relative;
+  overflow: hidden;
+  min-height: 240px;
+}
+
+.plan-stage-focus-sheet::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(17, 25, 15, 0.08), rgba(17, 25, 15, 0.02)),
+    url('/brand/mahlio-photo-library.png') center center / cover no-repeat;
+  opacity: 0.12;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+}
+
+.plan-stage-focus-sheet > * {
+  position: relative;
+  z-index: 1;
+}
+
+.workspace-nav-block {
+  margin-bottom: 18px;
+}
+
+.workspace-pane-switch {
+  padding: 8px;
+  border-radius: 24px;
+  background: rgba(255, 252, 248, 0.72);
+  backdrop-filter: blur(18px);
+}
+
+.workspace-pane-button {
+  min-height: 96px;
+  padding: 14px 16px;
+  border-radius: 18px;
+}
+
+.workspace-pane-button-active {
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow:
+    inset 0 0 0 1px rgba(85, 107, 47, 0.18),
+    0 16px 30px rgba(27, 28, 26, 0.06);
+}
+
+.workspace {
+  grid-template-columns: minmax(0, 1.46fr) minmax(360px, 0.9fr);
+  gap: 24px;
+}
+
+.surface {
+  border-radius: 32px;
+  background: rgba(255, 252, 248, 0.72);
+  box-shadow: 0 20px 48px rgba(27, 28, 26, 0.08);
+  backdrop-filter: blur(18px);
+}
+
+.surface-header {
+  padding: 24px 24px 12px;
+}
+
+.surface-header h2 {
+  font-family: var(--font-display);
+  font-size: clamp(1.7rem, 3vw, 2.35rem);
+  line-height: 0.96;
+  letter-spacing: -0.025em;
+}
+
+.surface-header p {
+  margin-top: 6px;
+  max-width: 46ch;
+}
+
+.day-tabs {
+  padding-inline: 24px;
+  gap: 10px;
+}
+
+.day-tab {
+  border-radius: 20px;
+  border: 0;
+  box-shadow: inset 0 0 0 1px rgba(69, 72, 60, 0.08);
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.day-tab-active {
+  background: rgba(230, 237, 214, 0.96);
+  box-shadow: inset 0 0 0 1px rgba(85, 107, 47, 0.14);
+}
+
+.day-column {
+  padding: 0 24px 24px;
+}
+
+.day-header {
+  align-items: center;
+}
+
+.day-header-copy h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.7rem, 2vw, 2.2rem);
+  line-height: 0.96;
+}
+
+.day-header-copy p {
+  margin: 6px 0 0;
+  color: var(--ink-soft);
+}
+
+.day-header-meta {
+  display: flex;
+  justify-content: flex-end;
+  flex: 1;
+}
+
+.day-header-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(230, 237, 214, 0.92);
+  color: var(--accent-strong);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.meal-stack {
+  gap: 14px;
+}
+
+.meal-row {
+  gap: 10px;
+  padding: 18px;
+  border-radius: 24px;
+  border: 0;
+  box-shadow: inset 0 0 0 1px rgba(69, 72, 60, 0.08);
+  background: rgba(255, 255, 255, 0.68);
+}
+
+.meal-row-active {
+  background: linear-gradient(180deg, rgba(230, 237, 214, 0.98), rgba(255, 255, 255, 0.84));
+  box-shadow:
+    inset 0 0 0 1px rgba(85, 107, 47, 0.18),
+    0 20px 36px rgba(27, 28, 26, 0.06);
+}
+
+.meal-title {
+  font-family: var(--font-display);
+  font-size: 1.38rem;
+  line-height: 0.98;
+}
+
+.meal-description {
+  margin: 0;
+  color: var(--ink-soft);
+  line-height: 1.55;
+}
+
+.meal-tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.meal-tag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 11px;
+  border-radius: 999px;
+  background: rgba(232, 224, 186, 0.7);
+  color: #4b472b;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.inspector {
+  overflow: hidden;
+}
+
+.inspector-hero {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1.04fr) minmax(280px, 0.96fr);
+  gap: 22px;
+  padding: 24px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.32), rgba(255, 255, 255, 0.04)),
+    linear-gradient(160deg, rgba(232, 210, 143, 0.2), rgba(85, 107, 47, 0.08));
+}
+
+.inspector-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(17, 25, 15, 0.08), rgba(17, 25, 15, 0.02)),
+    url('/brand/mahlio-photo-library.png') center center / cover no-repeat;
+  opacity: 0.16;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+}
+
+.inspector-hero-copy,
+.inspector-hero-side {
+  position: relative;
+  z-index: 1;
+}
+
+.inspector-hero-copy {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+.inspector-hero-copy h2 {
+  margin: 0;
+  max-width: 10ch;
+  font-family: var(--font-display);
+  font-size: clamp(2.3rem, 4vw, 3.7rem);
+  line-height: 0.92;
+  letter-spacing: -0.04em;
+}
+
+.inspector-hero-meta {
+  margin: 0;
+  color: var(--accent-strong);
+  font-size: 0.86rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.inspector-description {
+  max-width: 44ch;
+  font-size: 1rem;
+  line-height: 1.62;
+}
+
+.inspector-hero-tags,
+.inspector-ingredient-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.inspector-meta-pill,
+.inspector-ingredient-preview span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+}
+
+.inspector-meta-pill {
+  background: rgba(255, 255, 255, 0.74);
+  color: var(--accent-strong);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.inspector-meta-pill-warning {
+  background: rgba(255, 218, 211, 0.78);
+  color: #8f1100;
+}
+
+.inspector-ingredient-preview span {
+  background: rgba(232, 224, 186, 0.66);
+  color: #4b472b;
+  font-size: 0.78rem;
+}
+
+.inspector-hero-side {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+}
+
+.inspector-summary-grid {
+  gap: 10px;
+}
+
+.inspector-summary-card {
+  border-radius: 20px;
+  border: 0;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: inset 0 0 0 1px rgba(69, 72, 60, 0.08);
+}
+
+.inspector-section {
+  padding: 22px 24px;
+  border-top: 1px solid rgba(69, 72, 60, 0.08);
+  background: rgba(255, 252, 248, 0.52);
+}
+
+.inspector-section-recipe {
+  background: rgba(255, 255, 255, 0.38);
+}
+
+.inspector-subsection h3,
+.inspector-section h3 {
+  margin: 0 0 14px;
+  font-family: var(--font-display);
+  font-size: 1.45rem;
+  line-height: 0.98;
+}
+
+.ingredient-row,
+.step-row {
+  align-items: start;
+  padding: 10px 0;
+}
+
+.ingredient-amount,
+.step-index {
+  color: var(--accent-strong);
+}
+
+.shopping-list-panel .surface-header {
+  padding-bottom: 8px;
+}
+
+.shopping-list-preview {
+  gap: 18px;
+}
+
+.shopping-progress {
+  display: grid;
+  gap: 10px;
+  padding: 0 18px;
+}
+
+.shopping-progress-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.shopping-progress-copy strong {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  line-height: 0.98;
+}
+
+.shopping-progress-copy span {
+  color: var(--ink-soft);
+  font-size: 0.92rem;
+}
+
+.shopping-progress-track {
+  width: 100%;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(69, 72, 60, 0.08);
+}
+
+.shopping-progress-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #556b2f 0%, #8c8b62 100%);
+}
+
+.shopping-list-glance {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.shopping-list-metric,
+.shopping-list-group {
+  border-radius: 20px;
+  border: 0;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: inset 0 0 0 1px rgba(69, 72, 60, 0.08);
+}
+
+.shopping-list-metric-wide {
+  grid-column: 1 / -1;
+}
+
+.shopping-list-group {
+  padding: 18px;
+}
+
+.shopping-list-group-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.shopping-list-group-head h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  line-height: 0.98;
+}
+
+.shopping-list-group-head span {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.shopping-list-row {
+  grid-template-columns: 16px minmax(58px, auto) minmax(0, 1fr);
+  column-gap: 10px;
+}
+
+.shopping-item-check {
+  width: 16px;
+  height: 16px;
+  margin-top: 0.45rem;
+  border-radius: 999px;
+  background: rgba(85, 107, 47, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(85, 107, 47, 0.16);
+}
+
+.shopping-item-check-done {
+  background: linear-gradient(135deg, #556b2f 0%, #8c8b62 100%);
+}
+
+@media (max-width: 1080px) {
+  .login-stage,
+  .plan-stage-grid,
+  .inspector-hero,
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .workspace {
+    gap: 18px;
+  }
+
+  .workspace-side {
+    order: 3;
+  }
+
+  .entry-tableau-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .shopping-list-glance {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .auth-shell {
+    padding: 14px;
+  }
+
+  .login-panel {
+    min-height: calc(100vh - 28px);
+    padding: 18px;
+    border-radius: 28px;
+  }
+
+  .login-copy h1 {
+    font-size: clamp(3.8rem, 20vw, 5.6rem);
+  }
+
+  .login-entry-headline {
+    max-width: 10ch;
+  }
+
+  .login-preview {
+    min-height: auto;
+  }
+
+  .app-header {
+    padding-inline: 14px;
+  }
+
+  .header-overview,
+  .header-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .header-overview {
+    display: grid;
+  }
+
+  .header-meta,
+  .header-secondary-actions {
+    justify-content: flex-start;
+  }
+
+  .header-primary-action {
+    min-width: 0;
+  }
+
+  .app-main {
+    padding: 16px 14px 42px;
+  }
+
+  .plan-stage {
+    padding: 20px 18px;
+    border-radius: 28px;
+  }
+
+  .plan-stage-copy h1 {
+    font-size: clamp(2.3rem, 12vw, 3.5rem);
+  }
+
+  .plan-stage-meta {
+    grid-template-columns: 1fr;
+  }
+
+  .workspace-pane-switch {
+    grid-template-columns: 1fr;
+    border-radius: 20px;
+  }
+
+  .workspace-pane-button {
+    min-height: 82px;
+  }
+
+  .surface,
+  .meal-row,
+  .shopping-list-group,
+  .shopping-list-metric {
+    border-radius: 24px;
+  }
+
+  .surface-header,
+  .day-tabs,
+  .day-column,
+  .inspector-hero,
+  .inspector-section {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+
+  .day-header {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .day-header-meta {
+    justify-content: flex-start;
+  }
+
+  .meal-title {
+    font-size: 1.18rem;
+  }
+
+  .inspector-hero-copy h2 {
+    font-size: clamp(2rem, 11vw, 2.8rem);
+  }
+
+  .inspector-summary-grid,
+  .inspector-recipe-grid,
+  .shopping-list-glance {
+    grid-template-columns: 1fr;
+  }
+
+  .shopping-list-row {
+    grid-template-columns: 16px minmax(54px, auto) minmax(0, 1fr);
   }
 }
