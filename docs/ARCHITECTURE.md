@@ -173,7 +173,7 @@ flowchart LR
   - globaler Codex-MCP-Eintrag in `/Users/markus/.codex/config.toml`
   - projektspezifischer Ablauf in [docs/STITCH.md](/Users/markus/repo/mealplanner/docs/STITCH.md)
 - Zweck:
-  - Stitch-Screens, Bilder und Design-Kontext fuer `Nova`, `Lumen` und `Flux`
+  - Stitch-Screens, Bilder und Design-Kontext fuer `Nova` und `Flux`
   - beschleunigte Exploration vor der finalen React/Vite-Umsetzung
   - kein produktiver Runtime-Bestandteil von `mealplanner`
 
@@ -204,18 +204,18 @@ flowchart LR
   - im Admin-Bereich sichtbar
   - anonymisierte Rückmeldungen mit Seitenbezug
 
-## Support-Agent Zielbild
+## Support-Workflow Zielbild
 
 ```mermaid
 flowchart LR
-    INPUT["Feedback / Admin / Owner"] --> SOA["Beacon (Support Operations Agent)"]
-    SOA --> TOOLS["heute: github, playwright, kubernetes-readonly, Admin-Flows"]
-    SOA --> TEAM["Flux, Forge, Orbit, Shield, Probe"]
-    SOA --> FUTURE["spaeter: mealplanner-* MCPs"]
+    INPUT["Feedback / Admin / Owner"] --> LEAD["Atlas"]
+    LEAD --> TOOLS["heute: github, playwright, kubernetes-readonly, Admin-Flows"]
+    LEAD --> TEAM["Nova, Flux, Forge, Orbit, Shield, Probe, Gate"]
+    LEAD --> FUTURE["spaeter: mealplanner-* MCPs"]
 ```
 
-- geplanter Operator fuer Support, Nutzerfeedback und Test-/Production-Diagnose
-- soll nicht mit generischem Vollzugriff arbeiten, sondern ueber vorhandene read-only Tools,
+- global orchestrierter Support-Workflow fuer Nutzerfeedback und Test-/Production-Diagnose
+- arbeitet nicht mit generischem Vollzugriff, sondern ueber vorhandene read-only Tools,
   bestehende Admin-/App-Flows und spaeter gezielte MCP-Erweiterungen
 - aktuell direkt nutzbare Bausteine:
   - `kubernetes-readonly`
@@ -227,7 +227,7 @@ flowchart LR
   - Test write-enabled fuer Reproduktion und Support-Aktionen
   - Production standardmaessig read-only
   - riskante Mutationen nur ueber explizite Support-Endpunkte und mit Audit-Metadaten
-- Detailentwurf: [SUPPORT_AGENT.md](/Users/markus/repo/mealplanner/docs/SUPPORT_AGENT.md)
+- Detailablauf: [SUPPORT_AGENT.md](/Users/markus/repo/mealplanner/docs/SUPPORT_AGENT.md)
 
 ## Datenmodell auf hohem Niveau
 
