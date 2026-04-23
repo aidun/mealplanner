@@ -270,19 +270,19 @@ export function DashboardPage() {
     {
       id: 'plan' as const,
       title: 'Woche',
-      description: selectedDay?.label ? `${selectedDay.label} zuerst prüfen.` : 'Tage und Mahlzeiten im Blick halten.',
+      description: selectedDay?.label ? `${selectedDay.label} zuerst im Blick.` : 'Die Woche im Blick behalten.',
       meta: `${currentPlanQuery.data?.days.length ?? 0} Tage`,
     },
     {
       id: 'detail' as const,
       title: 'Rezept',
-      description: inspectedMeal?.title ?? 'Zutaten, Schritte und Änderungen öffnen.',
+      description: inspectedMeal?.title ?? 'Rezept und Zutaten öffnen.',
       meta: inspectedMealInPlan ? 'Im Fokus' : 'Noch nichts ausgewählt',
     },
     {
       id: 'shopping' as const,
       title: 'Einkauf',
-      description: shoppingItemCount > 0 ? `${shoppingItemCount} Positionen abgestimmt.` : 'Alles für die Woche gesammelt prüfen.',
+      description: shoppingItemCount > 0 ? `${shoppingItemCount} Positionen für diese Woche.` : 'Alles für diese Woche gesammelt.',
       meta: `${shoppingItemCount} Produkte`,
     },
   ];
@@ -311,10 +311,7 @@ export function DashboardPage() {
           <div className="plan-stage-copy">
             <span className="eyebrow">Wochenfläche</span>
             <h1 id="home-title">Alles für die Woche liegt an einem Tisch.</h1>
-            <p>
-              {brand.name} hält Plan, Rezept und Einkauf dichter zusammen, damit ihr weniger springt und schneller
-              entscheiden könnt, was wirklich auf den Tisch kommt.
-            </p>
+            <p>{brand.name} hält Gerichte, Rezepte und Einkauf in einer ruhigen gemeinsamen Wochenansicht.</p>
           </div>
 
           <div className="plan-stage-tableau" aria-label="Aktueller Fokus">
@@ -354,8 +351,8 @@ export function DashboardPage() {
                   <p className="plan-stage-focus-title">{inspectedMeal?.title ?? 'Noch kein Gericht gewählt'}</p>
                   <p>
                     {inspectedMeal
-                      ? 'Geöffnet, kontextnah und direkt mit Zutaten sowie Einkauf verknüpft.'
-                      : 'Sobald ein Gericht gewählt ist, bleiben Zutaten und Einkauf direkt im Zusammenhang.'}
+                      ? 'Zutaten, Rezept und nächste Schritte liegen direkt beieinander.'
+                      : 'Wählt ein Gericht, um Rezept und Einkauf für die Woche zu öffnen.'}
                   </p>
                   <div className="plan-stage-ingredient-row">
                     {stageIngredients.length > 0 ? (
@@ -369,9 +366,9 @@ export function DashboardPage() {
                 </div>
 
                 <div className="plan-stage-shopping-note">
-                  <span className="entry-preview-section-title">Einkaufsspur</span>
-                  <strong>{shoppingItemCount > 0 ? `${shoppingItemCount} Positionen abgestimmt` : 'Noch keine Einkaufsliste geladen'}</strong>
-                  <p>Die Liste bleibt an derselben Woche und nicht in einem getrennten Nebenfluss.</p>
+                  <span className="entry-preview-section-title">Einkauf</span>
+                  <strong>{shoppingItemCount > 0 ? `${shoppingItemCount} Positionen für diese Woche` : 'Noch keine Einkaufsliste geladen'}</strong>
+                  <p>Alles Nötige für den Wocheneinkauf liegt direkt am Plan.</p>
                 </div>
               </div>
             </div>

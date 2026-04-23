@@ -9,8 +9,8 @@ export const brand = {
   description: 'Mahlio bringt Gerichte, Rezepte und Einkauf in eine gemeinsame Wochenbasis für Paare und Familien.',
   promise: 'Für Paare und Familien, die gut essen wollen, ohne jede Woche neu anzufangen.',
   entryHeadline: 'Bringt eure Woche an einen Tisch.',
-  entrySubline: 'Plant Gerichte, öffnet Rezepte und nehmt den Einkauf direkt mit, bevor der Alltag losgeht.',
-  supportNote: 'Social Login dient nur dem Zugang. Haushalt, Rezepte und Einkauf bleiben in eurem Bereich.',
+  entrySubline: 'Plant Gerichte, öffnet Rezepte und behaltet den Einkauf in derselben ruhigen Wochenlinie.',
+  supportNote: 'Ein geschützter Start für eure gemeinsame Wochenküche.',
   proofPoints: [
     {
       title: 'Woche zuerst',
@@ -18,11 +18,11 @@ export const brand = {
     },
     {
       title: 'Rezepte griffbereit',
-      description: 'Ideen, Zutaten und Änderungen bleiben an derselben Stelle wie der eigentliche Plan.',
+      description: 'Rezepte, Zutaten und Änderungen bleiben nah an der Woche.',
     },
     {
-      title: 'Einkauf direkt mitnehmen',
-      description: 'Was auf den Tisch soll, landet ohne Umweg auf der Liste.',
+      title: 'Einkauf bereit',
+      description: 'Was ihr kochen wollt, ist für den Einkauf direkt vorbereitet.',
     },
   ],
   supportEmail: 'info@markushartmann.dev',

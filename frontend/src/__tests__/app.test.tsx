@@ -532,11 +532,11 @@ describe('Mealplanner app', () => {
     expect(mealButton).toBeInTheDocument();
     expect(within(mealButton).queryByText('Familienfreundlich und schnell.')).not.toBeInTheDocument();
     expect(await screen.findByText('Familienfreundlich und schnell.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Rezeptkontext anzeigen' })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Rezeptkontext anzeigen' }));
+    expect(screen.getByRole('button', { name: 'Einordnung anzeigen' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Einordnung anzeigen' }));
     expect(screen.getByText(/wurde aus eurer Favoriten-Sammlung wieder aufgegriffen/i)).toBeInTheDocument();
-    expect(screen.getByText(/Herkunft:/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Warum ausgewählt anzeigen' }));
+    expect(screen.getByText(/Einordnung:/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Warum dieses Gericht anzeigen' }));
     expect(screen.getByText(/Es wurde aus eurer gespeicherten Sammlung wieder aufgenommen./)).toBeInTheDocument();
     expect(await screen.findByText('Einkauf für diese Woche')).toBeInTheDocument();
     expect(await screen.findByRole('link', { name: 'Woche zu Bring' })).toBeInTheDocument();
@@ -551,7 +551,7 @@ describe('Mealplanner app', () => {
     expect(screen.getAllByText(/pro Portion/).length).toBeGreaterThan(0);
     expect(screen.getByText('Die Aufteilung ist nicht gleichmäßig. Nährwerte beziehen sich auf die angegebene Portion.')).toBeInTheDocument();
     expect(screen.getByText(/392 kcal/)).toBeInTheDocument();
-    expect(screen.getByText('1 Artikel · 1 Bereiche')).toBeInTheDocument();
+    expect(screen.getByText('1 Artikel · 1 Abteilung')).toBeInTheDocument();
     expect(screen.getByText('Zucchini')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Liste aufklappen' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Liste aufklappen' }));

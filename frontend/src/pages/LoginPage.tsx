@@ -117,8 +117,8 @@ export function LoginPage() {
           <section className="login-preview" aria-label="Produktvorschau">
             <div className="login-preview-copy">
               <p className="login-section-label">Am Tisch gedacht</p>
-              <h2>Eine ruhige Wochenfläche statt drei getrennter Baustellen.</h2>
-              <p>Plan, Rezept und Einkauf liegen in einer einzigen Komposition, damit die Woche schneller greifbar wird.</p>
+              <h2>Die Woche in einer klaren Linie.</h2>
+              <p>Gerichte, Rezepte und Einkauf greifen sauber ineinander und bleiben jederzeit lesbar.</p>
             </div>
 
             <div className="entry-tableau">
@@ -127,7 +127,7 @@ export function LoginPage() {
                   <span className="entry-preview-label">Nächste Woche</span>
                   <strong>Zitronenpasta mit Brokkoli</strong>
                 </div>
-                <p>Montagabend · 4 Portionen · direkt an der Einkaufsspur</p>
+                <p>Montagabend · 4 Portionen · für den gemeinsamen Einkauf</p>
               </div>
 
               <div className="entry-tableau-grid">
@@ -158,8 +158,8 @@ export function LoginPage() {
 
                   <div className="entry-tableau-shopping" aria-label="Einkauf">
                     <div className="entry-tableau-shopping-head">
-                      <span className="entry-preview-section-title">Einkaufsspur</span>
-                      <strong>Mit einem Griff auf der Liste</strong>
+                      <span className="entry-preview-section-title">Einkauf</span>
+                      <strong>Bereit für den Wocheneinkauf</strong>
                     </div>
                     <ul>
                       {previewShopping.map((item) => (
@@ -172,8 +172,8 @@ export function LoginPage() {
 
               <div className="entry-tableau-foot">
                 <span>Woche zuerst</span>
-                <span>Rezepte bleiben im Kontext</span>
-                <span>Einkauf hängt an derselben Woche</span>
+                <span>Rezepte im Blick</span>
+                <span>Einkauf vorbereitet</span>
               </div>
             </div>
           </section>

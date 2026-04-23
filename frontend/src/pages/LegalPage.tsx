@@ -61,8 +61,8 @@ function PrivacyContent() {
 
       <h2>Login-Daten</h2>
       <p>
-        {brand.name} nutzt Social Login nur für den Zugang zum gemeinsamen Haushalt. Dauerhaft gespeichert werden nur
-        die technisch nötigen Zuordnungen der freigegebenen Accounts; Namen, Profilbilder und ähnliche
+        {brand.name} nutzt externe Anmeldeanbieter für den Zugang zum gemeinsamen Haushalt. Dauerhaft gespeichert
+        werden nur die technisch nötigen Zuordnungen der freigegebenen Accounts; Namen, Profilbilder und ähnliche
         Provider-Profildaten werden nicht für die Rezeptplanung verwendet.
       </p>
 

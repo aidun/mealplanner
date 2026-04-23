@@ -126,11 +126,11 @@ export function MealInspector({
               className={`button button-secondary compact-action inspector-action-button${showSelectionReason ? ' inspector-action-button-active' : ''}`}
               onClick={() => setShowSelectionReason((current) => !current)}
               aria-pressed={showSelectionReason}
-              aria-label="Warum ausgewählt anzeigen"
-              title="Warum ausgewählt anzeigen"
+              aria-label="Warum dieses Gericht anzeigen"
+              title="Warum dieses Gericht anzeigen"
             >
               <SparkIcon className="action-icon" />
-              Auswahlgrund
+              Warum dieses Gericht
             </button>
             <BringLink
               planId={planId}
@@ -156,11 +156,11 @@ export function MealInspector({
               className={`button button-secondary compact-action inspector-action-button${showRecipeContext ? ' inspector-action-button-active' : ''}`}
               onClick={() => setShowRecipeContext((current) => !current)}
               aria-pressed={showRecipeContext}
-              aria-label="Rezeptkontext anzeigen"
-              title="Rezeptkontext anzeigen"
+              aria-label="Einordnung anzeigen"
+              title="Einordnung anzeigen"
             >
               <InfoIcon className="action-icon" />
-              Herkunft
+              Einordnung
             </button>
           </div>
         </div>
@@ -169,7 +169,7 @@ export function MealInspector({
       {showRecipeContext ? (
         <div className="inspector-info-panel" role="note">
           <p>
-            <strong>Herkunft:</strong> {mealOriginLabel(meal)}
+            <strong>Einordnung:</strong> {mealOriginLabel(meal)}
           </p>
           {meal.meta?.favoriteReuse ? (
             <p>
@@ -180,7 +180,7 @@ export function MealInspector({
             </p>
           ) : null}
           {meal.regenerationNote ? <p>Berücksichtigt: {meal.regenerationNote}</p> : null}
-          {!canActOnMeal ? <p>Dieses Rezept liegt gerade in eurer Sammlung. Aktionen greifen wieder im aktiven Wochenplan.</p> : null}
+          {!canActOnMeal ? <p>Dieses Rezept liegt aktuell in eurer Sammlung.</p> : null}
         </div>
       ) : null}
       {showSelectionReason ? (

@@ -28,7 +28,7 @@ export function ShoppingListPanel({ planId, shoppingList, loading }: ShoppingLis
           <h2>Einkauf für diese Woche</h2>
           <p>
             {items.length > 0
-              ? `${items.length} Artikel${categories.length > 0 ? ` · ${categories.length} Bereiche` : ''}`
+              ? `${items.length} Artikel${categories.length > 0 ? ` · ${categories.length} ${categories.length === 1 ? 'Abteilung' : 'Abteilungen'}` : ''}`
               : 'Alles für den aktuellen Plan an einem Ort.'}
           </p>
         </div>
@@ -72,7 +72,7 @@ export function ShoppingListPanel({ planId, shoppingList, loading }: ShoppingLis
               </div>
               <div className="shopping-list-metric">
                 <strong>{categories.length}</strong>
-                <span>Bereiche</span>
+                <span>{categories.length === 1 ? 'Abteilung' : 'Abteilungen'}</span>
               </div>
               <div className="shopping-list-metric shopping-list-metric-wide">
                 <strong>{items.slice(0, 4).map((item) => item.name).join(', ') || 'Noch leer'}</strong>
