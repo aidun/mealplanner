@@ -757,6 +757,8 @@ describe('Mealplanner app', () => {
     expect(await screen.findByRole('complementary', { name: 'Premium Feedback' })).toBeInTheDocument();
     fireEvent.click(await screen.findByRole('link', { name: 'Admin' }));
     expect(await screen.findByRole('heading', { name: 'Marke, Premium & Support' })).toBeInTheDocument();
+    expect(await screen.findByText('Letzter Test-Deploy')).toBeInTheDocument();
+    expect(await screen.findByText('Build-ID')).toBeInTheDocument();
     expect(await screen.findByText('premium@example.test')).toBeInTheDocument();
     expect(await screen.findByText('Premium-Einladung')).toBeInTheDocument();
     expect(await screen.findByText('weekly_cron')).toBeInTheDocument();

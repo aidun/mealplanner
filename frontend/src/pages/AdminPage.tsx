@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react';
 import { useSession } from '../session';
 import type { MailTemplate } from '../types';
 import { brand } from '../brand';
+import { getBuildInfo } from '../lib/build-info';
 
 export function AdminPage() {
   const queryClient = useQueryClient();
@@ -18,6 +19,7 @@ export function AdminPage() {
   const [lastPremiumInviteSent, setLastPremiumInviteSent] = useState(false);
   const [templateDrafts, setTemplateDrafts] = useState<Record<string, MailTemplate>>({});
   const [loggedOut, setLoggedOut] = useState(false);
+  const buildInfo = getBuildInfo();
 
   const adminOverviewQuery = useQuery({
     queryKey: ['admin-overview'],
@@ -115,6 +117,30 @@ export function AdminPage() {
             <span className="eyebrow">Backoffice</span>
             <h1>Marke, Premium & Support</h1>
             <p>Hier bleiben Premium-Freigaben, Service-Copy und Feedback in derselben Mahlio-Linie.</p>
+          </div>
+
+          <div className="admin-ops-strip" aria-label="Deployment Metadaten">
+            <article className="admin-ops-hero">
+              <span className="section-index">Operational</span>
+              <div className="admin-ops-copy">
+                <h2>Letzter Test-Deploy</h2>
+                <p>Der aktuell ausgelieferte Frontend-Stand für `mealplanner-test` mit Zeitstempel und Build-Kennung.</p>
+              </div>
+            </article>
+            <div className="profile-overview-grid admin-ops-grid">
+              <article className="profile-overview-card">
+                <strong>{buildInfo.deployedAtLabel}</strong>
+                <span>Deploy-Datum & Uhrzeit</span>
+              </article>
+              <article className="profile-overview-card">
+                <strong>{buildInfo.timezone}</strong>
+                <span>Zeitzone</span>
+              </article>
+              <article className="profile-overview-card">
+                <strong>{buildInfo.buildSha}</strong>
+                <span>Build-ID</span>
+              </article>
+            </div>
           </div>
 
           <div className="profile-section">
