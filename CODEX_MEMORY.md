@@ -1,6 +1,6 @@
 # Mealplanner Memory
 
-Last updated: 2026-04-23
+Last updated: 2026-04-26
 
 ## Kontext
 
@@ -27,6 +27,7 @@ Last updated: 2026-04-23
 - Seit 2026-04-23 zeigt der Admin-Bereich oben einen echten Deploy-Block fuer `mealplanner-test` mit Build-Metadaten aus dem Frontend-Build (`VITE_DEPLOYED_AT`, `VITE_DEPLOY_TIMEZONE`, `VITE_BUILD_SHA`), damit Datum, Uhrzeit, Zeitzone und Build-ID direkt im Backoffice sichtbar sind.
 - Seit 2026-04-23 ist der repo-native Frontend-Stand nochmals deutlich naeher an den Stitch-Handoff gezogen: Login wurde auf Marke, Headline, Privacy-Zeile und Produktvorschau entkernt; das Dashboard startet `week-first` mit kompakter Kopfzeile statt Vorbuehne; das MealBoard zeigt eine echte Wochenuebersicht; Inspector und Einkauf sind von Meta-/Sicherheits- und Metrik-Chrome befreit; der Admin priorisiert Deploy + offene Feedbacks vor Premium, Mail und Kennzahlen.
 - Offenes UI-Feedback fliesst seit 2026-04-23 explizit in die sichtbare Produktfuehrung ein: Profil/Onboarding muessen sichtbarer werden, Mobile-Kopfbereiche dichter und Tageskontext klarer. Diese Themen werden im Admin als operative Feedback-Linie gespiegelt, statt nur als rohe Supportliste.
+- Seit 2026-04-26 ist der Feedback-Pass repo-nativ umgesetzt und auf `mealplanner-test` ausgerollt: der Planner fuehrt mobil ruhiger mit horizontalem Tages-Rail statt gequetschter Tagesmatrix, das mobile Header-Chrome ist ueber ein Konto-Menue reduziert, das Profil ist ueber die Wochenflaeche sichtbarer verlinkt, der Inspector priorisiert wieder kochbare Inhalte vor Meta-Einordnung, und Login/Feedback-/Onboarding-Copy nutzen realistischere Familienbeispiele ohne zusaetzlichen Sicherheits-Chrome im Produktkern.
 - Test/LAN-Zugang nutzt aktuell `192.168.2.204` plus Cloudflare Tunnel.
 - Testumgebung aktiviert `PROMPT_DEBUG=true` und liefert unter `/api/debug/prompts/latest` den letzten Prompt, eine kurze Historie sowie aggregierte OpenAI-Request-/Token-Metriken fuer das Overlay.
 - Prompt-Debug-Eintraege haben seit `0005_prompt_debug_meta` optionales `meta`-JSONB fuer schlanke Diagnosekontexte wie `requestedWeekStart`, `members`, `favorites`, `mealID` und Merge-Groessen.
