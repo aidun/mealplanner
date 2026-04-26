@@ -45,6 +45,14 @@ const GUIDED_ONBOARDING_STEPS = [
   { id: 'finish', label: 'Fertig' },
 ];
 
+const GUIDED_WEEK_PREVIEW = [
+  { label: 'Mo', title: 'Pasta mit Gemüse', note: 'schnell nach Kita und Arbeit' },
+  { label: 'Di', title: 'Ofengemüse', note: 'wenig Abwasch, alles auf einem Blech' },
+  { label: 'Mi', title: 'Suppe & Brot', note: 'warm, einfach, familiennah' },
+] as const;
+
+const GUIDED_SHOPPING_PREVIEW = ['Gemüse für zwei Abende', 'ein Einkauf statt Einzelideen', 'Rezepte direkt am Tag'] as const;
+
 export function OnboardingPage() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -405,20 +413,40 @@ export function OnboardingPage() {
                         Du kannst jederzeit überspringen oder später im Detail nachschärfen.
                       </p>
                     </div>
-                    <div className="guided-onboarding-teasers">
-                      <article>
-                        <strong>Wer isst mit?</strong>
-                        <span>Eine Person reicht zum Start. Mehr geht jederzeit später.</span>
-                      </article>
-                      <article>
-                        <strong>Wie soll es schmecken?</strong>
-                        <span>Ein paar Vorlieben und No-Gos genügen für die erste sinnvolle Woche.</span>
-                      </article>
-                      <article>
-                        <strong>Wie viel Detail jetzt?</strong>
-                        <span>Nur das Nötigste jetzt. Feinschliff bleibt im Profil.</span>
-                      </article>
+                    <div className="guided-onboarding-showcase" aria-label="Produktvorschau">
+                      <div className="guided-onboarding-showcase-week">
+                        <span className="guided-onboarding-showcase-label">Schon nach wenigen Antworten</span>
+                        {GUIDED_WEEK_PREVIEW.map((entry) => (
+                          <article key={entry.label} className="guided-onboarding-showcase-day">
+                            <span>{entry.label}</span>
+                            <strong>{entry.title}</strong>
+                            <small>{entry.note}</small>
+                          </article>
+                        ))}
+                      </div>
+                      <div className="guided-onboarding-showcase-note">
+                        <span className="guided-onboarding-showcase-label">Was dabei zusammenkommt</span>
+                        <ul>
+                          {GUIDED_SHOPPING_PREVIEW.map((entry) => (
+                            <li key={entry}>{entry}</li>
+                          ))}
+                        </ul>
+                      </div>
                     </div>
+                  </div>
+                  <div className="guided-onboarding-teasers">
+                    <article>
+                      <strong>Wer isst mit?</strong>
+                      <span>Eine Person reicht zum Start. Mehr geht jederzeit später.</span>
+                    </article>
+                    <article>
+                      <strong>Wie soll es schmecken?</strong>
+                      <span>Ein paar Vorlieben und No-Gos genügen für die erste sinnvolle Woche.</span>
+                    </article>
+                    <article>
+                      <strong>Wie viel Detail jetzt?</strong>
+                      <span>Nur das Nötigste jetzt. Feinschliff bleibt im Profil.</span>
+                    </article>
                   </div>
                   <div className="guided-onboarding-actions">
                     <button
@@ -674,23 +702,35 @@ export function OnboardingPage() {
 
       <main className="app-main">
         <section className="profile-page">
-          <div className="profile-page-intro">
-            <span className="eyebrow">Küchenprofil</span>
-            <h1>Haushalt & Küchenprofil</h1>
-            <p>Hier legt ihr fest, wer mitisst, was im Alltag gut passt und wie eure Woche verlässlich startet.</p>
-            <div className="profile-overview-grid" aria-label="Haushaltsübersicht">
-              <div className="profile-overview-card">
-                <strong>{namedMembersCount}</strong>
-                <span>Profilpersonen</span>
+          <div className="profile-page-intro profile-page-intro-split">
+            <div className="profile-page-intro-copy">
+              <span className="eyebrow">Küchenprofil</span>
+              <h1>Haushalt & Küchenprofil</h1>
+              <p>Hier legt ihr fest, wer mitisst, was im Alltag gut passt und wie eure Woche verlässlich startet.</p>
+              <div className="profile-overview-grid" aria-label="Haushaltsübersicht">
+                <div className="profile-overview-card">
+                  <strong>{namedMembersCount}</strong>
+                  <span>Profilpersonen</span>
+                </div>
+                <div className="profile-overview-card">
+                  <strong>{visibleAccountsCount}</strong>
+                  <span>Login-Zugänge</span>
+                </div>
+                <div className="profile-overview-card">
+                  <strong>{familyQuery.data?.personal ? 'Privat' : 'Familie'}</strong>
+                  <span>{displayHouseholdLabel}</span>
+                </div>
               </div>
-              <div className="profile-overview-card">
-                <strong>{visibleAccountsCount}</strong>
-                <span>Login-Zugänge</span>
-              </div>
-              <div className="profile-overview-card">
-                <strong>{familyQuery.data?.personal ? 'Privat' : 'Familie'}</strong>
-                <span>{displayHouseholdLabel}</span>
-              </div>
+            </div>
+            <div className="profile-intro-gallery" aria-label="Einordnung und Wirkung">
+              <figure className="profile-intro-photo profile-intro-photo-family">
+                <img src="/brand/mahlio-photo-library.png" alt="" />
+              </figure>
+              <article className="profile-intro-aside">
+                <span className="eyebrow">Im Alltag</span>
+                <strong>Weniger Grundsatzfragen. Schneller zu einer Woche, die wirklich kochbar ist.</strong>
+                <p>Menschen, Regeln, Favoriten und Zugänge bleiben fachlich sauber getrennt, aber spürbar an einem Ort.</p>
+              </article>
             </div>
           </div>
 

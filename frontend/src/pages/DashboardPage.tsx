@@ -8,7 +8,7 @@ import { MealInspector } from '../components/MealInspector';
 import { PlanBackdrop } from '../components/PlanBackdrop';
 import { ShoppingListPanel } from '../components/ShoppingListPanel';
 import { readableApiError } from '../lib/api-error';
-import { formatDate } from '../lib/format';
+import { formatDate, formatWeekRange } from '../lib/format';
 import { LoginPage } from './LoginPage';
 import {
   createPlan,
@@ -302,29 +302,40 @@ export function DashboardPage() {
       meta: `${shoppingItemCount}`,
     },
   ];
+  const plannedMealCount = allMeals.length;
+  const openDayCount = allDays.filter((day) => day.meals.length === 0).length;
+  const weekRangeLabel = formatWeekRange(currentPlanQuery.data?.weekStart);
   const stageNarrative = useMemo(() => {
-    if (selectedDay?.label && inspectedMeal?.title) {
-      return `${selectedDay.label} startet mit ${inspectedMeal.title}. Alles Weitere hängt direkt daran: Rezept, Portionen und Einkauf.`;
+    if (!currentPlanQuery.data?.days.length) {
+      return 'Noch kein Plan vorhanden. Stelle eine Woche zusammen und öffne danach Tage, Rezepte und Einkauf direkt im Fluss.';
     }
-    if (selectedDay?.label) {
-      return `${selectedDay.label} ist noch frei. Jetzt nur kurz das Profil schärfen oder die Woche neu planen.`;
+    const parts = [
+      weekRangeLabel,
+      `${plannedMealCount} Gericht${plannedMealCount === 1 ? '' : 'e'}`,
+      shoppingItemCount > 0 ? `${shoppingItemCount} Position${shoppingItemCount === 1 ? '' : 'en'} im Einkauf` : 'Einkauf entsteht aus dem Plan',
+    ];
+    if (openDayCount > 0) {
+      parts.push(`${openDayCount} Tag${openDayCount === 1 ? '' : 'e'} noch offen`);
     }
-    return 'Eine ruhige Wochenansicht für echte Familienabende, schnelle Mittage und einen Einkauf, der direkt mitzieht.';
-  }, [inspectedMeal?.title, selectedDay?.label]);
+    return parts.join(' · ');
+  }, [currentPlanQuery.data?.days.length, openDayCount, plannedMealCount, shoppingItemCount, weekRangeLabel]);
   const quickFacts = [
     {
-      label: selectedDay?.label ?? 'Heute',
-      value: inspectedMeal?.title ?? 'Noch kein Gericht gewählt',
+      label: 'Woche',
+      value: weekRangeLabel,
     },
     {
-      label: 'Einkauf',
-      value: shoppingItemCount > 0 ? `${shoppingItemCount} Dinge auf der Liste` : 'Liste folgt mit dem Plan',
+      label: 'Gerichte',
+      value: plannedMealCount > 0 ? `${plannedMealCount} geplant` : 'Noch offen',
     },
     {
-      label: 'Küchenprofil',
-      value: currentPlanQuery.data?.days?.length ? 'Menschen und Vorlieben prüfen' : 'Für die erste Woche kurz schärfen',
+      label: 'Im Fokus',
+      value: inspectedMeal?.title ?? selectedDay?.label ?? 'Tag auswählen',
     },
   ];
+  const showPlanPane = activeWorkspacePane === 'plan';
+  const showDetailPane = activeWorkspacePane === 'detail';
+  const showShoppingPane = activeWorkspacePane === 'shopping';
 
   return loggedOut ? (
     <LoginPage />
@@ -344,34 +355,34 @@ export function DashboardPage() {
           <PlanBackdrop />
           <div className="plan-stage-head">
             <div className="plan-stage-copy">
-              <span className="eyebrow">Diese Woche</span>
-              <h1 id="home-title">Die Woche zuerst.</h1>
+              <span className="eyebrow">Planner</span>
+              <h1 id="home-title">Diese Woche am Tisch</h1>
               <p>{stageNarrative}</p>
             </div>
-            <div className="plan-stage-facts" aria-label="Wochenüberblick">
-              {quickFacts.map((fact) => (
-                <article key={fact.label} className="stage-stat">
-                  <span>{fact.label}</span>
-                  <strong>{fact.value}</strong>
-                </article>
-              ))}
+            <div className="plan-stage-actions">
+              <Link to="/onboarding" className="button button-secondary">
+                Küchenprofil schärfen
+              </Link>
+              <button
+                type="button"
+                className="button button-secondary"
+                onClick={() =>
+                  startTransition(() => {
+                    updateSearchParams(setSearchParams, { pane: 'shopping' });
+                  })
+                }
+              >
+                Einkauf öffnen
+              </button>
             </div>
           </div>
-          <div className="plan-stage-actions">
-            <Link to="/onboarding" className="button button-secondary">
-              Küchenprofil schärfen
-            </Link>
-            <button
-              type="button"
-              className="button button-secondary"
-              onClick={() =>
-                startTransition(() => {
-                  updateSearchParams(setSearchParams, { pane: 'shopping' });
-                })
-              }
-            >
-              Liste öffnen
-            </button>
+          <div className="plan-stage-facts" aria-label="Wochenüberblick">
+            {quickFacts.map((fact) => (
+              <article key={fact.label} className="stage-stat">
+                <span>{fact.label}</span>
+                <strong>{fact.value}</strong>
+              </article>
+            ))}
           </div>
         </section>
 
@@ -414,7 +425,7 @@ export function DashboardPage() {
 
         <div className="workspace">
           <div className="workspace-main">
-            <div className={activeWorkspacePane === 'detail' ? 'workspace-pane-hidden-mobile' : ''}>
+            <div className={showPlanPane ? '' : 'workspace-pane-hidden-mobile'}>
               <MealBoard
                 planId={currentPlanQuery.data?.id}
                 days={currentPlanQuery.data?.days}
@@ -425,11 +436,12 @@ export function DashboardPage() {
                 onSelectDay={selectDay}
               />
             </div>
-            <div className={activeWorkspacePane === 'plan' ? 'workspace-pane-hidden-mobile' : ''}>
+            <div className={showDetailPane ? '' : 'workspace-pane-hidden-mobile'}>
               <MealInspector
                 planId={currentPlanQuery.data?.id}
                 dayDate={selectedDay?.date}
                 meal={inspectedMeal}
+                contextNote={selectedDay?.label ?? formatDate(selectedDay?.date)}
                 favoriteId={inspectedMeal ? favoriteByMealID.get(inspectedMeal.id) : undefined}
                 canActOnMeal={inspectedMealInPlan}
                 onToggleFavorite={handleToggleFavorite}
@@ -440,7 +452,7 @@ export function DashboardPage() {
             </div>
           </div>
 
-          <div className={`workspace-side${activeWorkspacePane !== 'shopping' ? ' workspace-pane-hidden-mobile' : ''}`}>
+          <div className={`workspace-side${showShoppingPane ? '' : ' workspace-pane-hidden-mobile'}`}>
             <ShoppingListPanel
               planId={currentPlanQuery.data?.id}
               shoppingList={shoppingListQuery.data ?? null}

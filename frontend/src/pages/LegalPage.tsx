@@ -15,6 +15,9 @@ const LEGAL_DEFAULTS = {
 
 export function LegalPage({ kind }: LegalPageProps) {
   const isPrivacy = kind === 'privacy';
+  const operatorName = import.meta.env.VITE_LEGAL_OPERATOR_NAME?.trim() || LEGAL_DEFAULTS.operatorName;
+  const contactEmail = import.meta.env.VITE_LEGAL_CONTACT_EMAIL?.trim() || LEGAL_DEFAULTS.contactEmail;
+  const hosting = import.meta.env.VITE_LEGAL_HOSTING?.trim() || LEGAL_DEFAULTS.hosting;
 
   return (
     <div className="app-shell legal-shell">
@@ -37,6 +40,20 @@ export function LegalPage({ kind }: LegalPageProps) {
                 Diese Seite beschreibt, wie {brand.name} betrieben wird, welche Daten technisch nötig sind und wie
                 Kontakt- und Pflichtangaben aktuell hinterlegt sind.
               </p>
+              <div className="legal-glance" aria-label="Rechtlicher Überblick">
+                <article className="legal-glance-card">
+                  <span>Verantwortlich</span>
+                  <strong>{operatorName}</strong>
+                </article>
+                <article className="legal-glance-card">
+                  <span>Kontakt</span>
+                  <strong>{contactEmail}</strong>
+                </article>
+                <article className="legal-glance-card">
+                  <span>Hosting</span>
+                  <strong>{hosting}</strong>
+                </article>
+              </div>
             </div>
           </div>
 

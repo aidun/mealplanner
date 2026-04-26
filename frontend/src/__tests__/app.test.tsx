@@ -523,7 +523,7 @@ describe('Mealplanner app', () => {
     const fetchMock = vi.mocked(fetch);
     renderApp('/');
 
-    expect(await screen.findByText('Diese Woche auf dem Tisch')).toBeInTheDocument();
+    expect(await screen.findByText('Tage & Gerichte')).toBeInTheDocument();
     expect(screen.getAllByRole('link', { name: 'Küchenprofil' })).toHaveLength(1);
     expect(screen.getAllByRole('button', { name: /Neue Woche planen/i })).toHaveLength(1);
     expect(screen.getByRole('region', { name: 'Bereiche wechseln' })).toBeInTheDocument();
@@ -531,14 +531,14 @@ describe('Mealplanner app', () => {
     const mealButton = (await screen.findAllByRole('button', { name: /Pasta mit Gemüse/ }))[0]!;
     expect(mealButton).toBeInTheDocument();
     expect(within(mealButton).queryByText('Familienfreundlich und schnell.')).not.toBeInTheDocument();
-    expect(await screen.findByText('Familienfreundlich und schnell.')).toBeInTheDocument();
+    expect((await screen.findAllByText('Familienfreundlich und schnell.')).length).toBeGreaterThan(0);
     fireEvent.click(screen.getByText('Herkunft & Einordnung'));
     expect(screen.getByText(/wurde aus eurer Favoriten-Sammlung wieder aufgegriffen/i)).toBeInTheDocument();
     fireEvent.click(screen.getByText('Warum dieses Gericht'));
     expect(screen.getByText(/Es wurde aus eurer gespeicherten Sammlung wieder aufgenommen./)).toBeInTheDocument();
     expect(await screen.findByText('Einkauf für diese Woche')).toBeInTheDocument();
     expect(await screen.findByRole('link', { name: 'Woche zu Bring' })).toBeInTheDocument();
-    expect(await screen.findByRole('link', { name: 'Tag zu Bring' })).toHaveAttribute(
+    expect((await screen.findAllByRole('link', { name: 'Tag zu Bring' }))[0]).toHaveAttribute(
       'href',
       expect.stringContaining('/api/plans/plan-1/bring-export?day=2026-04-13')
     );
@@ -673,20 +673,21 @@ describe('Mealplanner app', () => {
     );
   });
 
-  it('moves through days as a carousel', async () => {
+  it('moves the active day through the weekly agenda', async () => {
     renderApp('/');
 
     expect((await screen.findAllByRole('button', { name: /Pasta mit Gemüse/ })).length).toBeGreaterThan(0);
+    expect(document.querySelector('.day-tab-active')).toHaveTextContent('Mo');
     fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
 
     expect((await screen.findAllByRole('button', { name: /Beeren-Porridge/ })).length).toBeGreaterThan(0);
-    expect(screen.queryAllByRole('button', { name: /Abendessen Pasta mit Gemüse/ })).toHaveLength(0);
+    expect(document.querySelector('.day-tab-active')).toHaveTextContent('Di');
   });
 
   it('reads dashboard focus from the url', async () => {
     renderApp('/?pane=shopping&day=2026-04-14&meal=meal-2');
 
-    expect(await screen.findByText('Diese Woche auf dem Tisch')).toBeInTheDocument();
+    expect(await screen.findByText('Tage & Gerichte')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Einkauf' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByText('Di')).toBeInTheDocument();
   });
@@ -1181,7 +1182,7 @@ describe('Mealplanner app', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Abmelden' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Logout gerade nicht möglich');
-    expect(screen.getByText('Die Woche zuerst.')).toBeInTheDocument();
+    expect(screen.getByText('Diese Woche am Tisch')).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Mit Google anmelden' })).not.toBeInTheDocument();
   });
 
@@ -1191,7 +1192,7 @@ describe('Mealplanner app', () => {
     expect(await screen.findByRole('heading', { name: 'Datenschutz' })).toBeInTheDocument();
     expect(screen.getByText('Rechtliches')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Verantwortlicher' })).toBeInTheDocument();
-    expect(screen.getByText('Markus Hartmann')).toBeInTheDocument();
+    expect(screen.getAllByText('Markus Hartmann')).toHaveLength(2);
     expect(screen.getByText('56323 Waldesch, Deutschland')).toBeInTheDocument();
     expect(screen.getByText('Kontakt: info@markushartmann.dev')).toBeInTheDocument();
 
@@ -1207,7 +1208,7 @@ describe('Mealplanner app', () => {
     window.localStorage.setItem('mealplanner.promptDebug', 'true');
     renderApp('/');
 
-    expect(await screen.findByText('Die Woche zuerst.')).toBeInTheDocument();
+    expect(await screen.findByText('Diese Woche am Tisch')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Prompt prüfen' })).not.toBeInTheDocument();
   });
 

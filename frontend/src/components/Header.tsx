@@ -32,7 +32,6 @@ export function Header({
           <Link to="/" className="brand-mark" aria-label={`${brand.name} Startseite`}>
             <AppLogo compact />
           </Link>
-          <p className="brand-subtitle">{brand.shortTagline}</p>
         </div>
 
         <div className="header-meta">

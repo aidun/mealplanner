@@ -92,6 +92,8 @@ export function AdminPage() {
   const adminOverview = adminOverviewQuery.data;
   const mailTemplates = mailTemplatesQuery.data ?? [];
   const feedbackEntries = adminOverview?.feedback ?? [];
+  const openFeedbackCount = feedbackEntries.length;
+  const premiumUserCount = adminOverview?.premiumUsers?.length ?? 0;
   const feedbackThemes = summarizeFeedbackThemes([
     ...feedbackEntries.map((entry) => entry.message),
     ...(adminOverview?.resolvedFeedback ?? []).map((entry) => entry.message),
@@ -117,10 +119,24 @@ export function AdminPage() {
       <Header onLogout={() => logoutMutation.mutate()} loggingOut={logoutMutation.isPending} isAdmin showCreatePlan={false} />
       <main className="app-main">
         <section className="profile-page admin-page">
-          <div className="profile-page-intro">
-            <span className="eyebrow">Backoffice</span>
-            <h1>Betrieb, Freigaben und Feedback</h1>
-            <p>Der operative Stand von `mealplanner-test` und die Punkte, die sichtbar in die Produktoberfläche zurückfließen.</p>
+          <div className="profile-page-intro profile-page-intro-split profile-page-intro-admin">
+            <div className="profile-page-intro-copy">
+              <span className="eyebrow">Backoffice</span>
+              <h1>Betrieb, Freigaben und Feedback</h1>
+              <p>Der operative Stand von `mealplanner-test` und die Punkte, die sichtbar in die Produktoberfläche zurückfließen.</p>
+            </div>
+            <div className="profile-intro-gallery admin-intro-gallery" aria-label="Backoffice Überblick">
+              <article className="profile-intro-aside">
+                <span className="eyebrow">Druck auf die UI</span>
+                <strong>{openFeedbackCount} offene Rückmeldung{openFeedbackCount === 1 ? '' : 'en'}</strong>
+                <p>Offene Punkte werden hier gesammelt, priorisiert und direkt wieder in sichtbare Produktarbeit übersetzt.</p>
+              </article>
+              <article className="profile-intro-aside">
+                <span className="eyebrow">Freigaben & Tonalität</span>
+                <strong>{premiumUserCount} Premium-Zugänge · {mailTemplates.length} Mail-Template{mailTemplates.length === 1 ? '' : 's'}</strong>
+                <p>Freischaltungen, Mail-Tonalität und Deploy-Kontext bleiben in derselben ruhigen Betriebsansicht.</p>
+              </article>
+            </div>
           </div>
 
           <div className="profile-section">
@@ -377,11 +393,11 @@ export function AdminPage() {
             <div className="profile-section-fields">
               <div className="admin-stats-grid" aria-label="Admin Statistiken">
                 <article className="profile-overview-card">
-                  <strong>{(adminOverview?.stats.averageActiveAccountsPerFamily ?? 0).toFixed(1)}</strong>
+                  <strong>{(adminOverview?.stats?.averageActiveAccountsPerFamily ?? 0).toFixed(1)}</strong>
                   <span>Ø aktive Accounts pro Familie</span>
                 </article>
                 <article className="profile-overview-card">
-                  <strong>{(adminOverview?.stats.averageProfileMembersPerFamily ?? 0).toFixed(1)}</strong>
+                  <strong>{(adminOverview?.stats?.averageProfileMembersPerFamily ?? 0).toFixed(1)}</strong>
                   <span>Ø eingetragene Personen pro Familie</span>
                 </article>
               </div>
@@ -395,7 +411,7 @@ export function AdminPage() {
                     </div>
                   </div>
                   <div className="admin-bucket-list">
-                    {(adminOverview?.stats.familyDistributionByAccounts ?? []).map((bucket) => (
+                    {(adminOverview?.stats?.familyDistributionByAccounts ?? []).map((bucket) => (
                       <div key={`accounts-${bucket.label}`} className="admin-bucket-row">
                         <span>{bucket.label}</span>
                         <strong>{bucket.count}</strong>
@@ -412,7 +428,7 @@ export function AdminPage() {
                     </div>
                   </div>
                   <div className="admin-bucket-list">
-                    {(adminOverview?.stats.familyDistributionByMembers ?? []).map((bucket) => (
+                    {(adminOverview?.stats?.familyDistributionByMembers ?? []).map((bucket) => (
                       <div key={`members-${bucket.label}`} className="admin-bucket-row">
                         <span>{bucket.label}</span>
                         <strong>{bucket.count}</strong>
@@ -430,7 +446,7 @@ export function AdminPage() {
                   </div>
                 </div>
                 <div className="admin-bucket-list">
-                  {(adminOverview?.stats.generations ?? []).map((item) => (
+                  {(adminOverview?.stats?.generations ?? []).map((item) => (
                     <div key={item.category} className="admin-bucket-row">
                       <span>{item.category}</span>
                       <strong>{item.count}</strong>
