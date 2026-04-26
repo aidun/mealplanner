@@ -64,11 +64,11 @@ export function MealInspector({
       <section className="surface inspector">
         <div className="surface-header">
           <div>
-            <h2>Mahlzeit</h2>
-            <p>Wähle eine Mahlzeit im Wochenboard aus.</p>
+            <h2>Rezept</h2>
+            <p>Wähle einen Tag oder ein Gericht aus der Woche.</p>
           </div>
         </div>
-        <p className="muted">Hier erscheinen Zutaten, Zubereitung und die schnelle Änderung.</p>
+        <p className="muted">Hier stehen Zutaten, Schritte und schnelle Anpassungen für den Kochalltag.</p>
       </section>
     );
   }
@@ -77,7 +77,7 @@ export function MealInspector({
     <section className="surface inspector">
       <section className="inspector-hero">
         <div className="inspector-hero-copy">
-          <span className="eyebrow">Gericht im Fokus</span>
+          <span className="eyebrow">{contextNote || 'Rezept'}</span>
           <h2>{meal.title}</h2>
           <p className="inspector-hero-meta">
             {slotLabel(meal.slot)}
@@ -141,27 +141,6 @@ export function MealInspector({
       </section>
 
       <div className="stack inspector-stack">
-        <section className="inspector-section inspector-section-context">
-          <details className="inspector-detail-block">
-            <summary>Warum dieses Gericht</summary>
-            <p>{selectionReason}</p>
-          </details>
-          <details className="inspector-detail-block">
-            <summary>Herkunft & Einordnung</summary>
-            <p>{mealOriginLabel(meal)}</p>
-            {meal.meta?.favoriteReuse ? (
-              <p>
-                {meal.meta.favoriteReuse === 'variant'
-                  ? 'Dieses Gericht lehnt sich an einen vorhandenen Favoriten an.'
-                  : 'Dieses Gericht wurde aus eurer Favoriten-Sammlung wieder aufgegriffen.'}
-                {meal.meta.favoriteTitle ? ` Bezug: ${meal.meta.favoriteTitle}.` : ''}
-              </p>
-            ) : null}
-            {meal.regenerationNote ? <p>Berücksichtigt: {meal.regenerationNote}</p> : null}
-            {!canActOnMeal ? <p>Dieses Rezept liegt aktuell in eurer Sammlung.</p> : null}
-          </details>
-        </section>
-
         <section className="inspector-section inspector-section-recipe">
           <div className="inspector-recipe-grid">
             <section className="inspector-subsection">
@@ -193,6 +172,32 @@ export function MealInspector({
               </ol>
             </section>
           </div>
+        </section>
+
+        <section className="inspector-section">
+          <label className="field-label" htmlFor="regenerate-note">
+            Wunsch zur Änderung
+          </label>
+          <textarea
+            id="regenerate-note"
+            className="input textarea"
+            rows={4}
+            placeholder="Zum Beispiel: weniger Chili, mehr Gemüse, für Kinder milder."
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
+            onInput={(event) => setNote((event.target as HTMLTextAreaElement).value)}
+            disabled={!canActOnMeal}
+          />
+          <button
+            type="button"
+            className="button button-primary full-width regenerate-button"
+            onClick={() => onRegenerate(note)}
+            disabled={isRegenerating || !canActOnMeal}
+            aria-label="Gericht austauschen"
+          >
+            <RefreshIcon className="pill-icon" />
+            {isRegenerating ? 'Gericht wird neu generiert…' : 'Gericht neu generieren'}
+          </button>
         </section>
 
         {meal.servings.length > 0 ? (
@@ -228,41 +233,35 @@ export function MealInspector({
               <div className="allergy-warning" role="note">
                 <div className="allergy-warning-title">
                   <ShieldIcon className="pill-icon" />
-                  <strong>Kritische Produkte erkannt</strong>
+                  <strong>Wichtige Zutaten im Blick behalten</strong>
                 </div>
                 <p>
-                  Möglicherweise enthalten: {allergens.join(', ')}. Dieser Hinweis wird automatisch aus den Zutaten
-                  abgeleitet. Kritische Zutaten bitte vor dem Kochen noch einmal kurz prüfen.
+                  Möglich sind: {allergens.join(', ')}. Vor dem Kochen lieber noch einmal kurz auf die Zutaten schauen.
                 </p>
               </div>
             ) : null}
           </section>
         ) : null}
 
-        <section className="inspector-section">
-          <label className="field-label" htmlFor="regenerate-note">
-            Wunsch zur Änderung
-          </label>
-          <textarea
-            id="regenerate-note"
-            className="input textarea"
-            rows={4}
-            placeholder="Zum Beispiel: weniger Chili, mehr Gemüse, kindgerechter."
-            value={note}
-            onChange={(event) => setNote(event.target.value)}
-            onInput={(event) => setNote((event.target as HTMLTextAreaElement).value)}
-            disabled={!canActOnMeal}
-          />
-          <button
-            type="button"
-            className="button button-primary full-width regenerate-button"
-            onClick={() => onRegenerate(note)}
-            disabled={isRegenerating || !canActOnMeal}
-            aria-label="Gericht austauschen"
-          >
-            <RefreshIcon className="pill-icon" />
-            {isRegenerating ? 'Gericht wird neu generiert…' : 'Gericht neu generieren'}
-          </button>
+        <section className="inspector-section inspector-section-context">
+          <details className="inspector-detail-block">
+            <summary>Warum dieses Gericht</summary>
+            <p>{selectionReason}</p>
+          </details>
+          <details className="inspector-detail-block">
+            <summary>Herkunft & Einordnung</summary>
+            <p>{mealOriginLabel(meal)}</p>
+            {meal.meta?.favoriteReuse ? (
+              <p>
+                {meal.meta.favoriteReuse === 'variant'
+                  ? 'Dieses Gericht lehnt sich an einen vorhandenen Favoriten an.'
+                  : 'Dieses Gericht wurde aus eurer Favoriten-Sammlung wieder aufgegriffen.'}
+                {meal.meta.favoriteTitle ? ` Bezug: ${meal.meta.favoriteTitle}.` : ''}
+              </p>
+            ) : null}
+            {meal.regenerationNote ? <p>Berücksichtigt: {meal.regenerationNote}</p> : null}
+            {!canActOnMeal ? <p>Dieses Rezept liegt aktuell in eurer Sammlung.</p> : null}
+          </details>
         </section>
       </div>
 

@@ -1,6 +1,6 @@
-import { Link, NavLink } from 'react-router-dom';
+import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { AppLogo } from './AppLogo';
-import { LogoutIcon, PlusIcon, ShieldIcon, UserIcon } from './icons';
+import { ChevronDownIcon, LogoutIcon, PlusIcon, ShieldIcon, UserIcon } from './icons';
 import { formatWeekRange, formatWeekRangeCompact } from '../lib/format';
 import { brand } from '../brand';
 
@@ -23,6 +23,8 @@ export function Header({
   isAdmin = false,
   showCreatePlan = true,
 }: HeaderProps) {
+  const navigate = useNavigate();
+
   return (
     <header className="app-header">
       <div className="header-overview">
@@ -58,6 +60,29 @@ export function Header({
             <span className="header-primary-label-compact">{creatingPlan ? 'Plan läuft…' : 'Woche planen'}</span>
           </button>
         ) : null}
+        <details className="header-mobile-menu">
+          <summary className="button button-secondary header-mobile-summary">
+            <UserIcon className="action-icon" />
+            Konto
+            <ChevronDownIcon className="action-icon" />
+          </summary>
+          <div className="header-mobile-panel">
+            <button type="button" className="button button-secondary" onClick={() => navigate('/onboarding')}>
+              <UserIcon className="action-icon" />
+              Küchenprofil
+            </button>
+            {isAdmin ? (
+              <button type="button" className="button button-secondary" onClick={() => navigate('/admin')}>
+                <ShieldIcon className="action-icon" />
+                Admin
+              </button>
+            ) : null}
+            <button type="button" className="button button-secondary" onClick={onLogout} disabled={loggingOut}>
+              <LogoutIcon className="action-icon" />
+              {loggingOut ? 'Menü schließt…' : 'Ausloggen'}
+            </button>
+          </div>
+        </details>
         <div className="header-secondary-actions">
           <NavLink to="/onboarding" className="button button-secondary">
             <UserIcon className="action-icon" />

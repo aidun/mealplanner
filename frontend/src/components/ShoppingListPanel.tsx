@@ -14,6 +14,7 @@ export function ShoppingListPanel({ planId, shoppingList, loading }: ShoppingLis
   const items = useMemo(() => flattenShoppingList(shoppingList), [shoppingList]);
   const categories = useMemo(() => uniqueCategories(items), [items]);
   const groupedItems = useMemo(() => groupByCategory(items), [items]);
+  const sectionTitles = useMemo(() => sectionPreviewTitles(shoppingList), [shoppingList]);
   const summary = !Array.isArray(shoppingList) ? shoppingList?.summary : undefined;
   const canExport = Boolean(planId && items.length > 0);
   const checkedItems = items.filter((item) => item.checked).length;
@@ -51,6 +52,15 @@ export function ShoppingListPanel({ planId, shoppingList, loading }: ShoppingLis
         <div className="stack shopping-list-stack">
           <div className="shopping-list-preview">
             {summary ? <p className="shopping-list-summary">{summary}</p> : null}
+            {sectionTitles.length > 0 ? (
+              <div className="shopping-preview-pills" aria-label="Bezug zur Woche">
+                {sectionTitles.map((title) => (
+                  <span key={title} className="shopping-category-pill">
+                    {title}
+                  </span>
+                ))}
+              </div>
+            ) : null}
             <div className="shopping-progress" aria-label="Einkaufsfortschritt">
               <div className="shopping-progress-copy">
                 <strong>{remainingItems > 0 ? `${remainingItems} noch offen` : 'Liste bereit'}</strong>
@@ -126,4 +136,14 @@ function groupByCategory(items: ShoppingListItem[]) {
     groups.set(title, [...(groups.get(title) ?? []), item]);
   }
   return Array.from(groups.entries()).map(([title, groupItems]) => ({ title, items: groupItems }));
+}
+
+function sectionPreviewTitles(shoppingList?: ShoppingList | null) {
+  if (!shoppingList || Array.isArray(shoppingList) || !shoppingList.sections?.length) {
+    return [];
+  }
+  return shoppingList.sections
+    .map((section) => section.title?.trim())
+    .filter((title): title is string => Boolean(title))
+    .slice(0, 4);
 }

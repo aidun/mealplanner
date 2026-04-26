@@ -668,7 +668,7 @@ export function OnboardingPage() {
           <button type="button" className="brand-mark brand-button" onClick={() => navigate('/')}>
             <AppLogo />
           </button>
-          <p className="brand-subtitle">Haushalt, Geschmack und Zugänge für euren gemeinsamen Tisch.</p>
+          <p className="brand-subtitle">Menschen, Geschmack und Woche an einem Ort.</p>
         </div>
       </header>
 
@@ -677,7 +677,7 @@ export function OnboardingPage() {
           <div className="profile-page-intro">
             <span className="eyebrow">Küchenprofil</span>
             <h1>Haushalt & Küchenprofil</h1>
-            <p>Hier legt ihr fest, wer mitisst, was im Alltag gut passt und welche Zugänge zu eurem gemeinsamen Bereich gehören.</p>
+            <p>Hier legt ihr fest, wer mitisst, was im Alltag gut passt und wie eure Woche verlässlich startet.</p>
             <div className="profile-overview-grid" aria-label="Haushaltsübersicht">
               <div className="profile-overview-card">
                 <strong>{namedMembersCount}</strong>
@@ -700,14 +700,14 @@ export function OnboardingPage() {
               className={`profile-tab-button${activeTab === 'family' ? ' profile-tab-button-active' : ''}`}
               onClick={() => setActiveTab('family')}
             >
-              Haushalt
+              Menschen
             </button>
             <button
               type="button"
               className={`profile-tab-button${activeTab === 'rules' ? ' profile-tab-button-active' : ''}`}
               onClick={() => setActiveTab('rules')}
             >
-              Küchenregeln
+              Woche
             </button>
             <button
               type="button"
@@ -748,7 +748,7 @@ export function OnboardingPage() {
 
           {hasUnconfiguredProfile ? (
             <div className="status-strip" role="status" aria-live="polite">
-              <span>Dieser Bereich startet bewusst neutral. Erst wenn du Namen und Personen speicherst, erscheinen sie als feste Familienangaben.</span>
+              <span>Ein paar Namen und Vorlieben reichen schon, damit die Woche deutlich passender wird.</span>
             </div>
           ) : null}
 
@@ -882,11 +882,13 @@ export function OnboardingPage() {
                           />
                         </label>
                         <p className="profile-inline-note member-grid-wide">
-                          Allergien und Unverträglichkeiten werden in Rezepten nicht verbindlich geprüft. Bitte jede
-                          Zutat vor dem Kochen noch einmal kontrollieren.
+                          Allergien und Unverträglichkeiten werden in Rezepten nicht verbindlich geprüft. Wichtige Unverträglichkeiten und No-Gos hier klar notieren.
                         </p>
                         <p className="profile-inline-note member-grid-wide">
-                          Der volle Name beschreibt die echte Person im Haushalt. Die Anrede ist nur die kurze Form, die in Plan und Prompts bevorzugt erscheint.
+                          Kritische Zutaten und Marken bitte vor Einkauf und Kochen noch einmal kurz gegen euren Alltag prüfen.
+                        </p>
+                        <p className="profile-inline-note member-grid-wide">
+                          Der volle Name beschreibt die Person im Haushalt. Die Anrede ist die kurze Form, die später im Plan auftaucht.
                         </p>
                       </div>
                     </article>
@@ -916,8 +918,8 @@ export function OnboardingPage() {
             <section className={`profile-section${activeTab !== 'family' ? ' profile-section-hidden' : ''}`} aria-labelledby="family-section">
               <div className="profile-section-copy">
                 <span className="section-index">02</span>
-                <h2 id="family-section">Zugänge zum Haushalt</h2>
-                <p>Hier verwaltest du die Logins zu diesem Bereich und ordnest sie den sichtbaren Personen sauber zu.</p>
+                <h2 id="family-section">Wer gehört digital dazu</h2>
+                <p>Hier ordnest du Logins den sichtbaren Personen zu, damit Einladungen und Zuständigkeiten sauber bleiben.</p>
               </div>
               <div className="profile-section-fields">
                 <div className="family-overview" aria-label="Familienkonto Übersicht">
@@ -1180,7 +1182,7 @@ export function OnboardingPage() {
                   />
                 </label>
                 <p className="profile-inline-note two-column-note">
-                  Kritische Zutaten und Marken bitte vor Einkauf und Kochen noch einmal kurz gegen euren Alltag prüfen.
+                  Saison, Lieblingsgerichte und kleine Wochenregeln helfen später bei stimmigeren Vorschlägen.
                 </p>
               </div>
             </section>

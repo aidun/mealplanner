@@ -7,10 +7,10 @@ import { useState } from 'react';
 import { brand } from '../brand';
 
 const previewDays = [
-  { label: 'Mo', title: 'Pasta al Limone', note: 'mit Brokkoli & Burrata', active: true },
-  { label: 'Di', title: 'Ofengemüse-Bowl', note: 'Tahini, Kräuter, warm serviert', active: false },
-  { label: 'Mi', title: 'Tomatensuppe', note: 'mit geröstetem Brot', active: false },
-  { label: 'Do', title: 'Kartoffel-Tacos', note: 'mit Limette & Salat', active: false },
+  { label: 'Mo', title: 'Zitronenpasta', note: 'schnell nach dem Sport', active: true },
+  { label: 'Di', title: 'Blechlachs', note: 'mit Kartoffeln und Erbsen', active: false },
+  { label: 'Mi', title: 'Tomatensuppe', note: 'mit warmem Käsebrot', active: false },
+  { label: 'Do', title: 'Gnocchi-Pfanne', note: 'wenig Abwasch, viel Gemüse', active: false },
 ] as const;
 
 const previewIngredients = ['Zitronen', 'Brokkoli', 'Burrata', 'Pasta', 'Basilikum'] as const;
@@ -108,9 +108,9 @@ export function LoginPage() {
               <div className="entry-tableau-overview">
                 <div>
                   <span className="entry-preview-label">Nächste Woche</span>
-                  <strong>Zitronenpasta mit Brokkoli</strong>
+                  <strong>Zitronenpasta, Blechlachs und eine Suppe für Mittwoch</strong>
                 </div>
-                <p>Montagabend · 4 Portionen · für den gemeinsamen Einkauf</p>
+                <p>Vier Abende, die zusammenpassen und direkt auf den Einkauf einzahlen.</p>
               </div>
 
               <div className="entry-tableau-grid">
@@ -131,7 +131,7 @@ export function LoginPage() {
                   <div className="entry-tableau-recipe">
                     <span className="entry-preview-section-title">Gericht im Fokus</span>
                     <h3>Pasta al Limone mit Brokkoli und Burrata</h3>
-                    <p>Cremig, hell und schnell genug für einen vollen Montag.</p>
+                    <p>Cremig, hell und schnell genug für einen vollen Montag mit Kindern und spätem Feierabend.</p>
                     <div className="entry-tableau-ingredients" aria-label="Zutaten im Rezept">
                       {previewIngredients.map((ingredient) => (
                         <span key={ingredient}>{ingredient}</span>
@@ -142,7 +142,7 @@ export function LoginPage() {
                   <div className="entry-tableau-shopping" aria-label="Einkauf">
                     <div className="entry-tableau-shopping-head">
                       <span className="entry-preview-section-title">Einkauf</span>
-                      <strong>Bereit für den Wocheneinkauf</strong>
+                      <strong>Ein Einkauf für mehrere Abende</strong>
                     </div>
                     <ul>
                       {previewShopping.map((item) => (

@@ -34,22 +34,22 @@ export function inferSelectionReason(meal: Meal) {
   if (meal.meta?.favoriteReuse === 'direct') {
     reasons.push('Es wurde aus eurer gespeicherten Sammlung wieder aufgenommen.');
   } else if (meal.meta?.favoriteReuse === 'variant') {
-    reasons.push('Es greift einen vorhandenen Favoriten auf und variiert ihn für diese Woche.');
+    reasons.push('Es nimmt einen vorhandenen Favoriten auf und variiert ihn für diese Woche.');
   } else {
     reasons.push(baseReasonForSlot(meal.slot));
   }
 
   if (meal.tags.includes('schnell')) {
-    reasons.push('Der Ablauf bleibt alltagstauglich und schnell.');
+    reasons.push('Es hält den Ablauf unter der Woche leicht.');
   }
   if (meal.tags.includes('vegetarisch')) {
-    reasons.push('Die Woche behält damit eine leichte, gemüsebetonte Mahlzeit.');
+    reasons.push('So bleibt die Woche an mindestens einer Stelle leicht und gemüsebetont.');
   }
   if (meal.regenerationNote) {
-    reasons.push(`Die letzte Anpassung berücksichtigt: ${meal.regenerationNote}.`);
+    reasons.push(`Berücksichtigt wurde zuletzt: ${meal.regenerationNote}.`);
   }
   if (meal.meta?.nutritionSource === 'ingredients') {
-    reasons.push('Die Nährwerte wurden aus den Zutaten für dieses Rezept geschätzt.');
+    reasons.push('Die Nährwerte sind dafür aus den Zutaten geschätzt.');
   }
 
   return reasons.join(' ');
@@ -58,13 +58,13 @@ export function inferSelectionReason(meal: Meal) {
 function baseReasonForSlot(slot: string) {
   switch (slot) {
     case 'breakfast':
-      return 'Es passt als früher, unkomplizierter Start in den Tag.';
+      return 'Es passt als ruhiger, unkomplizierter Start in den Tag.';
     case 'lunch':
-      return 'Es stützt die Mitte des Tages, ohne den Ablauf zu blockieren.';
+      return 'Es hält die Mitte des Tages in Bewegung, ohne alles aufzuhalten.';
     case 'dinner':
-      return 'Es ist auf eine gemeinsame Abendmahlzeit für den Haushalt ausgerichtet.';
+      return 'Es trägt den gemeinsamen Abend für euren Haushalt.';
     case 'snack':
-      return 'Es füllt nur dort auf, wo der Wochenplan noch einen kleinen Puffer braucht.';
+      return 'Es füllt die Woche dort auf, wo noch ein kleiner Puffer gut tut.';
     default:
       return 'Es passt in die aktuelle Woche und ergänzt die anderen Gerichte sinnvoll.';
   }

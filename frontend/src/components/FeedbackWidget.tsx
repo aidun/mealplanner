@@ -59,7 +59,7 @@ export function FeedbackWidget() {
         </button>
         {open ? (
           <div id="feedback-widget-panel" className="feedback-widget-panel">
-            <p className="feedback-widget-copy">Was stört, fehlt oder enger geführt werden sollte.</p>
+            <p className="feedback-widget-copy">Was hakt im Alltag oder fühlt sich noch zu umständlich an?</p>
             <label className="field">
               <span className="sr-only">Feedback</span>
               <textarea
@@ -70,7 +70,7 @@ export function FeedbackWidget() {
                 maxLength={maxLength}
                 value={message}
                 onChange={(event) => setMessage(event.target.value)}
-                placeholder="Zum Beispiel: Profil ist zu versteckt, Mobile Header zu dicht, mehr Kontext pro Tag."
+                placeholder="Zum Beispiel: Profil schneller erreichbar machen, Einkauf klarer an die Woche binden, Tagesansicht ruhiger führen."
               />
             </label>
             <div className="feedback-widget-footer">

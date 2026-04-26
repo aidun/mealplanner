@@ -1,6 +1,6 @@
 import { startTransition, useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useSearchParams, type SetURLSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, type SetURLSearchParams } from 'react-router-dom';
 import { Header } from '../components/Header';
 import { RefreshIcon, SparkIcon } from '../components/icons';
 import { MealBoard } from '../components/MealBoard';
@@ -8,7 +8,7 @@ import { MealInspector } from '../components/MealInspector';
 import { PlanBackdrop } from '../components/PlanBackdrop';
 import { ShoppingListPanel } from '../components/ShoppingListPanel';
 import { readableApiError } from '../lib/api-error';
-import { formatDate, formatWeekRange } from '../lib/format';
+import { formatDate } from '../lib/format';
 import { LoginPage } from './LoginPage';
 import {
   createPlan,
@@ -23,7 +23,6 @@ import {
 } from '../api';
 import { useSession } from '../session';
 import type { Meal, PromptDebugSnapshot } from '../types';
-import { brand } from '../brand';
 
 function promptDebugEnabled() {
   if (import.meta.env.VITE_PROMPT_DEBUG !== 'true') {
@@ -285,43 +284,45 @@ export function DashboardPage() {
     {
       id: 'plan' as const,
       title: 'Woche',
-      description: selectedDay?.label ? `${selectedDay.label} im Fokus` : 'Woche im Blick',
+      description: selectedDay?.label
+        ? `${selectedDay.label}: ${selectedDay.meals[0]?.title ?? 'noch offen'}`
+        : 'Tage und Gerichte im Blick',
       meta: `${currentPlanQuery.data?.days.length ?? 0}`,
     },
     {
       id: 'detail' as const,
       title: 'Rezept',
-      description: inspectedMeal?.title ?? 'Gericht öffnen',
+      description: inspectedMeal?.title ?? 'Gericht auswählen',
       meta: inspectedMealInPlan ? 'Aktiv' : 'Offen',
     },
     {
       id: 'shopping' as const,
       title: 'Einkauf',
-      description: shoppingItemCount > 0 ? `${shoppingItemCount} Positionen` : 'Noch leer',
+      description: shoppingItemCount > 0 ? `${shoppingItemCount} Dinge für die Woche` : 'Liste baut sich aus dem Plan auf',
       meta: `${shoppingItemCount}`,
     },
   ];
   const stageNarrative = useMemo(() => {
     if (selectedDay?.label && inspectedMeal?.title) {
-      return `${selectedDay.label}: ${inspectedMeal.title}`;
+      return `${selectedDay.label} startet mit ${inspectedMeal.title}. Alles Weitere hängt direkt daran: Rezept, Portionen und Einkauf.`;
     }
     if (selectedDay?.label) {
-      return `${selectedDay.label} ist offen für euren nächsten Wochenmoment.`;
+      return `${selectedDay.label} ist noch frei. Jetzt nur kurz das Profil schärfen oder die Woche neu planen.`;
     }
-    return `${brand.shortTagline}`;
+    return 'Eine ruhige Wochenansicht für echte Familienabende, schnelle Mittage und einen Einkauf, der direkt mitzieht.';
   }, [inspectedMeal?.title, selectedDay?.label]);
   const quickFacts = [
     {
-      label: 'Woche',
-      value: formatWeekRange(currentPlanQuery.data?.weekStart),
-    },
-    {
-      label: 'Tage',
-      value: String(currentPlanQuery.data?.days.length ?? 0),
+      label: selectedDay?.label ?? 'Heute',
+      value: inspectedMeal?.title ?? 'Noch kein Gericht gewählt',
     },
     {
       label: 'Einkauf',
-      value: shoppingItemCount > 0 ? `${shoppingItemCount} Artikel` : 'Noch leer',
+      value: shoppingItemCount > 0 ? `${shoppingItemCount} Dinge auf der Liste` : 'Liste folgt mit dem Plan',
+    },
+    {
+      label: 'Küchenprofil',
+      value: currentPlanQuery.data?.days?.length ? 'Menschen und Vorlieben prüfen' : 'Für die erste Woche kurz schärfen',
     },
   ];
 
@@ -343,7 +344,7 @@ export function DashboardPage() {
           <PlanBackdrop />
           <div className="plan-stage-head">
             <div className="plan-stage-copy">
-              <span className="eyebrow">Wochenfläche</span>
+              <span className="eyebrow">Diese Woche</span>
               <h1 id="home-title">Die Woche zuerst.</h1>
               <p>{stageNarrative}</p>
             </div>
@@ -355,6 +356,22 @@ export function DashboardPage() {
                 </article>
               ))}
             </div>
+          </div>
+          <div className="plan-stage-actions">
+            <Link to="/onboarding" className="button button-secondary">
+              Küchenprofil schärfen
+            </Link>
+            <button
+              type="button"
+              className="button button-secondary"
+              onClick={() =>
+                startTransition(() => {
+                  updateSearchParams(setSearchParams, { pane: 'shopping' });
+                })
+              }
+            >
+              Liste öffnen
+            </button>
           </div>
         </section>
 

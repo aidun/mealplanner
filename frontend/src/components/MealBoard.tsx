@@ -29,9 +29,9 @@ export function MealBoard({
   const leadMeal = activeDay?.meals[0];
   const boardNarrative = activeDay
     ? leadMeal
-      ? `${activeDay.label ?? formatDate(activeDay.date)} startet mit ${leadMeal.title}.`
-      : `${activeDay.label ?? formatDate(activeDay.date)} ist noch offen.`
-    : 'Öffnet jeden Tag direkt aus der Woche.';
+      ? `${activeDay.label ?? formatDate(activeDay.date)} beginnt mit ${leadMeal.title}.`
+      : `${activeDay.label ?? formatDate(activeDay.date)} ist noch frei.`
+    : 'Die Woche lässt sich direkt Tag für Tag öffnen.';
 
   const selectDay = (index: number) => {
     const day = days[index];
@@ -76,7 +76,7 @@ export function MealBoard({
             aria-current={index === safeDayIndex ? 'date' : undefined}
             onClick={() => selectDay(index)}
           >
-            <span>{day.label ?? formatDate(day.date)}</span>
+            <span>{day.label ?? formatDayRailLabel(day.date, index)}</span>
             <strong>{day.meals[0]?.title ?? 'Noch offen'}</strong>
             <small>
               {day.meals.length > 0 ? `${day.meals.length} Gericht${day.meals.length > 1 ? 'e' : ''}` : formatDayBadge(day.date)}
@@ -99,7 +99,7 @@ export function MealBoard({
                 <p>
                   {leadMeal
                     ? `${formatDate(activeDay.date)} · ${leadMeal.title}`
-                    : `${formatDate(activeDay.date)} · Noch offen für euer nächstes Familiengericht`}
+                    : `${formatDate(activeDay.date)} · Hier fehlt noch ein Gericht für euren Alltag`}
                 </p>
               </div>
               <div className="day-header-meta">
@@ -149,7 +149,7 @@ export function MealBoard({
                           {formatNutritionPerPortion(meal.nutrition)}
                           {meal.estimatedNutrition ? ' · geschätzt' : ''}
                         </div>
-                        {active ? <span className="meal-row-state">Aktiv</span> : null}
+                        <span className="meal-row-state">{active ? 'Offen' : 'Rezept öffnen'}</span>
                       </div>
                       {meal.tags.length > 0 ? (
                         <div className="meal-tag-row" aria-label="Gerichtsmarkierungen">
@@ -170,6 +170,16 @@ export function MealBoard({
       </div>
     </section>
   );
+}
+
+function formatDayRailLabel(value: string, index: number) {
+  if (index === 0) return 'Heute';
+  if (index === 1) return 'Morgen';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat('de-DE', {
+    weekday: 'short',
+  }).format(date);
 }
 
 function slotLabel(slot?: string) {

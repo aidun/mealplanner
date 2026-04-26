@@ -701,6 +701,34 @@ h3 {
   font-size: 0.92rem;
 }
 
+.header-mobile-menu {
+  display: none;
+  position: relative;
+}
+
+.header-mobile-summary {
+  list-style: none;
+}
+
+.header-mobile-summary::-webkit-details-marker {
+  display: none;
+}
+
+.header-mobile-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  display: grid;
+  gap: 8px;
+  min-width: 220px;
+  padding: 10px;
+  border: 1px solid rgba(19, 33, 29, 0.08);
+  border-radius: 16px;
+  background: rgba(255, 252, 248, 0.96);
+  box-shadow: 0 18px 36px rgba(18, 33, 29, 0.12);
+  backdrop-filter: blur(16px);
+}
+
 .button {
   display: inline-flex;
   align-items: center;
@@ -1221,6 +1249,12 @@ a:focus-visible {
   font-size: 1.2rem;
   line-height: 1;
   font-variant-numeric: tabular-nums;
+}
+
+.plan-stage-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .plan-backdrop-canvas {
@@ -2280,6 +2314,12 @@ a:focus-visible {
 .shopping-list-preview {
   display: grid;
   gap: 12px;
+}
+
+.shopping-preview-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .shopping-list-loading {
@@ -3635,23 +3675,27 @@ a:focus-visible {
   }
 
   .header-actions {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) auto;
     gap: 6px;
+    align-items: stretch;
   }
 
-  .header-primary-action,
   .header-secondary-actions {
+    display: none;
+  }
+
+  .header-primary-action {
     width: 100%;
   }
 
-  .header-secondary-actions {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 6px;
+  .header-mobile-menu {
+    display: block;
   }
 
-  .header-secondary-actions > *:only-child {
-    grid-column: 1 / -1;
+  .header-mobile-summary {
+    min-width: 0;
+    width: 100%;
+    padding-inline: 12px;
   }
 
   .week-chip {
@@ -3873,27 +3917,32 @@ a:focus-visible {
   }
 
   .day-overview-grid {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
     padding-inline: 12px;
     padding-bottom: 8px;
     gap: 5px;
   }
 
   .day-tab {
-    min-width: 62px;
-    min-height: 40px;
-    padding: 6px 7px;
+    flex: 0 0 128px;
+    min-width: 128px;
+    min-height: 72px;
+    padding: 10px 10px;
+    scroll-snap-align: start;
   }
 
   .day-tab span {
-    font-size: 0.72rem;
+    font-size: 0.74rem;
   }
 
   .day-tab strong {
-    font-size: 0.64rem;
+    font-size: 0.82rem;
   }
 
   .day-tab small {
-    display: none;
+    display: block;
   }
 
   .family-roster,
@@ -5003,6 +5052,10 @@ body {
     display: grid;
   }
 
+  .header-actions {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
   .header-meta,
   .header-secondary-actions {
     justify-content: flex-start;
@@ -5019,6 +5072,11 @@ body {
   .plan-stage {
     padding: 20px 18px;
     border-radius: 28px;
+  }
+
+  .plan-stage-actions {
+    display: grid;
+    grid-template-columns: 1fr;
   }
 
   .plan-stage-copy h1 {
