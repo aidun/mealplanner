@@ -523,7 +523,7 @@ describe('Mealplanner app', () => {
     const fetchMock = vi.mocked(fetch);
     renderApp('/');
 
-    expect(await screen.findByText('Tage & Gerichte')).toBeInTheDocument();
+    expect(await screen.findByText('Wochen-Workbench')).toBeInTheDocument();
     expect(screen.getAllByRole('link', { name: 'Küchenprofil' })).toHaveLength(1);
     expect(screen.getAllByRole('button', { name: /Neue Woche planen/i })).toHaveLength(1);
     expect(screen.getByRole('region', { name: 'Bereiche wechseln' })).toBeInTheDocument();
@@ -687,7 +687,7 @@ describe('Mealplanner app', () => {
   it('reads dashboard focus from the url', async () => {
     renderApp('/?pane=shopping&day=2026-04-14&meal=meal-2');
 
-    expect(await screen.findByText('Tage & Gerichte')).toBeInTheDocument();
+    expect(await screen.findByText('Wochen-Workbench')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Einkauf' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByText('Di')).toBeInTheDocument();
   });
@@ -1182,7 +1182,7 @@ describe('Mealplanner app', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Abmelden' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Logout gerade nicht möglich');
-    expect(screen.getByText('Diese Woche am Tisch')).toBeInTheDocument();
+    expect(screen.getByText('Woche, Rezept und Einkauf an einem Tisch')).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Mit Google anmelden' })).not.toBeInTheDocument();
   });
 
@@ -1208,7 +1208,7 @@ describe('Mealplanner app', () => {
     window.localStorage.setItem('mealplanner.promptDebug', 'true');
     renderApp('/');
 
-    expect(await screen.findByText('Diese Woche am Tisch')).toBeInTheDocument();
+    expect(await screen.findByText('Woche, Rezept und Einkauf an einem Tisch')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Prompt prüfen' })).not.toBeInTheDocument();
   });
 

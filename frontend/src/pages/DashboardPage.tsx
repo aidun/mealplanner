@@ -355,8 +355,8 @@ export function DashboardPage() {
           <PlanBackdrop />
           <div className="plan-stage-head">
             <div className="plan-stage-copy">
-              <span className="eyebrow">Planner</span>
-              <h1 id="home-title">Diese Woche am Tisch</h1>
+              <span className="eyebrow">Wochenstudio</span>
+              <h1 id="home-title">Woche, Rezept und Einkauf an einem Tisch</h1>
               <p>{stageNarrative}</p>
             </div>
             <div className="plan-stage-actions">
@@ -423,20 +423,21 @@ export function DashboardPage() {
           </div>
         </section>
 
-        <div className="workspace">
-          <div className="workspace-main">
-            <div className={showPlanPane ? '' : 'workspace-pane-hidden-mobile'}>
-              <MealBoard
-                planId={currentPlanQuery.data?.id}
-                days={currentPlanQuery.data?.days}
-                activeDayDate={activeDayDate}
-                selectedMealId={selectedMealId}
-                favoriteMealIDs={favoriteMealIDs}
-                onSelectMeal={selectMealForDay}
-                onSelectDay={selectDay}
-              />
-            </div>
-            <div className={showDetailPane ? '' : 'workspace-pane-hidden-mobile'}>
+        <div className="workspace workspace-pitch">
+          <div className={`workspace-board${showPlanPane ? '' : ' workspace-pane-hidden-mobile'}`}>
+            <MealBoard
+              planId={currentPlanQuery.data?.id}
+              days={currentPlanQuery.data?.days}
+              activeDayDate={activeDayDate}
+              selectedMealId={selectedMealId}
+              favoriteMealIDs={favoriteMealIDs}
+              onSelectMeal={selectMealForDay}
+              onSelectDay={selectDay}
+            />
+          </div>
+
+          <aside className="workspace-rail" aria-label="Rezept und Einkauf">
+            <div className={showDetailPane ? 'workspace-rail-pane' : 'workspace-rail-pane workspace-pane-hidden-mobile'}>
               <MealInspector
                 planId={currentPlanQuery.data?.id}
                 dayDate={selectedDay?.date}
@@ -450,15 +451,15 @@ export function DashboardPage() {
                 isFavoriteBusy={createFavoriteMutation.isPending || deleteFavoriteMutation.isPending}
               />
             </div>
-          </div>
 
-          <div className={`workspace-side${showShoppingPane ? '' : ' workspace-pane-hidden-mobile'}`}>
-            <ShoppingListPanel
-              planId={currentPlanQuery.data?.id}
-              shoppingList={shoppingListQuery.data ?? null}
-              loading={shoppingListQuery.isLoading}
-            />
-          </div>
+            <div className={showShoppingPane ? 'workspace-rail-pane workspace-shopping-pane' : 'workspace-rail-pane workspace-shopping-pane workspace-pane-hidden-mobile'}>
+              <ShoppingListPanel
+                planId={currentPlanQuery.data?.id}
+                shoppingList={shoppingListQuery.data ?? null}
+                loading={shoppingListQuery.isLoading}
+              />
+            </div>
+          </aside>
         </div>
 
         {promptDebug ? (

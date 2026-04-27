@@ -107,6 +107,13 @@ export function MealInspector({
         </div>
 
         <div className="inspector-hero-side">
+          <figure className="inspector-photo-card" aria-hidden="true">
+            <img src="/brand/mahlio-photo-library.png" alt="" />
+            <figcaption>
+              <span>Heute im Fokus</span>
+              <strong>{slotLabel(meal.slot)}</strong>
+            </figcaption>
+          </figure>
           <div className="inspector-summary-grid">
             {summaryFacts.map((fact) => (
               <div key={fact.label} className="inspector-summary-card">

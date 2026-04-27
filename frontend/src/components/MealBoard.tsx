@@ -53,7 +53,7 @@ export function MealBoard({
     <section className="surface meal-board-surface">
       <div className="surface-header meal-board-header">
         <div>
-          <h2>Tage & Gerichte</h2>
+          <h2>Wochen-Workbench</h2>
           <p>{boardNarrative}</p>
         </div>
         {days.length > 0 ? (
@@ -107,7 +107,7 @@ export function MealBoard({
             return (
               <section
                 key={day.date}
-                className={`day-column week-day-section${activeDaySection ? ' week-day-section-active' : ''}`}
+                className={`day-column week-day-section${activeDaySection ? ' week-day-section-active' : ' week-day-section-inactive'}`}
                 aria-label={day.label ?? day.date}
               >
                 <header className="day-header week-day-heading">

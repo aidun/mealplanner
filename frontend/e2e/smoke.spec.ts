@@ -75,7 +75,7 @@ test('planner smoke path', async ({ page, context }) => {
 
   await page.goto('/');
 
-  await expect(page.getByText('Diese Woche am Tisch')).toBeVisible();
+  await expect(page.getByText('Woche, Rezept und Einkauf an einem Tisch')).toBeVisible();
 
   await page.getByLabel('Primäre Aktionen').getByRole('link', { name: 'Küchenprofil' }).click();
   await expect(page.getByText('Haushalt & Küchenprofil')).toBeVisible();
@@ -141,7 +141,7 @@ test('planner stays stable across desktop tablet and mobile breakpoints', async 
     await page.goto('/');
     await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'auto' }));
     await page.waitForTimeout(80);
-    await expect(page.getByText('Tage & Gerichte')).toBeVisible();
+    await expect(page.getByText('Wochen-Workbench')).toBeVisible();
     await expect(page.getByRole('textbox', { name: 'Feedback' })).toHaveCount(0);
 
     const overflow = await page.evaluate(() => ({
@@ -150,8 +150,8 @@ test('planner stays stable across desktop tablet and mobile breakpoints', async 
     }));
     expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth + 1);
 
-    const mainBox = await page.locator('.workspace-main').boundingBox();
-    let sideBox = await page.locator('.workspace-side').boundingBox();
+    const mainBox = await page.locator('.workspace-board').boundingBox();
+    let sideBox = await page.locator('.workspace-rail').boundingBox();
     expect(mainBox).not.toBeNull();
 
     if (viewport.name === 'desktop' && mainBox && sideBox) {
@@ -160,7 +160,7 @@ test('planner stays stable across desktop tablet and mobile breakpoints', async 
 
     if (viewport.name === 'mobile' && !sideBox) {
       await page.getByRole('button', { name: 'Einkauf', exact: true }).click();
-      sideBox = await page.locator('.workspace-side').boundingBox();
+      sideBox = await page.locator('.workspace-rail').boundingBox();
     }
 
     if (viewport.name !== 'desktop' && mainBox && sideBox) {
@@ -172,22 +172,22 @@ test('planner stays stable across desktop tablet and mobile breakpoints', async 
       const minimumPaneWidth = viewport.size.width - 80;
       await expect(menu).toBeVisible();
       await page.getByRole('button', { name: 'Woche', exact: true }).click();
-      await expect(page.locator('.workspace-main > div').nth(0)).toBeVisible();
-      await expect(page.locator('.workspace-main > div').nth(1)).toBeHidden();
-      await expect(page.locator('.workspace-side')).toBeHidden();
+      await expect(page.locator('.workspace-board')).toBeVisible();
+      await expect(page.locator('.workspace-rail-pane').nth(0)).toBeHidden();
+      await expect(page.locator('.workspace-shopping-pane')).toBeHidden();
       const planPaneBox = await page.locator('.meal-board-surface').boundingBox();
       expect(planPaneBox?.width ?? 0).toBeGreaterThan(minimumPaneWidth);
       await expect(page.getByRole('button', { name: 'Einkauf', exact: true })).toBeVisible();
       await page.getByRole('button', { name: 'Einkauf', exact: true }).click();
-      await expect(page.locator('.workspace-main > div').nth(0)).toBeHidden();
-      await expect(page.locator('.workspace-main > div').nth(1)).toBeHidden();
-      await expect(page.locator('.workspace-side')).toBeVisible();
+      await expect(page.locator('.workspace-board')).toBeHidden();
+      await expect(page.locator('.workspace-rail-pane').nth(0)).toBeHidden();
+      await expect(page.locator('.workspace-shopping-pane')).toBeVisible();
       const shoppingPaneBox = await page.locator('.shopping-list-panel').boundingBox();
       expect(shoppingPaneBox?.width ?? 0).toBeGreaterThan(minimumPaneWidth);
       await page.getByRole('button', { name: 'Rezept', exact: true }).click();
-      await expect(page.locator('.workspace-main > div').nth(0)).toBeHidden();
-      await expect(page.locator('.workspace-main > div').nth(1)).toBeVisible();
-      await expect(page.locator('.workspace-side')).toBeHidden();
+      await expect(page.locator('.workspace-board')).toBeHidden();
+      await expect(page.locator('.workspace-rail-pane').nth(0)).toBeVisible();
+      await expect(page.locator('.workspace-shopping-pane')).toBeHidden();
       const recipePaneBox = await page.locator('.inspector').boundingBox();
       expect(recipePaneBox?.width ?? 0).toBeGreaterThan(minimumPaneWidth);
       await page.evaluate(() => window.scrollTo({ top: 720, behavior: 'auto' }));
