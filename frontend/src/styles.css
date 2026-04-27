@@ -1765,6 +1765,14 @@ a:focus-visible {
   word-break: break-word;
 }
 
+.template-preview-frame {
+  width: 100%;
+  min-height: 160px;
+  border: 1px solid rgba(18, 33, 29, 0.08);
+  border-radius: 8px;
+  background: #fff;
+}
+
 .inline-banner {
   display: flex;
   justify-content: space-between;
@@ -1979,11 +1987,13 @@ a:focus-visible {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+  min-width: 0;
 }
 
 .family-roster-card {
   display: grid;
   gap: 10px;
+  min-width: 0;
   padding: 14px;
   border: 1px solid rgba(18, 33, 29, 0.08);
   border-radius: 8px;
@@ -1992,6 +2002,7 @@ a:focus-visible {
 
 .family-roster-card strong {
   line-height: 1.25;
+  overflow-wrap: anywhere;
 }
 
 .family-roster-card p {
@@ -2007,17 +2018,20 @@ a:focus-visible {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  min-width: 0;
 }
 
 .family-mail-chip {
   display: inline-flex;
   align-items: center;
+  max-width: 100%;
   min-height: 26px;
   padding: 0 9px;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.92);
   border: 1px solid rgba(18, 33, 29, 0.08);
   font-size: 0.8rem;
+  overflow-wrap: anywhere;
 }
 
 .family-summary-row {
@@ -2746,6 +2760,7 @@ a:focus-visible {
   font-size: 0.8rem;
   font-weight: 700;
   white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .step-index {
@@ -2761,6 +2776,7 @@ a:focus-visible {
 .ingredient-copy strong,
 .step-row span:last-child {
   line-height: 1.45;
+  overflow-wrap: anywhere;
 }
 
 .ingredient-copy span {
@@ -2859,6 +2875,7 @@ a:focus-visible {
 .field-group {
   display: grid;
   gap: 8px;
+  min-width: 0;
 }
 
 .field-label {
@@ -2940,7 +2957,11 @@ a:focus-visible {
 
 .input {
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
   min-height: 42px;
+  overflow: hidden;
+  text-overflow: ellipsis;
   padding: 10px 12px;
   border: 1px solid rgba(18, 33, 29, 0.14);
   border-radius: 8px;
@@ -3005,7 +3026,10 @@ a:focus-visible {
 
 .profile-page {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 20px;
+  width: 100%;
+  min-width: 0;
   max-width: 1160px;
   margin: 0 auto;
 }
@@ -3013,6 +3037,8 @@ a:focus-visible {
 .profile-page-intro {
   display: grid;
   gap: 14px;
+  min-width: 0;
+  max-width: 100%;
   padding: 20px 22px;
   border: 1px solid rgba(18, 33, 29, 0.08);
   border-radius: var(--radius-lg);
@@ -3040,6 +3066,7 @@ a:focus-visible {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+  min-width: 0;
   max-width: 620px;
 }
 
@@ -3073,6 +3100,7 @@ a:focus-visible {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
+  min-width: 0;
 }
 
 .admin-ops-strip {
@@ -3122,6 +3150,7 @@ a:focus-visible {
 .profile-overview-card {
   display: grid;
   gap: 2px;
+  min-width: 0;
   padding: 14px 16px;
   border: 1px solid rgba(18, 33, 29, 0.08);
   border-radius: 8px;
@@ -3132,21 +3161,28 @@ a:focus-visible {
 .profile-overview-card strong {
   font-size: 1.2rem;
   line-height: 1;
+  overflow-wrap: anywhere;
 }
 
 .profile-overview-card span {
   color: var(--muted);
   font-size: 0.84rem;
+  overflow-wrap: anywhere;
 }
 
 .profile-form {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
+  min-width: 0;
 }
 
 .profile-section {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 18px;
+  width: 100%;
+  min-width: 0;
   padding: 20px;
   border: 1px solid rgba(18, 33, 29, 0.08);
   border-radius: var(--radius-md);
@@ -3162,6 +3198,7 @@ a:focus-visible {
 .profile-section-copy {
   display: grid;
   gap: 8px;
+  min-width: 0;
   align-content: start;
 }
 
@@ -3177,7 +3214,9 @@ a:focus-visible {
 
 .profile-section-fields {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 14px;
+  min-width: 0;
 }
 
 .admin-feedback-themes {
@@ -3190,12 +3229,14 @@ a:focus-visible {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  min-width: 0;
 }
 
 .member-pill {
   display: grid;
   gap: 2px;
   min-width: 0;
+  max-width: 100%;
   padding: 10px 12px;
   border: 1px solid rgba(18, 33, 29, 0.06);
   border-radius: 8px;
@@ -3204,6 +3245,7 @@ a:focus-visible {
 
 .member-pill strong {
   font-size: 0.92rem;
+  overflow-wrap: anywhere;
 }
 
 .member-pill span {
@@ -3215,12 +3257,14 @@ a:focus-visible {
 .family-account-list {
   display: grid;
   gap: 12px;
+  min-width: 0;
 }
 
 .member-editor-card,
 .family-account-row {
   display: grid;
   gap: 14px;
+  min-width: 0;
   padding: 16px;
   border: 1px solid rgba(18, 33, 29, 0.06);
   border-radius: 8px;
@@ -3237,6 +3281,7 @@ a:focus-visible {
 .family-account-copy {
   display: grid;
   gap: 6px;
+  min-width: 0;
 }
 
 .family-account-head {
@@ -3244,11 +3289,14 @@ a:focus-visible {
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .account-role-badge {
   display: inline-flex;
   align-items: center;
+  max-width: 100%;
   min-height: 24px;
   padding: 0 8px;
   border-radius: 8px;
@@ -3256,6 +3304,7 @@ a:focus-visible {
   color: var(--accent-strong);
   font-size: 0.76rem;
   font-weight: 700;
+  overflow-wrap: anywhere;
 }
 
 .account-warning-badge {
@@ -5542,11 +5591,13 @@ body {
 .profile-page-intro-copy {
   display: grid;
   gap: 14px;
+  min-width: 0;
 }
 
 .profile-intro-aside {
   display: grid;
   gap: 10px;
+  min-width: 0;
   padding: 18px;
   border-radius: 24px;
   background:
@@ -5561,6 +5612,7 @@ body {
   font-family: var(--font-display);
   font-size: clamp(1.6rem, 2vw, 2rem);
   line-height: 0.96;
+  overflow-wrap: anywhere;
 }
 
 .profile-intro-aside p {
@@ -6835,9 +6887,69 @@ h3,
   min-width: 0;
 }
 
+.day-tab span,
+.day-tab small,
+.day-tab strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.day-tab strong {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.week-agenda {
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+}
+
+@media (min-width: 1321px) {
+  .workspace-rail .inspector-recipe-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .workspace-rail .step-row {
+    grid-template-columns: 32px minmax(0, 1fr);
+  }
+}
+
+@media (min-width: 761px) and (max-width: 1320px) {
+  .week-agenda {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 .shopping-list-row {
   grid-template-columns: 32px 30px minmax(54px, auto) minmax(0, 1fr);
   align-items: center;
+}
+
+.shopping-list-row .ingredient-amount {
+  width: fit-content;
+  max-width: 100%;
+}
+
+.shopping-list-row .ingredient-copy {
+  min-width: 0;
+}
+
+@media (max-width: 1180px) {
+  .shopping-list-row {
+    grid-template-columns: 32px 28px minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .shopping-list-row .ingredient-amount {
+    grid-column: 3;
+    grid-row: 1;
+  }
+
+  .shopping-list-row .ingredient-copy {
+    grid-column: 3;
+    grid-row: 2;
+  }
 }
 
 .shopping-list-row-done .ingredient-copy,
@@ -6939,7 +7051,22 @@ h3,
     min-width: min(128px, 40vw);
   }
 
+  .day-tab strong {
+    -webkit-line-clamp: 1;
+  }
+
   .shopping-list-row {
-    grid-template-columns: 32px 28px minmax(44px, auto) minmax(0, 1fr);
+    grid-template-columns: 32px 28px minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .shopping-list-row .ingredient-amount {
+    grid-column: 3;
+    grid-row: 1;
+  }
+
+  .shopping-list-row .ingredient-copy {
+    grid-column: 3;
+    grid-row: 2;
   }
 }

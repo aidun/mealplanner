@@ -39,9 +39,6 @@ export function MealBoard({
     const firstMeal = day?.meals[0];
     if (!day) return;
     onSelectDay(day.date, firstMeal?.id);
-    if (firstMeal) {
-      onSelectMeal(firstMeal, day.date);
-    }
   };
 
   return (

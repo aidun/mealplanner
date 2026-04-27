@@ -735,6 +735,33 @@ describe('Mealplanner app', () => {
     expect(document.querySelector('.day-tab-active')).toHaveTextContent('Di');
   });
 
+  it('keeps day-tab navigation in the plan pane until a recipe is opened', async () => {
+    const fetchMock = vi.mocked(fetch);
+    renderApp('/');
+
+    expect((await screen.findAllByRole('button', { name: /Pasta mit Gemüse/ })).length).toBeGreaterThan(0);
+    const dayTabs = document.querySelectorAll<HTMLButtonElement>('.day-tab');
+    fireEvent.click(dayTabs[1]!);
+
+    await waitFor(() => expect(document.querySelector('.day-tab-active')).toHaveTextContent('Di'));
+    fireEvent.click(await screen.findByRole('button', { name: /Feedback/i }));
+    await userEvent.type(await screen.findByRole('textbox', { name: 'Feedback' }), 'Tag bleibt in der Wochenansicht.');
+    fireEvent.click(screen.getByRole('button', { name: 'Feedback senden' }));
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('/api/feedback'),
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({
+            message: 'Tag bleibt in der Wochenansicht.',
+            page: '/?meal=meal-2&day=2026-04-14&pane=plan',
+          }),
+        })
+      )
+    );
+  });
+
   it('reads dashboard focus from the url', async () => {
     renderApp('/?pane=shopping&day=2026-04-14&meal=meal-2');
 
@@ -1076,6 +1103,18 @@ describe('Mealplanner app', () => {
       );
     });
     expect(await screen.findByText('Mail-Template gespeichert.')).toBeInTheDocument();
+  });
+
+  it('renders mail HTML previews in a sandboxed frame', async () => {
+    vi.stubGlobal('fetch', createFetchMock({ isAdmin: true }));
+    const { container } = renderApp('/admin');
+
+    await screen.findByDisplayValue('Premium für dein Familienkonto');
+    const previewFrame = container.querySelector('iframe.template-preview-frame');
+
+    expect(previewFrame).toHaveAttribute('sandbox', '');
+    expect(previewFrame).toHaveAttribute('referrerpolicy', 'no-referrer');
+    expect(previewFrame).toHaveAttribute('srcdoc', '<p>Hallo {{email}}</p>');
   });
 
   it('copies the invite link from onboarding', async () => {

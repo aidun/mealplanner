@@ -370,7 +370,7 @@ func newBringExportView(plan domain.Plan, canonicalURL string, scope bringExport
 		Description:  description,
 		Yield:        yield,
 		Category:     category,
-		ImageURL:     template.URL(imageURL),
+		ImageURL:     safeBringImageURL(imageURL),
 		CanonicalURL: strings.TrimSpace(canonicalURL),
 		Items:        items,
 		Ingredients:  ingredients,
@@ -542,6 +542,18 @@ func bringExportImageURL(title string) string {
 	}
 	svg := fmt.Sprintf(`<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630"><rect width="1200" height="630" fill="#f6fbf8"/><rect x="42" y="42" width="1116" height="546" rx="24" fill="#ffffff" stroke="#c9ddd5" stroke-width="4"/><text x="90" y="180" font-family="Inter,Arial,sans-serif" font-size="34" font-weight="700" fill="#0f766e">%s Rezept</text><text x="90" y="270" font-family="Inter,Arial,sans-serif" font-size="66" font-weight="800" fill="#12211d">%s</text><text x="90" y="352" font-family="Inter,Arial,sans-serif" font-size="28" fill="#5c756d">Import für Bring</text></svg>`, bringSVGText(brand.Name), bringSVGText(trimForSVG(title, 28)))
 	return "data:image/svg+xml;utf8," + url.PathEscape(svg)
+}
+
+func safeBringImageURL(value string) template.URL {
+	value = strings.TrimSpace(value)
+	if value == "" || !strings.HasPrefix(value, "data:image/svg+xml;utf8,") {
+		return ""
+	}
+	if strings.ContainsAny(value, "<>\"' \t\r\n") {
+		return ""
+	}
+	// #nosec G203 -- the data URL is generated locally and accepted only after scheme and character validation.
+	return template.URL(value)
 }
 
 func trimForSVG(value string, max int) string {

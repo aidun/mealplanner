@@ -454,7 +454,7 @@ func (h *Handler) createFamilyInvite(w http.ResponseWriter, r *http.Request) {
 		SupportEmail: "info@markushartmann.dev",
 		Subject:      renderMailTemplate(template.Subject, values),
 		TextBody:     renderMailTemplate(template.TextBody, values),
-		HTMLBody:     renderMailTemplate(template.HTMLBody, values),
+		HTMLBody:     renderHTMLMailTemplate(template.HTMLBody, values),
 	}); err != nil {
 		h.logger.Error("invite email failed", "family_id", family.ID, "email", strings.TrimSpace(req.Email), "error", err)
 	} else {
@@ -667,7 +667,7 @@ func (h *Handler) createPremiumUser(w http.ResponseWriter, r *http.Request) {
 			FeedbackURL:  appURL,
 			Subject:      renderMailTemplate(template.Subject, values),
 			TextBody:     renderMailTemplate(template.TextBody, values),
-			HTMLBody:     renderMailTemplate(template.HTMLBody, values),
+			HTMLBody:     renderHTMLMailTemplate(template.HTMLBody, values),
 		}); err != nil {
 			h.logger.Error("premium invite email failed", "email", email, "error", err)
 		} else {
@@ -972,7 +972,7 @@ func (h *Handler) createPlansForAllUsers(w http.ResponseWriter, r *http.Request)
 				SupportEmail: "info@markushartmann.dev",
 				Subject:      renderMailTemplate(weeklyTemplate.Subject, values),
 				TextBody:     renderMailTemplate(weeklyTemplate.TextBody, values),
-				HTMLBody:     renderMailTemplate(weeklyTemplate.HTMLBody, values),
+				HTMLBody:     renderHTMLMailTemplate(weeklyTemplate.HTMLBody, values),
 			}); err != nil {
 				h.logger.Error("weekly plan email failed", "family_id", family.ID, "user_id", userID, "email", email, "error", err)
 				emailFailures = append(emailFailures, map[string]string{
@@ -1380,4 +1380,8 @@ func mailTemplateByKind(templates []domain.MailTemplate, kind string) domain.Mai
 
 func renderMailTemplate(template string, values map[string]string) string {
 	return mailer.RenderTemplate(template, values)
+}
+
+func renderHTMLMailTemplate(template string, values map[string]string) string {
+	return mailer.RenderHTMLTemplate(template, values)
 }

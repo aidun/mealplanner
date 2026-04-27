@@ -99,6 +99,28 @@ func TestDefaultTemplatesUseRestartBrandCopy(t *testing.T) {
 	}
 }
 
+func TestRenderHTMLTemplateEscapesPlaceholderValues(t *testing.T) {
+	rendered := RenderHTMLTemplate(
+		`<p>{{family_name}}</p><a href="{{invite_link}}">Einladung</a>`,
+		map[string]string{
+			"{{family_name}}": `<img src=x onerror="alert(1)">`,
+			"{{invite_link}}": `https://mealplanner.test/?a=1&b="x"`,
+		},
+	)
+
+	if strings.Contains(rendered, "<img") || strings.Contains(rendered, `onerror="alert(1)"`) {
+		t.Fatalf("expected HTML placeholder value to be escaped, got %s", rendered)
+	}
+	for _, expected := range []string{
+		`&lt;img src=x onerror=&quot;alert(1)&quot;&gt;`,
+		`https://mealplanner.test/?a=1&amp;b=&quot;x&quot;`,
+	} {
+		if !strings.Contains(rendered, expected) {
+			t.Fatalf("expected escaped value %q in %s", expected, rendered)
+		}
+	}
+}
+
 func TestResendPremiumInviteEmailBuildsPayload(t *testing.T) {
 	var captured string
 	client := roundTripFunc(func(req *http.Request) (*http.Response, error) {

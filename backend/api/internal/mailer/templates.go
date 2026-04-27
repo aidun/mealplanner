@@ -195,3 +195,11 @@ func RenderTemplate(template string, values map[string]string) string {
 	}
 	return strings.TrimSpace(rendered)
 }
+
+func RenderHTMLTemplate(template string, values map[string]string) string {
+	escaped := make(map[string]string, len(values))
+	for key, value := range values {
+		escaped[key] = htmlEscape(strings.TrimSpace(value))
+	}
+	return RenderTemplate(template, escaped)
+}

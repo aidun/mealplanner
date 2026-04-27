@@ -389,7 +389,13 @@ export function AdminPage() {
                             </article>
                             <article className="template-preview-card">
                               <strong>HTML</strong>
-                              <div dangerouslySetInnerHTML={{ __html: draft.htmlBody }} />
+                              <iframe
+                                className="template-preview-frame"
+                                title={`${template.label || template.kind} HTML-Vorschau`}
+                                sandbox=""
+                                referrerPolicy="no-referrer"
+                                srcDoc={draft.htmlBody}
+                              />
                             </article>
                           </div>
                         </details>
