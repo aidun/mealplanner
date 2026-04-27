@@ -283,7 +283,7 @@ export function DashboardPage() {
   const workspaceViews = [
     {
       id: 'plan' as const,
-      title: 'Woche',
+      title: 'Plan',
       description: selectedDay?.label
         ? `${selectedDay.label}: ${selectedDay.meals[0]?.title ?? 'noch offen'}`
         : 'Tage und Gerichte im Blick',
@@ -361,7 +361,7 @@ export function DashboardPage() {
             </div>
             <div className="plan-stage-actions">
               <Link to="/onboarding" className="button button-secondary">
-                Küchenprofil schärfen
+                Profil öffnen
               </Link>
               <button
                 type="button"

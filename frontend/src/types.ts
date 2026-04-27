@@ -154,6 +154,8 @@ export interface Profile {
   defaults: MealDefaults;
   presets: string[];
   notes?: string;
+  preferredStores?: string;
+  shoppingNotes?: string;
   updatedAt?: string;
 }
 
@@ -219,6 +221,7 @@ export interface PremiumUser {
 export interface PremiumInviteResult {
   premiumUser: PremiumUser;
   emailSent: boolean;
+  inviteLink?: string;
 }
 
 export type FeedbackStatus = 'open' | 'resolved';
@@ -317,6 +320,8 @@ export interface ProfileFormState {
   servingsPerMeal: string;
   preferredCuisines: string;
   excludedIngredients: string;
+  preferredStores: string;
+  shoppingNotes: string;
   cookingStyle: string;
   mealPlanningRules: string;
   breakfastPresets: string;

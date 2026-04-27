@@ -42,7 +42,7 @@ func (g MockGenerator) GenerateWeek(_ context.Context, profile domain.Profile, w
 		}
 		if i == 0 && len(favorites) > 0 && strings.TrimSpace(favorites[0].Meal.Title) != "" {
 			day.Meals[0].Title = favorites[0].Meal.Title
-			day.Meals[0].Description = "Favorit aus eurer Familienkueche."
+			day.Meals[0].Description = "Favorit aus eurer Familienküche."
 		}
 		if i == 2 || i == 5 {
 			day.Meals = append(day.Meals, g.meal(profile, date, "snack", titles["snack"], "optionaler Snack"))
@@ -149,7 +149,7 @@ func (g MockGenerator) meal(profile domain.Profile, date time.Time, slot string,
 		Instructions:       []string{"Zutaten vorbereiten und abschmecken.", "Schonend garen oder frisch anrichten.", "Portionen pro Person skalieren und direkt servieren."},
 		Nutrition:          nutrition,
 		Tags:               []string{"familientauglich", "geschaetzt", slot},
-		Warnings:           []string{"Naehrwerte sind Schaetzungen."},
+		Warnings:           []string{"Nährwerte sind Schätzungen."},
 		EstimatedNutrition: true,
 		RegenerationNote:   note,
 		GeneratedAt:        g.now(),

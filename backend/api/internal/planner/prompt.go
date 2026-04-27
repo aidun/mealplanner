@@ -10,12 +10,14 @@ import (
 )
 
 type promptProfile struct {
-	Household string               `json:"household"`
-	Members   []promptMember       `json:"members"`
-	Defaults  domain.MealDefaults  `json:"defaults"`
-	Presets   []string             `json:"presets,omitempty"`
-	Notes     string               `json:"notes,omitempty"`
-	MealPlan  []promptDaySlotRules `json:"mealPlan,omitempty"`
+	Household       string               `json:"household"`
+	Members         []promptMember       `json:"members"`
+	Defaults        domain.MealDefaults  `json:"defaults"`
+	Presets         []string             `json:"presets,omitempty"`
+	Notes           string               `json:"notes,omitempty"`
+	PreferredStores string               `json:"preferredStores,omitempty"`
+	ShoppingNotes   string               `json:"shoppingNotes,omitempty"`
+	MealPlan        []promptDaySlotRules `json:"mealPlan,omitempty"`
 }
 
 type promptFavorite struct {
@@ -77,7 +79,7 @@ func WeekPrompt(profile domain.Profile, weekStart time.Time, favorites []domain.
 	body, _ := json.MarshalIndent(minimizeProfile(profile), "", "  ")
 	favoriteBody, _ := json.MarshalIndent(minimizeFavorites(favorites), "", "  ")
 	slotRuleText := strings.Join(humanDaySlotLabels(profile), "; ")
-	return fmt.Sprintf(`Erstelle einen Wochen-Essensplan fuer eine Familie.
+	return fmt.Sprintf(`Erstelle einen Wochen-Essensplan für eine Familie.
 
 Woche startet am %s.
 
@@ -86,12 +88,14 @@ Regeln:
 - Plane pro Wochentag nur diese aktivierten Mahlzeiten: %s.
 - Generiere an keinem Tag deaktivierte Mahlzeiten.
 - Ein gemeinsames Gericht pro Mahlzeit, Portionen pro Person skalieren.
-- Pro Mahlzeit nur fuer die hinterlegten Teilnehmenden des jeweiligen Wochentags planen und Portionen nur fuer diese Personen ausgeben.
-- Jede Mahlzeit braucht Beschreibung, Zutaten, Anleitung und geschaetzte Naehrwerte pro Portion.
-- Beachte alle Vorlieben, Abneigungen und Einschraenkungen pro Person.
+- Pro Mahlzeit nur für die hinterlegten Teilnehmenden des jeweiligen Wochentags planen und Portionen nur für diese Personen ausgeben.
+- Jede Mahlzeit braucht Beschreibung, Zutaten, Anleitung und geschätzte Nährwerte pro Portion.
+- Beachte alle Vorlieben, Abneigungen und Einschränkungen pro Person.
+- Beachte bevorzugte Einkaufsläden, typische Verpackungsgrößen und Einkaufsnotizen aus dem Profil.
+- Plane Zutaten so, dass angebrochene Packungen möglichst über Folgetage verbraucht werden und nicht als Einzelreste stehen bleiben.
 - Nutze Favoriten als Inspiration. Wiederhole passende Favoriten oder Varianten davon, aber mache die Woche nicht monoton.
-- Wenn Favoriten gut passen, uebernimm mindestens 2 Mahlzeiten der Woche direkt daraus oder als klar erkennbare Variante.
-- Gib nur JSON im vereinbarten Schema zurueck.
+- Wenn Favoriten gut passen, übernimm mindestens 2 Mahlzeiten der Woche direkt daraus oder als klar erkennbare Variante.
+- Gib nur JSON im vereinbarten Schema zurück.
 
 Familienprofil:
 %s
@@ -109,17 +113,18 @@ func RegeneratePrompt(profile domain.Profile, plan domain.Plan, mealID string, n
 		Note      string            `json:"note"`
 		Favorites []promptFavorite  `json:"favorites,omitempty"`
 	}{Profile: minimizeProfile(profile), Plan: minimizePlanContext(plan, mealID), MealID: mealID, Note: cleanNote, Favorites: minimizeFavorites(favorites)}, "", "  ")
-	return fmt.Sprintf(`Erzeuge genau eine Ersatz-Mahlzeit fuer mealId %s.
+	return fmt.Sprintf(`Erzeuge genau eine Ersatz-Mahlzeit für mealId %s.
 
 Regeln:
 - Erhalte Slot, Datumskontext und Familienlogik.
 - Die Nutzer-Anmerkung ist verbindlich.
-- Wenn die Anmerkung eine Zutat ausschliesst, darf sie weder in Titel, Zutaten noch Anleitung vorkommen.
+- Wenn die Anmerkung eine Zutat ausschließt, darf sie weder in Titel, Zutaten noch Anleitung vorkommen.
 - Wenn die Anmerkung Tempo, Kindertauglichkeit, Aufwand oder Stil nennt, muss das in Beschreibung, Zutaten und Anleitung sichtbar umgesetzt werden.
-- Favoriten duerfen als Stil- oder Rezeptvorlage dienen, wenn sie zur Anmerkung passen.
-- Wenn die Anmerkung offen bleibt, pruefe zuerst passende Favoriten oder nahe Varianten daraus.
-- Naehrwerte sind pro Portion anzugeben.
-- Gib nur die einzelne Mahlzeit im vereinbarten JSON-Schema zurueck.
+- Favoriten dürfen als Stil- oder Rezeptvorlage dienen, wenn sie zur Anmerkung passen.
+- Wenn die Anmerkung offen bleibt, prüfe zuerst passende Favoriten oder nahe Varianten daraus.
+- Nährwerte sind pro Portion anzugeben.
+- Beachte Einkaufsnotizen, Verpackungsgrößen und vorhandene Wochenzutaten aus dem Profilkontext.
+- Gib nur die einzelne Mahlzeit im vereinbarten JSON-Schema zurück.
 
 Nutzer-Anmerkung:
 %s
@@ -136,10 +141,10 @@ func MergeProfilePrompt(target domain.Profile, incoming domain.Profile) string {
 	return fmt.Sprintf(`Mische zwei Familienprofile zu einem gemeinsamen Mealplanner-Profil.
 
 Regeln:
-- Bewahre Personen, Vorlieben, Abneigungen, Einschraenkungen und Kalorienziele sinnvoll.
-- Loese Dopplungen pragmatisch auf.
+- Bewahre Personen, Vorlieben, Abneigungen, Einschränkungen und Kalorienziele sinnvoll.
+- Löse Dopplungen pragmatisch auf.
 - Keine Login-Daten, E-Mail-Adressen oder Namen erfinden.
-- Gib nur das gemeinsame Profil im vereinbarten JSON-Schema zurueck.
+- Gib nur das gemeinsame Profil im vereinbarten JSON-Schema zurück.
 
 Kontext:
 %s`, string(body))
@@ -186,12 +191,14 @@ func minimizeProfile(profile domain.Profile) promptProfile {
 		})
 	}
 	return promptProfile{
-		Household: "privater Haushalt",
-		Members:   members,
-		Defaults:  profile.Defaults,
-		Presets:   profile.Presets,
-		Notes:     trimPromptText(profile.Notes, 500),
-		MealPlan:  dayRules,
+		Household:       "privater Haushalt",
+		Members:         members,
+		Defaults:        profile.Defaults,
+		Presets:         profile.Presets,
+		Notes:           trimPromptText(profile.Notes, 500),
+		PreferredStores: trimPromptText(profile.PreferredStores, 300),
+		ShoppingNotes:   trimPromptText(profile.ShoppingNotes, 500),
+		MealPlan:        dayRules,
 	}
 }
 

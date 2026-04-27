@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Header } from '../components/Header';
-import { CheckIcon, PlusIcon, SaveIcon, TrashIcon } from '../components/icons';
+import { CheckIcon, CopyIcon, PlusIcon, SaveIcon, TrashIcon } from '../components/icons';
 import { createPremiumUser, deletePremiumUser, getAdminOverview, getMailTemplates, logout, resolveFeedback, updateMailTemplate } from '../api';
 import { readableApiError } from '../lib/api-error';
 import { LoginPage } from './LoginPage';
@@ -16,6 +16,8 @@ export function AdminPage() {
   const [premiumEmail, setPremiumEmail] = useState('');
   const [sendPremiumInvite, setSendPremiumInvite] = useState(true);
   const [lastPremiumInviteSent, setLastPremiumInviteSent] = useState(false);
+  const [lastPremiumInviteLink, setLastPremiumInviteLink] = useState('');
+  const [premiumInviteCopyState, setPremiumInviteCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
   const [templateDrafts, setTemplateDrafts] = useState<Record<string, MailTemplate>>({});
   const [loggedOut, setLoggedOut] = useState(false);
   const buildInfo = getBuildInfo();
@@ -43,8 +45,10 @@ export function AdminPage() {
 
   const createPremiumMutation = useMutation({
     mutationFn: ({ email, sendInvite }: { email: string; sendInvite: boolean }) => createPremiumUser(email, { sendInvite }),
-    onSuccess: async () => {
-      setLastPremiumInviteSent(sendPremiumInvite);
+    onSuccess: async (result) => {
+      setLastPremiumInviteSent(Boolean(result?.emailSent));
+      setLastPremiumInviteLink(result?.inviteLink ?? '');
+      setPremiumInviteCopyState('idle');
       setPremiumEmail('');
       setSendPremiumInvite(true);
       await queryClient.invalidateQueries({ queryKey: ['admin-overview'] });
@@ -273,6 +277,29 @@ export function AdminPage() {
                 <p className="success-copy">
                   {lastPremiumInviteSent ? 'Premium freigeschaltet und Einladung versendet.' : 'Premium freigeschaltet.'}
                 </p>
+              ) : null}
+              {lastPremiumInviteLink ? (
+                <div className="invite-result premium-invite-result">
+                  <strong>Premium-Link</strong>
+                  <a href={lastPremiumInviteLink}>{lastPremiumInviteLink}</a>
+                  <button
+                    type="button"
+                    className={`icon-button${premiumInviteCopyState === 'copied' ? ' icon-button-active' : ''}`}
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(lastPremiumInviteLink);
+                        setPremiumInviteCopyState('copied');
+                      } catch {
+                        setPremiumInviteCopyState('failed');
+                      }
+                    }}
+                    aria-label={premiumInviteCopyState === 'copied' ? 'Premium-Link kopiert' : 'Premium-Link kopieren'}
+                    title={premiumInviteCopyState === 'copied' ? 'Premium-Link kopiert' : 'Premium-Link kopieren'}
+                  >
+                    {premiumInviteCopyState === 'copied' ? <CheckIcon className="action-icon" /> : <CopyIcon className="action-icon" />}
+                  </button>
+                  {premiumInviteCopyState === 'failed' ? <p className="error-copy">Link konnte nicht kopiert werden.</p> : null}
+                </div>
               ) : null}
 
               <div className="family-account-list">

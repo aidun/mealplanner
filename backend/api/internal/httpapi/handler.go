@@ -648,6 +648,7 @@ func (h *Handler) createPremiumUser(w http.ResponseWriter, r *http.Request) {
 		h.serverError(w, r, err)
 		return
 	}
+	appURL := h.absoluteRequestURL(r, "/").String()
 	emailSent := false
 	if req.SendInvite {
 		templates, err := h.repo.ListMailTemplates(r)
@@ -656,7 +657,6 @@ func (h *Handler) createPremiumUser(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		template := mailTemplateByKind(templates, mailer.TemplateKindPremiumInvite)
-		appURL := h.absoluteRequestURL(r, "/").String()
 		values := map[string]string{
 			"{{app_url}}":       appURL,
 			"{{support_email}}": "info@markushartmann.dev",
@@ -674,7 +674,7 @@ func (h *Handler) createPremiumUser(w http.ResponseWriter, r *http.Request) {
 			emailSent = true
 		}
 	}
-	writeJSON(w, http.StatusCreated, domain.PremiumInviteResult{PremiumUser: premiumUser, EmailSent: emailSent})
+	writeJSON(w, http.StatusCreated, domain.PremiumInviteResult{PremiumUser: premiumUser, EmailSent: emailSent, InviteLink: appURL})
 }
 
 func (h *Handler) getMailTemplates(w http.ResponseWriter, r *http.Request) {
@@ -732,7 +732,7 @@ func (h *Handler) createFeedback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len([]rune(message)) > 2000 {
-		writeError(w, http.StatusBadRequest, "Bitte kuerze dein Feedback auf maximal 2000 Zeichen.")
+		writeError(w, http.StatusBadRequest, "Bitte kürze dein Feedback auf maximal 2000 Zeichen.")
 		return
 	}
 	entry, err := h.repo.SaveFeedback(r, message, strings.TrimSpace(req.Page))

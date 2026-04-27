@@ -57,7 +57,7 @@ test('first-login onboarding stays stable from desktop to small mobile', async (
     await assertNoHorizontalOverflow(page);
     await assertHorizontallyWithinViewport(wizard, page);
 
-    const skipButton = page.getByRole('button', { name: 'Erstmal ueberspringen' });
+    const skipButton = page.getByRole('button', { name: 'Erstmal überspringen' });
     const startButton = page.getByRole('button', { name: "Los geht's" });
     await expect(skipButton).toBeVisible();
     await expect(startButton).toBeVisible();

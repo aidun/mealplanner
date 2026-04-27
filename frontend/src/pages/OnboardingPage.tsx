@@ -28,6 +28,8 @@ const EMPTY_FORM: ProfileFormState = {
   servingsPerMeal: '',
   preferredCuisines: '',
   excludedIngredients: '',
+  preferredStores: '',
+  shoppingNotes: '',
   cookingStyle: '',
   mealPlanningRules: '',
   breakfastPresets: '',
@@ -375,7 +377,7 @@ export function OnboardingPage() {
               </button>
               <div className="guided-onboarding-topbar-copy">
                 <strong>Ersteinrichtung</strong>
-                <span>Skipbar, kurz und nur fuer einen guten Start.</span>
+                <span>Überspringbar, kurz und nur für einen guten Start.</span>
               </div>
               <span className="guided-onboarding-step-badge">
                 {guidedStep === 0 ? 'ca. 1 Minute' : `Schritt ${guidedStep} / ${GUIDED_ONBOARDING_STEPS.length - 1}`}
@@ -455,14 +457,14 @@ export function OnboardingPage() {
                       onClick={() => skipOnboardingMutation.mutate()}
                       disabled={skipOnboardingMutation.isPending}
                     >
-                      {skipOnboardingMutation.isPending ? 'Wird uebersprungen' : 'Erstmal ueberspringen'}
+                      {skipOnboardingMutation.isPending ? 'Wird übersprungen' : 'Erstmal überspringen'}
                     </button>
                     <button type="button" className="button button-primary" onClick={startWelcomeFlow}>
                       Los geht's
                     </button>
                   </div>
                   {skipOnboardingMutation.isError ? (
-                    <p className="error-copy">{readableApiError(skipOnboardingMutation.error, 'Der Einstieg konnte gerade nicht uebersprungen werden.')}</p>
+                    <p className="error-copy">{readableApiError(skipOnboardingMutation.error, 'Der Einstieg konnte gerade nicht übersprungen werden.')}</p>
                   ) : null}
                 </div>
               ) : null}
@@ -1199,6 +1201,26 @@ export function OnboardingPage() {
                     value={form.excludedIngredients}
                     onChange={(event) => update('excludedIngredients', event.target.value)}
                     placeholder={'Keine Erdnüsse\nKeine rohen Zwiebeln'}
+                  />
+                </label>
+                <label className="field">
+                  <span className="field-label">Lieblingsläden</span>
+                  <textarea
+                    className="input textarea"
+                    rows={3}
+                    value={form.preferredStores}
+                    onChange={(event) => update('preferredStores', event.target.value)}
+                    placeholder={'Rewe\nEdeka\nWochenmarkt'}
+                  />
+                </label>
+                <label className="field">
+                  <span className="field-label">Einkauf & Verpackungsgrößen</span>
+                  <textarea
+                    className="input textarea"
+                    rows={4}
+                    value={form.shoppingNotes}
+                    onChange={(event) => update('shoppingNotes', event.target.value)}
+                    placeholder="500 g Pasta möglichst aufbrauchen, angebrochene Sahne am nächsten Tag einplanen."
                   />
                 </label>
                 <label className="field">

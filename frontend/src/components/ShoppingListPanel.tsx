@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { BringLink } from './BringLink';
 import type { ShoppingList, ShoppingListItem } from '../types';
-import { ChevronDownIcon, ChevronUpIcon } from './icons';
+import { CheckIcon, ChevronDownIcon, ChevronUpIcon } from './icons';
 
 interface ShoppingListPanelProps {
   planId?: string;
@@ -12,14 +12,45 @@ interface ShoppingListPanelProps {
 export function ShoppingListPanel({ planId, shoppingList, loading }: ShoppingListPanelProps) {
   const [expanded, setExpanded] = useState(true);
   const items = useMemo(() => flattenShoppingList(shoppingList), [shoppingList]);
+  const itemKeySignature = useMemo(() => items.map(shoppingItemKey).join('|'), [items]);
+  const storageKey = planId ? `mealplanner.shopping.checked.${planId}` : '';
+  const [checkedKeys, setCheckedKeys] = useState<string[]>([]);
+  useEffect(() => {
+    const checkedFromPlan = items.filter((item) => item.checked).map(shoppingItemKey);
+    if (!storageKey) {
+      setCheckedKeys(checkedFromPlan);
+      return;
+    }
+    try {
+      const stored = JSON.parse(window.localStorage.getItem(storageKey) ?? '[]');
+      const storedKeys = Array.isArray(stored) ? stored.filter((value): value is string => typeof value === 'string') : [];
+      const available = new Set(items.map(shoppingItemKey));
+      setCheckedKeys([...new Set([...checkedFromPlan, ...storedKeys.filter((key) => available.has(key))])]);
+    } catch {
+      setCheckedKeys(checkedFromPlan);
+    }
+  }, [itemKeySignature, storageKey]);
   const categories = useMemo(() => uniqueCategories(items), [items]);
   const groupedItems = useMemo(() => groupByCategory(items), [items]);
   const sectionTitles = useMemo(() => sectionPreviewTitles(shoppingList), [shoppingList]);
   const summary = !Array.isArray(shoppingList) ? shoppingList?.summary : undefined;
-  const canExport = Boolean(planId && items.length > 0);
-  const checkedItems = items.filter((item) => item.checked).length;
+  const checkedKeySet = useMemo(() => new Set(checkedKeys), [checkedKeys]);
+  const checkedItems = items.filter((item) => checkedKeySet.has(shoppingItemKey(item))).length;
   const remainingItems = Math.max(0, items.length - checkedItems);
+  const excludedItems = items.filter((item) => checkedKeySet.has(shoppingItemKey(item))).map((item) => item.name);
+  const canExport = Boolean(planId && items.length > 0);
   const progress = items.length > 0 ? Math.round((checkedItems / items.length) * 100) : 0;
+
+  const toggleItem = (item: ShoppingListItem) => {
+    const key = shoppingItemKey(item);
+    setCheckedKeys((current) => {
+      const next = current.includes(key) ? current.filter((value) => value !== key) : [...current, key];
+      if (storageKey) {
+        window.localStorage.setItem(storageKey, JSON.stringify(next));
+      }
+      return next;
+    });
+  };
 
   return (
     <section className="surface shopping-list-panel">
@@ -34,7 +65,7 @@ export function ShoppingListPanel({ planId, shoppingList, loading }: ShoppingLis
         </div>
         {canExport ? (
           <div className="surface-actions">
-            <BringLink planId={planId} label="Woche zu Bring" />
+            <BringLink planId={planId} label="Woche zu Bring" scope={{ exclude: excludedItems }} disabled={remainingItems === 0} />
           </div>
         ) : null}
       </div>
@@ -95,16 +126,33 @@ export function ShoppingListPanel({ planId, shoppingList, loading }: ShoppingLis
                     <span>{group.items.length} Position{group.items.length > 1 ? 'en' : ''}</span>
                   </div>
                   <ul className="list ingredient-list shopping-list-items">
-                    {group.items.map((item, index) => (
-                      <li key={`${group.title}-${item.name}-${index}`} className="ingredient-row shopping-list-row">
-                        <span className={`shopping-item-check${item.checked ? ' shopping-item-check-done' : ''}`} aria-hidden="true" />
-                        <span className="ingredient-amount">{item.amount ? `${item.amount}${item.unit ? ` ${item.unit}` : ''}` : 'offen'}</span>
-                        <div className="ingredient-copy">
-                          <strong>{item.name}</strong>
-                          {item.note ? <span>{item.note}</span> : null}
-                        </div>
-                      </li>
-                    ))}
+                    {group.items.map((item, index) => {
+                      const checked = checkedKeySet.has(shoppingItemKey(item));
+                      return (
+                        <li
+                          key={`${group.title}-${item.name}-${index}`}
+                          className={`ingredient-row shopping-list-row${checked ? ' shopping-list-row-done' : ''}`}
+                        >
+                          <button
+                            type="button"
+                            className={`shopping-item-check${checked ? ' shopping-item-check-done' : ''}`}
+                            aria-pressed={checked}
+                            aria-label={checked ? `${item.name} wieder öffnen` : `${item.name} abhaken`}
+                            onClick={() => toggleItem(item)}
+                          >
+                            {checked ? <CheckIcon className="shopping-item-check-icon" /> : null}
+                          </button>
+                          <span className="shopping-category-icon" aria-hidden="true">
+                            <CategoryIcon category={item.category} />
+                          </span>
+                          <span className="ingredient-amount">{item.amount ? `${item.amount}${item.unit ? ` ${item.unit}` : ''}` : 'offen'}</span>
+                          <div className="ingredient-copy">
+                            <strong>{item.name}</strong>
+                            {item.note ? <span>{item.note}</span> : null}
+                          </div>
+                        </li>
+                      );
+                    })}
                   </ul>
                 </section>
               ))}
@@ -113,6 +161,46 @@ export function ShoppingListPanel({ planId, shoppingList, loading }: ShoppingLis
         </div>
       ) : null}
     </section>
+  );
+}
+
+function shoppingItemKey(item: ShoppingListItem) {
+  return [item.name, item.unit ?? '', item.category ?? '']
+    .map((value) => value.trim().toLowerCase().replace(/\s+/g, ' '))
+    .join('|');
+}
+
+function CategoryIcon({ category }: { category?: string }) {
+  const value = (category ?? '').toLowerCase();
+  if (value.includes('gemüse') || value.includes('obst')) {
+    return (
+      <svg viewBox="0 0 24 24" className="shopping-category-svg">
+        <path d="M5 13c6-7 11-8 15-8-1 7-4 12-11 14-2 .6-4-.4-4-2.4V13Z" />
+        <path d="M7 16c3-4 6-6 10-8" />
+      </svg>
+    );
+  }
+  if (value.includes('kühl') || value.includes('milch')) {
+    return (
+      <svg viewBox="0 0 24 24" className="shopping-category-svg">
+        <path d="M8 3h8l-1 5 2 3v9H7v-9l2-3-1-5Z" />
+        <path d="M8 12h8" />
+      </svg>
+    );
+  }
+  if (value.includes('fleisch') || value.includes('fisch')) {
+    return (
+      <svg viewBox="0 0 24 24" className="shopping-category-svg">
+        <path d="M4 12c4-5 9-6 14-2l2-2v8l-2-2c-5 4-10 3-14-2Z" />
+        <path d="M8 12h.01" />
+      </svg>
+    );
+  }
+  return (
+    <svg viewBox="0 0 24 24" className="shopping-category-svg">
+      <path d="M6 9h12l-1 11H7L6 9Z" />
+      <path d="M9 9V7a3 3 0 0 1 6 0v2" />
+    </svg>
   );
 }
 

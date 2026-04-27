@@ -51,7 +51,7 @@ func TestResendInviteEmailBuildsPayload(t *testing.T) {
 		To:           "person@example.test",
 		FamilyName:   "Familie Hartmann",
 		InviteLink:   "https://mealplanner.test/family/invites/accept?token=invite-token",
-		WarningText:  "Der persoenliche Account wird uebernommen.",
+		WarningText:  "Der persönliche Account wird übernommen.",
 		SupportEmail: "info@markushartmann.dev",
 	})
 	if err != nil {
@@ -84,17 +84,17 @@ func TestWeeklyTemplateContainsPlanURL(t *testing.T) {
 
 func TestDefaultTemplatesUseRestartBrandCopy(t *testing.T) {
 	invite, ok := DefaultTemplate(TemplateKindFamilyInvite)
-	if !ok || !strings.Contains(invite.TextBody, "kommst du in euren gemeinsamen Bereich bei Mahlio") {
+	if !ok || !strings.Contains(invite.TextBody, "kommst du in euren gemeinsamen Bereich bei Mahlio") || !strings.Contains(invite.TextBody, "Rückfragen") {
 		t.Fatalf("unexpected invite defaults: %#v", invite)
 	}
 
 	premium, ok := DefaultTemplate(TemplateKindPremiumInvite)
-	if !ok || premium.Subject != "Mahlio Premium ist für euren Haushalt bereit" {
+	if !ok || premium.Subject != "Mahlio Premium ist für euren Haushalt bereit" || !strings.Contains(premium.TextBody, "für euren Haushalt") {
 		t.Fatalf("unexpected premium defaults: %#v", premium)
 	}
 
 	weekly, ok := DefaultTemplate(TemplateKindWeeklyPlanReady)
-	if !ok || weekly.Subject != "Eure Mahlio-Woche ab {{week_start}} ist bereit" {
+	if !ok || weekly.Subject != "Eure Mahlio-Woche ab {{week_start}} ist bereit" || !strings.Contains(weekly.TextBody, "können direkt geprüft werden") {
 		t.Fatalf("unexpected weekly defaults: %#v", weekly)
 	}
 }

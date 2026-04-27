@@ -18,10 +18,10 @@ func TestWeekPromptMinimizesPersonalLoginContext(t *testing.T) {
 			Role:           "Vater",
 			Age:            39,
 			CaloriesTarget: 2300,
-			Likes:          "frische Kueche",
+			Likes:          "frische Küche",
 			Restrictions:   "keine Erdnuesse",
 		}},
-		Notes: "Naehrwerte sind Schaetzungen.",
+		Notes: "Nährwerte sind Schätzungen.",
 	}
 
 	prompt := WeekPrompt(profile, time.Date(2026, 4, 20, 0, 0, 0, 0, time.UTC), nil)
@@ -100,12 +100,12 @@ func TestRegeneratePromptPrefersFavoritesWhenNoteIsOpen(t *testing.T) {
 	prompt := RegeneratePrompt(domain.DefaultProfile(), domain.Plan{
 		WeekStart: "2026-04-20",
 		Days: []domain.DayPlan{{
-			Date: "2026-04-20",
+			Date:  "2026-04-20",
 			Meals: []domain.Meal{{ID: "meal-1", Slot: "dinner", Title: "Pasta"}},
 		}},
 	}, "meal-1", "", []domain.FavoriteRecipe{{Meal: domain.Meal{Title: "Ofengemuese"}}})
 
-	if !strings.Contains(prompt, "pruefe zuerst passende Favoriten") {
+	if !strings.Contains(prompt, "prüfe zuerst passende Favoriten") {
 		t.Fatalf("prompt should include compact favorites: %s", prompt)
 	}
 }

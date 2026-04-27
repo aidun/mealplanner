@@ -118,6 +118,8 @@ export function profileToForm(profile?: Profile | null): ProfileFormState {
     servingsPerMeal: noteSections['Standard-Portionen'] ?? '',
     preferredCuisines: joinLines(profile?.presets),
     excludedIngredients: noteSections['Ausgeschlossene Zutaten'] ?? '',
+    preferredStores: profile?.preferredStores ?? noteSections['Lieblingsläden'] ?? '',
+    shoppingNotes: profile?.shoppingNotes ?? noteSections['Einkauf & Verpackungsgrößen'] ?? '',
     cookingStyle: noteSections['Kochstil'] ?? profile?.notes ?? '',
     mealPlanningRules: noteSections['Planungsregeln'] ?? '',
     breakfastPresets: objectToBlock(profile?.defaults?.breakfast),
@@ -138,6 +140,8 @@ export function formToProfile(state: ProfileFormState): Profile {
     Kochstil: state.cookingStyle,
     Planungsregeln: state.mealPlanningRules,
     'Ausgeschlossene Zutaten': state.excludedIngredients,
+    Lieblingsläden: state.preferredStores,
+    'Einkauf & Verpackungsgrößen': state.shoppingNotes,
   };
 
   for (const day of mealPlanDays) {
@@ -161,6 +165,8 @@ export function formToProfile(state: ProfileFormState): Profile {
     },
     presets: splitLines(state.preferredCuisines),
     notes: formatNoteSections(noteSections),
+    preferredStores: state.preferredStores.trim(),
+    shoppingNotes: state.shoppingNotes.trim(),
   };
 }
 
@@ -218,6 +224,8 @@ function parseNoteSections(notes: string) {
     'Kochstil',
     'Planungsregeln',
     'Ausgeschlossene Zutaten',
+    'Lieblingsläden',
+    'Einkauf & Verpackungsgrößen',
   ];
   let currentTitle = '';
   let currentLines: string[] = [];

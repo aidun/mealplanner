@@ -323,7 +323,7 @@ func (m *memoryRepo) CreateFamilyInvite(r *http.Request, emailHash string, ttl t
 	}
 	expiresAt := time.Now().Add(ttl)
 	m.invites[token] = memoryInvite{targetFamilyID: familyID, emailHash: emailHash, token: token, expiresAt: expiresAt}
-	return domain.FamilyInvite{ID: "invite-1", EmailHash: emailHash, ExpiresAt: expiresAt, WarningText: "persoenlicher Account"}, token, nil
+	return domain.FamilyInvite{ID: "invite-1", EmailHash: emailHash, ExpiresAt: expiresAt, WarningText: "persönlicher Account"}, token, nil
 }
 
 func (m *memoryRepo) AcceptFamilyInvite(r *http.Request, token string, mergedProfile domain.Profile) (domain.FamilySummary, error) {
@@ -990,6 +990,45 @@ func TestBringExportPrefersStoredShoppingListForWeek(t *testing.T) {
 	}
 }
 
+func TestBringExportCanExcludeCheckedWeekItems(t *testing.T) {
+	repo := newMemoryRepo()
+	repo.plans["user-1|plan-1"] = domain.Plan{
+		ID:        "plan-1",
+		WeekStart: "2026-04-20",
+		ShoppingList: []domain.ShoppingItem{
+			{Name: "Zucchini", Amount: 2, Unit: "Stk"},
+			{Name: "Pasta", Amount: 400, Unit: "g"},
+		},
+	}
+	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "test-secret", nil, nil, nil)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/plans/plan-1/bring-export-url?exclude=Zucchini", nil)
+	setAuth(repo, req, "user-1")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected signed url 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+	var payload map[string]string
+	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(payload["pageUrl"], "exclude=Zucchini") {
+		t.Fatalf("expected exclude query to be signed into page url, got %q", payload["pageUrl"])
+	}
+
+	req = httptest.NewRequest(http.MethodGet, payload["pageUrl"], nil)
+	rec = httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected signed export 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+	body := rec.Body.String()
+	if strings.Contains(body, "2 Stk Zucchini") || !strings.Contains(body, "400 g Pasta") {
+		t.Fatalf("expected checked item to be excluded from Bring export, got %s", body)
+	}
+}
+
 func TestBringExportCanScopeWeekDayAndMeal(t *testing.T) {
 	repo := newMemoryRepo()
 	repo.plans["user-1|plan-1"] = domain.Plan{
@@ -1281,7 +1320,7 @@ func TestFamilyInviteMergesProfileOnlyWithMatchingEmailHash(t *testing.T) {
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("expected invite 201, got %d: %s", rec.Code, rec.Body.String())
 	}
-	if strings.Contains(rec.Body.String(), email) || !strings.Contains(rec.Body.String(), "persoenlicher Account") {
+	if strings.Contains(rec.Body.String(), email) || !strings.Contains(rec.Body.String(), "persönlicher Account") {
 		t.Fatalf("invite should not echo raw email and should include warning: %s", rec.Body.String())
 	}
 	if !strings.Contains(rec.Body.String(), `"emailSent":true`) {
@@ -1306,7 +1345,7 @@ func TestFamilyInviteMergesProfileOnlyWithMatchingEmailHash(t *testing.T) {
 	setAuth(repo, req, "user-2")
 	rec = httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
-	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"members":[{"id":"a","name":"A"},{"id":"b","name":"B"}]`) {
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"id":"a","name":"A"`) || !strings.Contains(rec.Body.String(), `"id":"b","name":"B"`) {
 		t.Fatalf("expected merged family members in summary, got %d: %s", rec.Code, rec.Body.String())
 	}
 }

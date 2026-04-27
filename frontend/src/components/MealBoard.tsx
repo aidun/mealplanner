@@ -1,7 +1,7 @@
 import type { Day, Meal } from '../types';
 import { formatNutritionPerPortion } from '../lib/format';
 import { BringLink } from './BringLink';
-import { ChevronLeftIcon, ChevronRightIcon, HeartIcon } from './icons';
+import { HeartIcon } from './icons';
 
 interface MealBoardProps {
   planId?: string;
@@ -44,11 +44,6 @@ export function MealBoard({
     }
   };
 
-  const moveDay = (direction: -1 | 1) => {
-    if (days.length === 0) return;
-    selectDay((safeDayIndex + direction + days.length) % days.length);
-  };
-
   return (
     <section className="surface meal-board-surface">
       <div className="surface-header meal-board-header">
@@ -62,14 +57,6 @@ export function MealBoard({
               <span>{days.length} Tage</span>
               <span>{totalMeals} Gericht{totalMeals === 1 ? '' : 'e'}</span>
               <span>{emptyDays > 0 ? `${emptyDays} offen` : 'Woche gefüllt'}</span>
-            </div>
-            <div className="carousel-actions" aria-label="Tage wechseln">
-              <button type="button" className="button button-secondary carousel-button icon-button" onClick={() => moveDay(-1)} aria-label="Zurück" title="Zurück">
-                <ChevronLeftIcon className="action-icon" />
-              </button>
-              <button type="button" className="button button-secondary carousel-button icon-button" onClick={() => moveDay(1)} aria-label="Weiter" title="Weiter">
-                <ChevronRightIcon className="action-icon" />
-              </button>
             </div>
           </div>
         ) : null}

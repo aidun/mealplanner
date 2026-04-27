@@ -28,8 +28,8 @@ func DefaultTemplate(kind string) (TemplateDefaults, bool) {
 		return TemplateDefaults{
 			Label:       "Familien-Einladung",
 			Subject:     "Komm zu {{family_name}} auf Mahlio",
-			TextBody:    "Du bist zu Mahlio eingeladen.\nHaushalt: {{family_name}}\n\nMit dem Annehmen der Einladung kommst du in euren gemeinsamen Bereich bei Mahlio.\nWoche, Rezepte und Einkauf liegen dort direkt zusammen.\n{{warning_text}}\n\nEinladung annehmen:\n{{invite_link}}\n\nRueckfragen:\n{{support_email}}",
-			HTMLBody:    "<p>Du bist zu Mahlio eingeladen.</p><p><strong>Haushalt:</strong> {{family_name}}</p><p>Mit dem Annehmen der Einladung kommst du in euren gemeinsamen Bereich bei Mahlio. Woche, Rezepte und Einkauf liegen dort direkt zusammen.</p><p>{{warning_text}}</p><p><a href=\"{{invite_link}}\">Einladung annehmen</a></p><p>Rueckfragen: {{support_email}}</p>",
+			TextBody:    "Du bist zu Mahlio eingeladen.\nHaushalt: {{family_name}}\n\nMit dem Annehmen der Einladung kommst du in euren gemeinsamen Bereich bei Mahlio.\nWoche, Rezepte und Einkauf liegen dort direkt zusammen.\n{{warning_text}}\n\nEinladung annehmen:\n{{invite_link}}\n\nRückfragen:\n{{support_email}}",
+			HTMLBody:    "<p>Du bist zu Mahlio eingeladen.</p><p><strong>Haushalt:</strong> {{family_name}}</p><p>Mit dem Annehmen der Einladung kommst du in euren gemeinsamen Bereich bei Mahlio. Woche, Rezepte und Einkauf liegen dort direkt zusammen.</p><p>{{warning_text}}</p><p><a href=\"{{invite_link}}\">Einladung annehmen</a></p><p>Rückfragen: {{support_email}}</p>",
 			Description: "Mail für Einladungen in einen gemeinsamen Mahlio-Haushalt.",
 			Variables:   []string{"{{family_name}}", "{{invite_link}}", "{{warning_text}}", "{{support_email}}"},
 		}, true
@@ -37,8 +37,8 @@ func DefaultTemplate(kind string) (TemplateDefaults, bool) {
 		return TemplateDefaults{
 			Label:       "Premium-Einladung",
 			Subject:     "Mahlio Premium ist für euren Haushalt bereit",
-			TextBody:    "Hallo,\n\nMahlio Premium ist jetzt fuer euren Haushalt bereit.\nWoche, Rezepte und Einkauf bleiben dabei in derselben gemeinsamen Basis.\nAktuell freuen wir uns im Gegenzug ueber ehrliches Feedback direkt aus der App.\n\nZur App:\n{{app_url}}\n\nRueckfragen:\n{{support_email}}",
-			HTMLBody:    "<p>Hallo,</p><p>Mahlio Premium ist jetzt fuer euren Haushalt bereit.</p><p>Woche, Rezepte und Einkauf bleiben dabei in derselben gemeinsamen Basis.</p><p>Aktuell freuen wir uns im Gegenzug ueber ehrliches Feedback direkt aus der App.</p><p><a href=\"{{app_url}}\">Zur App</a></p><p>Rueckfragen: {{support_email}}</p>",
+			TextBody:    "Hallo,\n\nMahlio Premium ist jetzt für euren Haushalt bereit.\nWoche, Rezepte und Einkauf bleiben dabei in derselben gemeinsamen Basis.\nAktuell freuen wir uns im Gegenzug über ehrliches Feedback direkt aus der App.\n\nZur App:\n{{app_url}}\n\nRückfragen:\n{{support_email}}",
+			HTMLBody:    "<p>Hallo,</p><p>Mahlio Premium ist jetzt für euren Haushalt bereit.</p><p>Woche, Rezepte und Einkauf bleiben dabei in derselben gemeinsamen Basis.</p><p>Aktuell freuen wir uns im Gegenzug über ehrliches Feedback direkt aus der App.</p><p><a href=\"{{app_url}}\">Zur App</a></p><p>Rückfragen: {{support_email}}</p>",
 			Description: "Mail beim Freischalten eines Premium-Haushalts.",
 			Variables:   []string{"{{app_url}}", "{{support_email}}"},
 		}, true
@@ -46,8 +46,8 @@ func DefaultTemplate(kind string) (TemplateDefaults, bool) {
 		return TemplateDefaults{
 			Label:       "Wochenplan fertig",
 			Subject:     "Eure Mahlio-Woche ab {{week_start}} ist bereit",
-			TextBody:    "Hallo {{family_name}},\n\neure Mahlio-Woche ab {{week_start}} ist bereit.\nGerichte, Rezepte und Einkauf passen zusammen und koennen direkt geprueft werden.\n\nPlan ansehen:\n{{plan_url}}\n\nRueckfragen:\n{{support_email}}",
-			HTMLBody:    "<p>Hallo {{family_name}},</p><p>eure Mahlio-Woche ab <strong>{{week_start}}</strong> ist bereit.</p><p>Gerichte, Rezepte und Einkauf passen zusammen und koennen direkt geprueft werden.</p><p><a href=\"{{plan_url}}\">Plan ansehen</a></p><p>Rueckfragen: {{support_email}}</p>",
+			TextBody:    "Hallo {{family_name}},\n\neure Mahlio-Woche ab {{week_start}} ist bereit.\nGerichte, Rezepte und Einkauf passen zusammen und können direkt geprüft werden.\n\nPlan ansehen:\n{{plan_url}}\n\nRückfragen:\n{{support_email}}",
+			HTMLBody:    "<p>Hallo {{family_name}},</p><p>eure Mahlio-Woche ab <strong>{{week_start}}</strong> ist bereit.</p><p>Gerichte, Rezepte und Einkauf passen zusammen und können direkt geprüft werden.</p><p><a href=\"{{plan_url}}\">Plan ansehen</a></p><p>Rückfragen: {{support_email}}</p>",
 			Description: "Mail, wenn ein automatischer Wochenplan erstellt wurde.",
 			Variables:   []string{"{{family_name}}", "{{week_start}}", "{{plan_url}}", "{{support_email}}"},
 		}, true
@@ -68,22 +68,22 @@ func inviteSubject(payload InviteEmail) string {
 }
 
 func premiumInviteSubject(_ PremiumInviteEmail) string {
-	return brand.Name + " Premium ist fuer euren Haushalt bereit"
+	return brand.Name + " Premium ist für euren Haushalt bereit"
 }
 
 func premiumInviteText(payload PremiumInviteEmail) string {
 	var lines []string
 	lines = append(lines, "Hallo,")
 	lines = append(lines, "")
-	lines = append(lines, brand.Name+" Premium ist jetzt fuer euren Haushalt bereit.")
+	lines = append(lines, brand.Name+" Premium ist jetzt für euren Haushalt bereit.")
 	lines = append(lines, "Woche, Rezepte und Einkauf bleiben dabei in derselben gemeinsamen Basis.")
-	lines = append(lines, "Aktuell freuen wir uns im Gegenzug ueber ehrliches Feedback direkt aus der App.")
+	lines = append(lines, "Aktuell freuen wir uns im Gegenzug über ehrliches Feedback direkt aus der App.")
 	lines = append(lines, "")
 	lines = append(lines, "Zur App:")
 	lines = append(lines, strings.TrimSpace(payload.FeedbackURL))
 	if support := strings.TrimSpace(payload.SupportEmail); support != "" {
 		lines = append(lines, "")
-		lines = append(lines, "Rueckfragen:")
+		lines = append(lines, "Rückfragen:")
 		lines = append(lines, support)
 	}
 	return strings.Join(lines, "\n")
@@ -91,7 +91,7 @@ func premiumInviteText(payload PremiumInviteEmail) string {
 
 func premiumInviteHTML(payload PremiumInviteEmail) string {
 	return fmt.Sprintf(
-		"<p>Hallo,</p><p>%s Premium ist jetzt fuer euren Haushalt bereit.</p><p>Woche, Rezepte und Einkauf bleiben dabei in derselben gemeinsamen Basis.</p><p>Aktuell freuen wir uns im Gegenzug ueber ehrliches Feedback direkt aus der App.</p><p><a href=\"%s\">Zur App</a></p><p>Rueckfragen: %s</p>",
+		"<p>Hallo,</p><p>%s Premium ist jetzt für euren Haushalt bereit.</p><p>Woche, Rezepte und Einkauf bleiben dabei in derselben gemeinsamen Basis.</p><p>Aktuell freuen wir uns im Gegenzug über ehrliches Feedback direkt aus der App.</p><p><a href=\"%s\">Zur App</a></p><p>Rückfragen: %s</p>",
 		htmlText(brand.Name, brand.Name),
 		htmlEscape(payload.FeedbackURL),
 		htmlText(payload.SupportEmail, "-"),
@@ -115,7 +115,7 @@ func inviteText(payload InviteEmail) string {
 	lines = append(lines, strings.TrimSpace(payload.InviteLink))
 	if support := strings.TrimSpace(payload.SupportEmail); support != "" {
 		lines = append(lines, "")
-		lines = append(lines, "Rueckfragen:")
+		lines = append(lines, "Rückfragen:")
 		lines = append(lines, support)
 	}
 	return strings.Join(lines, "\n")
@@ -123,11 +123,11 @@ func inviteText(payload InviteEmail) string {
 
 func inviteHTML(payload InviteEmail) string {
 	return fmt.Sprintf(
-		"<p>Du bist zu %s eingeladen.</p><p><strong>Haushalt:</strong> %s</p><p>Mit dem Annehmen der Einladung kommst du in euren gemeinsamen Bereich bei %s. Woche, Rezepte und Einkauf liegen dort direkt zusammen.</p><p>%s</p><p><a href=\"%s\">Einladung annehmen</a></p><p>Rueckfragen: %s</p>",
+		"<p>Du bist zu %s eingeladen.</p><p><strong>Haushalt:</strong> %s</p><p>Mit dem Annehmen der Einladung kommst du in euren gemeinsamen Bereich bei %s. Woche, Rezepte und Einkauf liegen dort direkt zusammen.</p><p>%s</p><p><a href=\"%s\">Einladung annehmen</a></p><p>Rückfragen: %s</p>",
 		htmlText(brand.Name, brand.Name),
 		htmlText(payload.FamilyName, brand.Name),
 		htmlText(brand.Name, brand.Name),
-		htmlText(payload.WarningText, "Dein Profil wird beim Annehmen sinnvoll zusammengefuehrt."),
+		htmlText(payload.WarningText, "Dein Profil wird beim Annehmen sinnvoll zusammengeführt."),
 		htmlEscape(payload.InviteLink),
 		htmlText(payload.SupportEmail, "-"),
 	)
@@ -146,13 +146,13 @@ func weeklyText(payload WeeklyPlanReadyEmail) string {
 	}
 	lines = append(lines, "")
 	lines = append(lines, fmt.Sprintf("eure %s-Woche ab %s ist bereit.", brand.Name, strings.TrimSpace(payload.WeekStart)))
-	lines = append(lines, "Gerichte, Rezepte und Einkauf passen zusammen und koennen direkt geprueft werden.")
+	lines = append(lines, "Gerichte, Rezepte und Einkauf passen zusammen und können direkt geprüft werden.")
 	lines = append(lines, "")
 	lines = append(lines, "Plan ansehen:")
 	lines = append(lines, strings.TrimSpace(payload.PlanURL))
 	if support := strings.TrimSpace(payload.SupportEmail); support != "" {
 		lines = append(lines, "")
-		lines = append(lines, "Rueckfragen:")
+		lines = append(lines, "Rückfragen:")
 		lines = append(lines, support)
 	}
 	return strings.Join(lines, "\n")
@@ -160,7 +160,7 @@ func weeklyText(payload WeeklyPlanReadyEmail) string {
 
 func weeklyHTML(payload WeeklyPlanReadyEmail) string {
 	return fmt.Sprintf(
-		"<p>Hallo %s,</p><p>eure %s-Woche ab <strong>%s</strong> ist bereit.</p><p>Gerichte, Rezepte und Einkauf passen zusammen und koennen direkt geprueft werden.</p><p><a href=\"%s\">Plan ansehen</a></p><p>Rueckfragen: %s</p>",
+		"<p>Hallo %s,</p><p>eure %s-Woche ab <strong>%s</strong> ist bereit.</p><p>Gerichte, Rezepte und Einkauf passen zusammen und können direkt geprüft werden.</p><p><a href=\"%s\">Plan ansehen</a></p><p>Rückfragen: %s</p>",
 		htmlText(payload.FamilyName, brand.Name),
 		htmlText(brand.Name, brand.Name),
 		htmlText(payload.WeekStart, "-"),

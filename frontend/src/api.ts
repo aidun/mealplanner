@@ -184,12 +184,16 @@ export async function deleteFavorite(favoriteId: string) {
 export interface BringExportScope {
   day?: string;
   meal?: string;
+  exclude?: string[];
 }
 
 export async function getBringExportUrl(planId: string, scope: BringExportScope = {}) {
   const params = new URLSearchParams();
   if (scope.day) params.set('day', scope.day);
   if (scope.meal) params.set('meal', scope.meal);
+  for (const item of scope.exclude ?? []) {
+    if (item.trim()) params.append('exclude', item.trim());
+  }
   const suffix = params.size > 0 ? `?${params.toString()}` : '';
   return request<{ url: string; pageUrl?: string }>(
     `/api/plans/${encodeURIComponent(planId)}/bring-export-url${suffix}`

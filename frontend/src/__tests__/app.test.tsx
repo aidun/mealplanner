@@ -346,7 +346,14 @@ function createFetchMock(options: {
 
     if (url.endsWith('/api/admin/premium-users') && init?.method === 'POST') {
       const payload = JSON.parse(String(init.body ?? '{}'));
-      return new Response(JSON.stringify({ id: 'premium-new', email: payload.email, inviteSent: Boolean(payload.sendInvite) }), { status: 201 });
+      return new Response(
+        JSON.stringify({
+          premiumUser: { id: 'premium-new', email: payload.email, inviteSent: Boolean(payload.sendInvite) },
+          emailSent: Boolean(payload.sendInvite),
+          inviteLink: 'https://mealplanner.test/',
+        }),
+        { status: 201 }
+      );
     }
 
     if (url.includes('/api/admin/premium-users/') && init?.method === 'DELETE') {
@@ -430,13 +437,13 @@ describe('Mealplanner app', () => {
           householdName: 'Privater Haushalt',
           members: [{ id: 'person-1', name: 'Person 1', alias: 'Person 1', role: 'Erwachsen', likes: '' }],
           defaults: {
-            breakfast: 'schnell, familientauglich, nicht zu suess',
+            breakfast: 'schnell, familientauglich, nicht zu süß',
             lunch: 'alltagstauglich und gut vorzubereiten',
             dinner: 'gemeinsames warmes Essen',
-            snacks: 'nur wenn sinnvoll fuer Kalorienziel oder Alltag',
+            snacks: 'nur wenn sinnvoll für Kalorienziel oder Alltag',
           },
           presets: ['familientauglich'],
-          notes: 'Naehrwerte sind Schaetzungen und nicht medizinisch verbindlich.',
+          notes: 'Nährwerte sind Schätzungen und nicht medizinisch verbindlich.',
         },
       })
     );
@@ -454,7 +461,7 @@ describe('Mealplanner app', () => {
 
     renderApp('/');
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Erstmal ueberspringen' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Erstmal überspringen' }));
 
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
@@ -551,6 +558,7 @@ describe('Mealplanner app', () => {
     expect(screen.getByText(/392 kcal/)).toBeInTheDocument();
     expect(screen.getByText('1 Artikel · 1 Abteilung')).toBeInTheDocument();
     expect(screen.getByText('Zucchini')).toBeInTheDocument();
+    expect(screen.queryByText('Heute im Fokus')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Liste einklappen' })).toBeInTheDocument();
     expect(screen.getByRole('complementary', { name: 'Premium Feedback' })).toBeInTheDocument();
   });
@@ -607,7 +615,7 @@ describe('Mealplanner app', () => {
       )
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+    fireEvent.click((await screen.findAllByRole('button', { name: /Beeren-Porridge/ }))[0]!);
     await waitFor(() => expect(screen.getAllByText('Beeren-Porridge').length).toBeGreaterThan(0));
     const removeButton = await screen.findByRole('button', { name: 'Favorit entfernen' });
     fireEvent.click(removeButton);
@@ -673,12 +681,55 @@ describe('Mealplanner app', () => {
     );
   });
 
+  it('checks shopping items and excludes completed items from Bring export', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/api/plans/plan-1/bring-export-url')) {
+        const suffix = url.includes('?') ? `?${url.split('?')[1]}` : '';
+        const pageUrl = `/api/plans/plan-1/bring-export${suffix}${suffix ? '&' : '?'}token=test-token`;
+        return new Response(JSON.stringify({ url: pageUrl, pageUrl }), { status: 200 });
+      }
+      return new Response('', { status: 404 });
+    }) as unknown as typeof fetch;
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <ShoppingListPanel
+        planId="plan-1"
+        shoppingList={[
+          { name: 'Zucchini', amount: 2, unit: 'Stk', category: 'Gemüse' },
+          { name: 'Pasta', amount: 400, unit: 'g', category: 'Vorrat' },
+        ]}
+        loading={false}
+      />
+    );
+
+    expect(await screen.findByRole('link', { name: 'Woche zu Bring' })).toHaveAttribute(
+      'href',
+      expect.stringContaining('/api/plans/plan-1/bring-export?token=test-token')
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: 'Zucchini abhaken' }));
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenLastCalledWith(
+        expect.stringContaining('/api/plans/plan-1/bring-export-url?exclude=Zucchini'),
+        expect.anything()
+      )
+    );
+    expect(screen.getByText('1 von 2 Positionen erledigt')).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: 'Woche zu Bring' })).toHaveAttribute(
+      'href',
+      expect.stringContaining('exclude=Zucchini')
+    );
+  });
+
   it('moves the active day through the weekly agenda', async () => {
     renderApp('/');
 
     expect((await screen.findAllByRole('button', { name: /Pasta mit Gemüse/ })).length).toBeGreaterThan(0);
     expect(document.querySelector('.day-tab-active')).toHaveTextContent('Mo');
-    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+    fireEvent.click((await screen.findAllByRole('button', { name: /Beeren-Porridge/ }))[0]!);
 
     expect((await screen.findAllByRole('button', { name: /Beeren-Porridge/ })).length).toBeGreaterThan(0);
     expect(document.querySelector('.day-tab-active')).toHaveTextContent('Di');
@@ -716,6 +767,7 @@ describe('Mealplanner app', () => {
     expect(styles).toContain('.board-carousel');
     expect(styles).toContain('.day-overview-grid');
     expect(styles).toContain('.workspace-pane-switch');
+    expect(styles).toContain('overflow-wrap: anywhere');
   });
 
   it('opens onboarding and saves the profile', async () => {
@@ -996,6 +1048,9 @@ describe('Mealplanner app', () => {
       );
     });
     expect(await screen.findByText('Premium freigeschaltet und Einladung versendet.')).toBeInTheDocument();
+    expect(screen.getByText('https://mealplanner.test/')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Premium-Link kopieren' }));
+    await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalledWith('https://mealplanner.test/'));
   });
 
   it('saves editable mail templates from admin', async () => {

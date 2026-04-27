@@ -171,7 +171,7 @@ test('planner stays stable across desktop tablet and mobile breakpoints', async 
       const menu = page.getByLabel('Bereiche wechseln');
       const minimumPaneWidth = viewport.size.width - 80;
       await expect(menu).toBeVisible();
-      await page.getByRole('button', { name: 'Woche', exact: true }).click();
+      await page.getByRole('button', { name: 'Plan', exact: true }).click();
       await expect(page.locator('.workspace-board')).toBeVisible();
       await expect(page.locator('.workspace-rail-pane').nth(0)).toBeHidden();
       await expect(page.locator('.workspace-shopping-pane')).toBeHidden();

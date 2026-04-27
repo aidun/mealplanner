@@ -78,6 +78,29 @@ func (fakeGeneratorWithVariantMatch) MergeProfiles(_ context.Context, target dom
 	return target, nil
 }
 
+type fakeGeneratorWithNamelessMergedMember struct{}
+
+func (fakeGeneratorWithNamelessMergedMember) GenerateWeek(context.Context, domain.Profile, time.Time, []domain.FavoriteRecipe) (domain.Plan, error) {
+	return domain.Plan{}, nil
+}
+
+func (fakeGeneratorWithNamelessMergedMember) RegenerateMeal(context.Context, domain.Profile, domain.Plan, string, string, []domain.FavoriteRecipe) (domain.Meal, error) {
+	return domain.Meal{}, nil
+}
+
+func (fakeGeneratorWithNamelessMergedMember) MergeProfiles(_ context.Context, target domain.Profile, incoming domain.Profile) (domain.Profile, error) {
+	return domain.Profile{
+		HouseholdName: target.HouseholdName,
+		Members: []domain.Member{
+			target.Members[0],
+			{ID: incoming.Members[0].ID, Alias: incoming.Members[0].Alias},
+		},
+		Defaults: target.Defaults,
+		Presets:  target.Presets,
+		Notes:    target.Notes,
+	}, nil
+}
+
 func TestGenerateWeekUsesExplicitWeekMonday(t *testing.T) {
 	p := New(fakeGenerator{})
 	plan, err := p.GenerateWeek(context.Background(), domain.DefaultProfile(), "2026-04-22", nil)
@@ -172,6 +195,20 @@ func TestFavoriteMatchMarksVariants(t *testing.T) {
 	}
 	if updated.Days[0].Meals[0].Meta["favoriteReuse"] != "variant" {
 		t.Fatalf("expected favorite variant marker, got %#v", updated.Days[0].Meals[0].Meta)
+	}
+}
+
+func TestMergeProfilesRepairsMissingGeneratedMemberNames(t *testing.T) {
+	p := New(fakeGeneratorWithNamelessMergedMember{})
+	target := domain.Profile{HouseholdName: "Familie A", Members: []domain.Member{{ID: "a", Name: "A", Alias: "A"}}}
+	incoming := domain.Profile{HouseholdName: "Familie B", Members: []domain.Member{{ID: "b", Name: "B", Alias: "B"}}}
+
+	merged, err := p.MergeProfiles(context.Background(), target, incoming)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := merged.Members[1].Name; got != "B" {
+		t.Fatalf("expected missing generated name to be repaired from incoming profile, got %#v", merged.Members)
 	}
 }
 

@@ -7,12 +7,14 @@ import (
 )
 
 type Profile struct {
-	HouseholdName string       `json:"householdName"`
-	Members       []Member     `json:"members"`
-	Defaults      MealDefaults `json:"defaults"`
-	Presets       []string     `json:"presets"`
-	Notes         string       `json:"notes"`
-	UpdatedAt     time.Time    `json:"updatedAt,omitempty"`
+	HouseholdName   string       `json:"householdName"`
+	Members         []Member     `json:"members"`
+	Defaults        MealDefaults `json:"defaults"`
+	Presets         []string     `json:"presets"`
+	Notes           string       `json:"notes"`
+	PreferredStores string       `json:"preferredStores,omitempty"`
+	ShoppingNotes   string       `json:"shoppingNotes,omitempty"`
+	UpdatedAt       time.Time    `json:"updatedAt,omitempty"`
 }
 
 type FamilyMemberSummary struct {
@@ -64,6 +66,7 @@ type PremiumUser struct {
 type PremiumInviteResult struct {
 	PremiumUser PremiumUser `json:"premiumUser"`
 	EmailSent   bool        `json:"emailSent"`
+	InviteLink  string      `json:"inviteLink,omitempty"`
 }
 
 type PremiumInvite struct {
@@ -321,13 +324,13 @@ func DefaultProfile() Profile {
 			{ID: "person-1", Name: "Person 1", Alias: "Person 1", Role: "Erwachsen", CaloriesTarget: 2200},
 		},
 		Defaults: MealDefaults{
-			Breakfast: "schnell, familientauglich, nicht zu suess",
+			Breakfast: "schnell, familientauglich, nicht zu süß",
 			Lunch:     "alltagstauglich und gut vorzubereiten",
 			Dinner:    "gemeinsames warmes Essen",
-			Snacks:    "nur wenn sinnvoll fuer Kalorienziel oder Alltag",
+			Snacks:    "nur wenn sinnvoll für Kalorienziel oder Alltag",
 		},
 		Presets: []string{"familientauglich", "ausgewogen", "saisonal", "schnell unter der Woche"},
-		Notes:   "Naehrwerte sind Schaetzungen und nicht medizinisch verbindlich.",
+		Notes:   "Nährwerte sind Schätzungen und nicht medizinisch verbindlich.",
 	}
 }
 

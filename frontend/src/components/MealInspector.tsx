@@ -33,6 +33,10 @@ export function MealInspector({
   const [note, setNote] = useState('');
   const allergens = meal ? detectCriticalAllergens(meal.ingredients) : [];
   const visibleWarnings = meal ? filterVisibleWarnings(meal.warnings) : [];
+  const warningEntries = meal ? warningEntriesForMeal(meal.id, visibleWarnings, allergens) : [];
+  const [dismissedWarnings, setDismissedWarnings] = useState<string[]>([]);
+  const dismissedWarningSet = new Set(dismissedWarnings);
+  const activeWarningEntries = warningEntries.filter((entry) => !dismissedWarningSet.has(entry.key));
   const selectionReason = meal ? inferSelectionReason(meal) : '';
   const ingredientPreview = meal?.ingredients.slice(0, 5) ?? [];
   const summaryFacts = meal
@@ -49,8 +53,8 @@ export function MealInspector({
         },
         {
           label: 'Hinweise',
-          value: String(visibleWarnings.length + allergens.length),
-          hint: visibleWarnings.length + allergens.length > 0 ? 'Bitte vor dem Kochen prüfen' : 'Keine kritischen Hinweise erkannt',
+          value: String(activeWarningEntries.length),
+          hint: activeWarningEntries.length > 0 ? 'Bitte vor dem Kochen prüfen' : warningEntries.length > 0 ? 'Als unbedenklich markiert' : 'Keine kritischen Hinweise erkannt',
         },
       ]
     : [];
@@ -58,6 +62,28 @@ export function MealInspector({
   useEffect(() => {
     setNote('');
   }, [meal?.id]);
+
+  useEffect(() => {
+    if (!meal?.id) {
+      setDismissedWarnings([]);
+      return;
+    }
+    try {
+      const stored = JSON.parse(window.localStorage.getItem(warningStorageKey(meal.id)) ?? '[]');
+      setDismissedWarnings(Array.isArray(stored) ? stored.filter((value): value is string => typeof value === 'string') : []);
+    } catch {
+      setDismissedWarnings([]);
+    }
+  }, [meal?.id]);
+
+  const dismissWarning = (key: string) => {
+    if (!meal?.id) return;
+    setDismissedWarnings((current) => {
+      const next = current.includes(key) ? current : [...current, key];
+      window.localStorage.setItem(warningStorageKey(meal.id), JSON.stringify(next));
+      return next;
+    });
+  };
 
   if (!meal) {
     return (
@@ -91,10 +117,10 @@ export function MealInspector({
             {formatNutritionPerPortion(meal.nutrition) ? (
               <span className="inspector-meta-pill">{formatNutritionPerPortion(meal.nutrition)}</span>
             ) : null}
-            {visibleWarnings.length > 0 || allergens.length > 0 ? (
-              <span className="inspector-meta-pill inspector-meta-pill-warning">
-                {visibleWarnings.length + allergens.length} Hinweis{visibleWarnings.length + allergens.length > 1 ? 'e' : ''}
-              </span>
+            {activeWarningEntries.length > 0 ? (
+              <a href="#meal-hinweise" className="inspector-meta-pill inspector-meta-pill-warning">
+                {activeWarningEntries.length} Hinweis{activeWarningEntries.length > 1 ? 'e' : ''}
+              </a>
             ) : null}
           </div>
           {ingredientPreview.length > 0 ? (
@@ -107,13 +133,6 @@ export function MealInspector({
         </div>
 
         <div className="inspector-hero-side">
-          <figure className="inspector-photo-card" aria-hidden="true">
-            <img src="/brand/mahlio-photo-library.png" alt="" />
-            <figcaption>
-              <span>Heute im Fokus</span>
-              <strong>{slotLabel(meal.slot)}</strong>
-            </figcaption>
-          </figure>
           <div className="inspector-summary-grid">
             {summaryFacts.map((fact) => (
               <div key={fact.label} className="inspector-summary-card">
@@ -228,15 +247,24 @@ export function MealInspector({
           </section>
         ) : null}
 
-        {visibleWarnings.length > 0 || allergens.length > 0 ? (
-          <section className="inspector-section">
+        {warningEntries.length > 0 ? (
+          <section className="inspector-section" id="meal-hinweise" tabIndex={-1}>
             <h3>Hinweise</h3>
-            {visibleWarnings.map((warning, index) => (
-              <p key={`${meal.id}-warning-${index}`} className="inspector-warning">
-                {warning}
+            {activeWarningEntries.length > 0 ? (
+              activeWarningEntries.map((entry) => (
+                <div key={entry.key} className="inspector-warning-row">
+                  <p className="inspector-warning">{entry.text}</p>
+                  <button type="button" className="button button-secondary compact-action" onClick={() => dismissWarning(entry.key)}>
+                    Als unbedenklich markieren
+                  </button>
+                </div>
+              ))
+            ) : (
+              <p className="panel-feedback" role="note">
+                Alle Hinweise für dieses Rezept sind als unbedenklich markiert.
               </p>
-            ))}
-            {allergens.length > 0 ? (
+            )}
+            {allergens.length > 0 && activeWarningEntries.some((entry) => entry.kind === 'allergen') ? (
               <div className="allergy-warning" role="note">
                 <div className="allergy-warning-title">
                   <ShieldIcon className="pill-icon" />
@@ -325,6 +353,26 @@ function filterVisibleWarnings(warnings?: string[]) {
       value.includes('unverträg')
     );
   });
+}
+
+function warningEntriesForMeal(mealId: string, warnings: string[], allergens: string[]) {
+  const entries: Array<{ key: string; kind: 'warning' | 'allergen'; text: string }> = warnings.map((warning, index) => ({
+    key: `${mealId}:warning:${index}:${warning}`,
+    kind: 'warning' as const,
+    text: warning,
+  }));
+  if (allergens.length > 0) {
+    entries.push({
+      key: `${mealId}:allergens:${allergens.join('|')}`,
+      kind: 'allergen' as const,
+      text: `Möglich sind: ${allergens.join(', ')}. Vor dem Kochen lieber noch einmal kurz auf die Zutaten schauen.`,
+    });
+  }
+  return entries;
+}
+
+function warningStorageKey(mealId: string) {
+  return `mealplanner.mealWarnings.dismissed.${mealId}`;
 }
 
 function slotLabel(slot?: string) {

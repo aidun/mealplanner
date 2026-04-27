@@ -525,7 +525,7 @@ func (s Store) GetFamily(ctx context.Context, userID string) (domain.FamilySumma
 		return domain.FamilySummary{}, ErrNotFound
 	}
 	if status == "merged" {
-		summary.MergedWarning = "Dieser persoenliche Account ist in einem Familienaccount aufgegangen."
+		summary.MergedWarning = "Dieser persönliche Account ist in einem Familienaccount aufgegangen."
 	}
 	profile, err := s.GetProfileByFamily(ctx, familyID)
 	if err == nil && !domain.IsPlaceholderProfile(profile) {
@@ -1287,7 +1287,7 @@ func mustJSON(value any) []byte {
 }
 
 func familyMergeWarning() string {
-	return "Wenn du diese Einladung annimmst, geht dein persoenlicher Account im Familienaccount auf. Dein Profil wird sinnvoll zusammengefuehrt."
+	return "Wenn du diese Einladung annimmst, geht dein persönlicher Account im Familienaccount auf. Dein Profil wird sinnvoll zusammengeführt."
 }
 
 func normalizeEmail(email string) string {

@@ -86,7 +86,7 @@ func (g OpenAIGenerator) call(ctx context.Context, operation string, prompt stri
 	payload := map[string]any{
 		"model": g.model,
 		"input": []map[string]string{
-			{"role": "system", "content": "Du bist ein Familien-Ernaehrungsplaner. Antworte ausschliesslich als JSON nach Schema. Naehrwerte sind klare Schaetzungen."},
+			{"role": "system", "content": "Du bist ein Familien-Ernährungsplaner. Antworte ausschließlich als JSON nach Schema. Nährwerte sind klare Schätzungen."},
 			{"role": "user", "content": prompt},
 		},
 		"text": map[string]any{

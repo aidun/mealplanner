@@ -66,9 +66,9 @@ export function Header({
             <ChevronDownIcon className="action-icon" />
           </summary>
           <div className="header-mobile-panel">
-            <button type="button" className="button button-secondary" onClick={() => navigate('/onboarding')}>
+            <button type="button" className="button button-secondary" onClick={() => navigate('/onboarding')} aria-label="Küchenprofil">
               <UserIcon className="action-icon" />
-              Küchenprofil
+              Profil
             </button>
             {isAdmin ? (
               <button type="button" className="button button-secondary" onClick={() => navigate('/admin')}>
@@ -83,9 +83,9 @@ export function Header({
           </div>
         </details>
         <div className="header-secondary-actions">
-          <NavLink to="/onboarding" className="button button-secondary">
+          <NavLink to="/onboarding" className="button button-secondary" aria-label="Küchenprofil">
             <UserIcon className="action-icon" />
-            Küchenprofil
+            Profil
           </NavLink>
           {isAdmin ? (
             <NavLink to="/admin" className="button button-secondary">

@@ -35,8 +35,9 @@ type bringExportView struct {
 }
 
 type bringExportScope struct {
-	Day  string
-	Meal string
+	Day     string
+	Meal    string
+	Exclude []string
 }
 
 type bringExportItem struct {
@@ -78,6 +79,9 @@ func (h *Handler) getBringExportURL(w http.ResponseWriter, r *http.Request) {
 	if scope.Meal != "" {
 		query.Set("meal", scope.Meal)
 	}
+	for _, exclude := range scope.Exclude {
+		query.Add("exclude", exclude)
+	}
 	query.Set("token", token)
 	exportURL.RawQuery = query.Encode()
 	pageURL := exportURL.String()
@@ -108,7 +112,7 @@ func (h *Handler) getBringExport(w http.ResponseWriter, r *http.Request) {
 
 	canonicalURL := h.absoluteRequestURL(r, "/api/plans/"+url.PathEscape(planID)+"/bring-export")
 	canonicalURL.RawQuery = r.URL.RawQuery
-	view, err := newBringExportView(plan, canonicalURL.String())
+	view, err := newBringExportView(plan, canonicalURL.String(), scope)
 	if err != nil {
 		h.serverError(w, r, err)
 		return
@@ -149,6 +153,10 @@ func (h *Handler) signBringExport(planID string, scope bringExportScope) (string
 	mac.Write([]byte(scope.Day))
 	mac.Write([]byte(":meal:"))
 	mac.Write([]byte(scope.Meal))
+	if len(scope.Exclude) > 0 {
+		mac.Write([]byte(":exclude:"))
+		mac.Write([]byte(strings.Join(scope.Exclude, "\x00")))
+	}
 	return base64.RawURLEncoding.EncodeToString(mac.Sum(nil)), true
 }
 
@@ -191,9 +199,28 @@ func verifyBringToken(expected string, token string) bool {
 
 func bringScopeFromRequest(r *http.Request) bringExportScope {
 	return bringExportScope{
-		Day:  strings.TrimSpace(r.URL.Query().Get("day")),
-		Meal: strings.TrimSpace(r.URL.Query().Get("meal")),
+		Day:     strings.TrimSpace(r.URL.Query().Get("day")),
+		Meal:    strings.TrimSpace(r.URL.Query().Get("meal")),
+		Exclude: cleanBringExcludeValues(r.URL.Query()["exclude"]),
 	}
+}
+
+func cleanBringExcludeValues(values []string) []string {
+	seen := map[string]bool{}
+	out := make([]string, 0, len(values))
+	for _, value := range values {
+		trimmed := strings.TrimSpace(value)
+		if trimmed == "" {
+			continue
+		}
+		key := normalizeBringExcludeKey(trimmed)
+		if key == "" || seen[key] {
+			continue
+		}
+		seen[key] = true
+		out = append(out, trimmed)
+	}
+	return out
 }
 
 func (h *Handler) absoluteRequestURL(r *http.Request, path string) *url.URL {
@@ -281,9 +308,9 @@ func scopedBringPlan(plan domain.Plan, scope bringExportScope) (domain.Plan, err
 	return filtered, nil
 }
 
-func newBringExportView(plan domain.Plan, canonicalURL string) (bringExportView, error) {
+func newBringExportView(plan domain.Plan, canonicalURL string, scope bringExportScope) (bringExportView, error) {
 	kind, onlyDay, onlyMeal := detectBringExportKind(plan)
-	shoppingItems := bringShoppingItems(plan, kind, onlyMeal)
+	shoppingItems := filterBringShoppingItems(bringShoppingItems(plan, kind, onlyMeal), scope.Exclude)
 	items := make([]bringExportItem, 0, len(shoppingItems))
 	ingredients := make([]string, 0, len(shoppingItems))
 	for _, item := range shoppingItems {
@@ -315,7 +342,7 @@ func newBringExportView(plan domain.Plan, canonicalURL string) (bringExportView,
 		"name":               title,
 		"prepTime":           "PT10M",
 		"recipeCategory":     category,
-		"recipeCuisine":      "Familienkueche",
+		"recipeCuisine":      "Familienküche",
 		"recipeYield":        yield,
 		"recipeIngredient":   ingredients,
 		"recipeInstructions": bringSchemaInstructions(instructions),
@@ -380,11 +407,11 @@ func bringExportCopy(plan domain.Plan, kind string, onlyDay domain.DayPlan, only
 		if day == "" {
 			day = strings.TrimSpace(onlyDay.Date)
 		}
-		title = brand.Name + " Einkaufsliste fuer einen Tag"
+		title = brand.Name + " Einkaufsliste für einen Tag"
 		if day != "" {
-			title = brand.Name + " Einkaufsliste fuer " + day
+			title = brand.Name + " Einkaufsliste für " + day
 		}
-		return title, "Alle Zutaten fuer diesen Tag in eurer " + brand.Name + "-Woche.", "1 Tag", category
+		return title, "Alle Zutaten für diesen Tag in eurer " + brand.Name + "-Woche.", "1 Tag", category
 	}
 	mealCount := 0
 	for _, day := range plan.Days {
@@ -398,7 +425,7 @@ func bringExportCopy(plan domain.Plan, kind string, onlyDay domain.DayPlan, only
 	}
 	description = "Alle Zutaten aus eurer gemeinsamen " + brand.Name + "-Woche."
 	if mealCount == 0 {
-		description = "Eine " + brand.Name + "-Einkaufsliste fuer euren gemeinsamen Tisch."
+		description = "Eine " + brand.Name + "-Einkaufsliste für euren gemeinsamen Tisch."
 	}
 	return title, description, "1 Wochenplan", category
 }
@@ -437,6 +464,33 @@ func bringShoppingItems(plan domain.Plan, kind string, onlyMeal domain.Meal) []d
 	return domain.ConsolidateShoppingList(plan)
 }
 
+func filterBringShoppingItems(items []domain.ShoppingItem, excludes []string) []domain.ShoppingItem {
+	if len(excludes) == 0 {
+		return items
+	}
+	blocked := map[string]bool{}
+	for _, exclude := range excludes {
+		if key := normalizeBringExcludeKey(exclude); key != "" {
+			blocked[key] = true
+		}
+	}
+	if len(blocked) == 0 {
+		return items
+	}
+	filtered := make([]domain.ShoppingItem, 0, len(items))
+	for _, item := range items {
+		if blocked[normalizeBringExcludeKey(item.Name)] {
+			continue
+		}
+		filtered = append(filtered, item)
+	}
+	return filtered
+}
+
+func normalizeBringExcludeKey(value string) string {
+	return strings.ToLower(strings.Join(strings.Fields(strings.TrimSpace(value)), " "))
+}
+
 func bringExportInstructions(kind string, onlyMeal domain.Meal) []string {
 	if kind == "meal" {
 		steps := make([]string, 0, len(onlyMeal.Instructions))
@@ -455,9 +509,9 @@ func bringExportInstructions(kind string, onlyMeal domain.Meal) []string {
 		return []string{"Zutaten vorbereiten, Rezept kochen und warm servieren."}
 	}
 	if kind == "day" {
-		return []string{"Zutaten in Bring uebernehmen und den Einkauf fuer diesen Tag planen."}
+		return []string{"Zutaten in Bring übernehmen und den Einkauf für diesen Tag planen."}
 	}
-	return []string{"Alle Zutaten in Bring uebernehmen und fuer die Woche einkaufen."}
+	return []string{"Alle Zutaten in Bring übernehmen und für die Woche einkaufen."}
 }
 
 func bringSchemaInstructions(instructions []string) []map[string]string {
@@ -475,7 +529,7 @@ func bringSchemaInstructions(instructions []string) []map[string]string {
 	if len(steps) == 0 {
 		steps = append(steps, map[string]string{
 			"@type": "HowToStep",
-			"text":  "Zutaten in Bring uebernehmen.",
+			"text":  "Zutaten in Bring übernehmen.",
 		})
 	}
 	return steps
@@ -486,7 +540,7 @@ func bringExportImageURL(title string) string {
 	if title == "" {
 		title = brand.Name + " Rezept"
 	}
-	svg := fmt.Sprintf(`<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630"><rect width="1200" height="630" fill="#f6fbf8"/><rect x="42" y="42" width="1116" height="546" rx="24" fill="#ffffff" stroke="#c9ddd5" stroke-width="4"/><text x="90" y="180" font-family="Inter,Arial,sans-serif" font-size="34" font-weight="700" fill="#0f766e">%s Rezept</text><text x="90" y="270" font-family="Inter,Arial,sans-serif" font-size="66" font-weight="800" fill="#12211d">%s</text><text x="90" y="352" font-family="Inter,Arial,sans-serif" font-size="28" fill="#5c756d">Import fuer Bring</text></svg>`, bringSVGText(brand.Name), bringSVGText(trimForSVG(title, 28)))
+	svg := fmt.Sprintf(`<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630"><rect width="1200" height="630" fill="#f6fbf8"/><rect x="42" y="42" width="1116" height="546" rx="24" fill="#ffffff" stroke="#c9ddd5" stroke-width="4"/><text x="90" y="180" font-family="Inter,Arial,sans-serif" font-size="34" font-weight="700" fill="#0f766e">%s Rezept</text><text x="90" y="270" font-family="Inter,Arial,sans-serif" font-size="66" font-weight="800" fill="#12211d">%s</text><text x="90" y="352" font-family="Inter,Arial,sans-serif" font-size="28" fill="#5c756d">Import für Bring</text></svg>`, bringSVGText(brand.Name), bringSVGText(trimForSVG(title, 28)))
 	return "data:image/svg+xml;utf8," + url.PathEscape(svg)
 }
 
@@ -549,7 +603,7 @@ func bringMealNutrition(kind string, onlyMeal domain.Meal) map[string]string {
 func slotLabel(slot string) string {
 	switch strings.TrimSpace(strings.ToLower(slot)) {
 	case "breakfast":
-		return "Fruehstueck"
+		return "Frühstück"
 	case "lunch":
 		return "Mittagessen"
 	case "dinner":
@@ -704,7 +758,7 @@ var bringExportTemplate = template.Must(template.New("bring-export").Funcs(templ
     <meta itemprop="cookTime" content="PT0M">
     <meta itemprop="totalTime" content="PT10M">
     <meta itemprop="recipeCategory" content="{{ .Category }}">
-    <meta itemprop="recipeCuisine" content="Familienkueche">
+    <meta itemprop="recipeCuisine" content="Familienküche">
     <meta itemprop="tagline" content="{{ .Description }}">
     {{ if .WeekStart }}<meta itemprop="datePublished" content="{{ .WeekStart }}">{{ end }}
     {{ if .ImageURL }}<img src="{{ .ImageURL }}" alt="{{ .Title }}" itemprop="image" style="width:100%;max-width:560px;aspect-ratio:1200/630;object-fit:cover;border-radius:8px;border:1px solid var(--line);margin:18px 0 14px;">{{ end }}
@@ -718,8 +772,8 @@ var bringExportTemplate = template.Must(template.New("bring-export").Funcs(templ
     </p>
     <section class="bring-box" aria-label="Bring Import">
       <div {{ if .CanonicalURL }}data-bring-import="{{ .CanonicalURL }}"{{ else }}data-bring-import{{ end }} style="display:none"></div>
-      <a href="https://www.getbring.com">Bring! Einkaufsliste App fuer iPhone und Android</a>
-      <p>Falls Bring die Rezeptdaten nicht automatisch uebernimmt, kopiere die Liste direkt aus {{ .BrandName }}.</p>
+      <a href="https://www.getbring.com">Bring! Einkaufsliste App für iPhone und Android</a>
+      <p>Falls Bring die Rezeptdaten nicht automatisch übernimmt, kopiere die Liste direkt aus {{ .BrandName }}.</p>
     </section>
     <ol class="instruction" style="padding-left:20px" itemprop="recipeInstructions">
       {{ range $index, $instruction := .Instructions }}

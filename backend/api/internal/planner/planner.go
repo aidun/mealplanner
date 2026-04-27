@@ -103,10 +103,63 @@ func (p Planner) MergeProfiles(ctx context.Context, target domain.Profile, incom
 	if err != nil {
 		return domain.Profile{}, err
 	}
+	merged = repairMergedProfile(merged, target, incoming)
 	if err := merged.Validate(); err != nil {
 		return domain.Profile{}, err
 	}
 	return merged, nil
+}
+
+func repairMergedProfile(merged domain.Profile, target domain.Profile, incoming domain.Profile) domain.Profile {
+	if strings.TrimSpace(merged.HouseholdName) == "" {
+		merged.HouseholdName = firstNonEmpty(target.HouseholdName, incoming.HouseholdName, "Privater Haushalt")
+	}
+	if len(merged.Members) == 0 {
+		merged.Members = append([]domain.Member(nil), target.Members...)
+		merged.Members = append(merged.Members, incoming.Members...)
+	}
+	sourceByID := map[string]domain.Member{}
+	for _, member := range append(append([]domain.Member(nil), target.Members...), incoming.Members...) {
+		id := strings.TrimSpace(member.ID)
+		if id != "" {
+			sourceByID[id] = member
+		}
+	}
+	for index := range merged.Members {
+		member := &merged.Members[index]
+		if strings.TrimSpace(member.ID) == "" {
+			member.ID = fmt.Sprintf("person-%d", index+1)
+		}
+		source := sourceByID[strings.TrimSpace(member.ID)]
+		if strings.TrimSpace(member.Name) == "" {
+			member.Name = firstNonEmpty(member.Alias, source.Name, source.Alias, fmt.Sprintf("Person %d", index+1))
+		}
+		if strings.TrimSpace(member.Alias) == "" {
+			member.Alias = firstNonEmpty(source.Alias, member.Name)
+		}
+	}
+	if merged.Defaults == (domain.MealDefaults{}) {
+		merged.Defaults = target.Defaults
+	}
+	if len(merged.Presets) == 0 {
+		merged.Presets = append([]string(nil), target.Presets...)
+	}
+	if strings.TrimSpace(merged.PreferredStores) == "" {
+		merged.PreferredStores = firstNonEmpty(target.PreferredStores, incoming.PreferredStores)
+	}
+	if strings.TrimSpace(merged.ShoppingNotes) == "" {
+		merged.ShoppingNotes = firstNonEmpty(target.ShoppingNotes, incoming.ShoppingNotes)
+	}
+	return merged
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if trimmed := strings.TrimSpace(value); trimmed != "" {
+			return trimmed
+		}
+	}
+	return ""
 }
 
 func (p Planner) PreviewWeekPrompt(profile domain.Profile, weekStart string, favorites []domain.FavoriteRecipe) (string, error) {
@@ -289,7 +342,7 @@ func normalizeGeneratedMeal(meal domain.Meal, profile domain.Profile, dayDate st
 	}
 	meal.Description = strings.TrimSpace(meal.Description)
 	if meal.Description == "" {
-		meal.Description = fmt.Sprintf("%s fuer %s.", meal.Title, dayDate)
+		meal.Description = fmt.Sprintf("%s für %s.", meal.Title, dayDate)
 	}
 	meal.Ingredients = normalizeIngredients(meal.Ingredients)
 	meal.Instructions = normalizeInstructions(meal.Instructions)
@@ -440,10 +493,10 @@ func normalizeNutrition(meal domain.Meal, warnings []string) (domain.Nutrition, 
 		source = "ingredients"
 		if meal.EstimatedNutrition {
 			nutrition = estimated
-			warnings = append(warnings, "Naehrwerte wurden aus Zutaten und Portionsgroessen geschaetzt.")
+			warnings = append(warnings, "Nährwerte wurden aus Zutaten und Portionsgrößen geschätzt.")
 		} else if nutrition.Calories == 0 {
 			nutrition = estimated
-			warnings = append(warnings, "Naehrwerte wurden aus Zutaten und Portionsgroessen ergaenzt.")
+			warnings = append(warnings, "Nährwerte wurden aus Zutaten und Portionsgrößen ergänzt.")
 		}
 	}
 	if nutrition.CarbsG > 0 && nutrition.FiberG > nutrition.CarbsG {
@@ -456,7 +509,7 @@ func normalizeNutrition(meal domain.Meal, warnings []string) (domain.Nutrition, 
 		if nutrition.Calories == 0 || diff > threshold {
 			nutrition.Calories = macroCalories
 			if meal.EstimatedNutrition {
-				warnings = append(warnings, "Naehrwerte wurden aus Makros plausibilisiert.")
+				warnings = append(warnings, "Nährwerte wurden aus Makros plausibilisiert.")
 			}
 		}
 	}
@@ -466,7 +519,7 @@ func normalizeNutrition(meal domain.Meal, warnings []string) (domain.Nutrition, 
 func slotFallbackTitle(slot string) string {
 	switch strings.TrimSpace(strings.ToLower(slot)) {
 	case "breakfast":
-		return "Fruehstueck"
+		return "Frühstück"
 	case "lunch":
 		return "Mittagessen"
 	case "dinner":

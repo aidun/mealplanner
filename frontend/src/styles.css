@@ -6793,3 +6793,153 @@ h3,
     display: none;
   }
 }
+
+/* Feedback fixes 2026-04-27: compact controls, wrapping tags, checkable shopping list. */
+.meal-tag,
+.tag,
+.inspector-meta-pill,
+.inspector-ingredient-preview span,
+.shopping-category-pill {
+  min-width: 0;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.25;
+}
+
+.meal-tag-row,
+.tag-row,
+.inspector-hero-tags,
+.inspector-ingredient-preview {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.workspace-pane-button {
+  min-width: 0;
+}
+
+.workspace-pane-title,
+.workspace-pane-description,
+.workspace-pane-meta {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.day-overview-grid {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.day-tab {
+  min-width: 0;
+}
+
+.shopping-list-row {
+  grid-template-columns: 32px 30px minmax(54px, auto) minmax(0, 1fr);
+  align-items: center;
+}
+
+.shopping-list-row-done .ingredient-copy,
+.shopping-list-row-done .ingredient-amount {
+  opacity: 0.58;
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
+.shopping-item-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  margin-top: 0;
+  border: 1px solid rgba(82, 100, 66, 0.24);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  color: #fffaf2;
+  cursor: pointer;
+}
+
+.shopping-item-check:hover,
+.shopping-item-check:focus-visible {
+  border-color: rgba(82, 100, 66, 0.46);
+  box-shadow: 0 0 0 3px rgba(82, 100, 66, 0.12);
+}
+
+.shopping-item-check-icon {
+  width: 15px;
+  height: 15px;
+}
+
+.shopping-category-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: rgba(219, 232, 190, 0.72);
+  color: #526442;
+}
+
+.shopping-category-svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.inspector-warning-row {
+  display: grid;
+  gap: 10px;
+  padding: 12px 0;
+  border-top: 1px solid rgba(68, 72, 63, 0.08);
+}
+
+.inspector-warning-row:first-of-type {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.inspector-meta-pill-warning {
+  text-decoration: none;
+}
+
+.premium-invite-result {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.premium-invite-result strong,
+.premium-invite-result a,
+.premium-invite-result p {
+  grid-column: 1 / 2;
+}
+
+.premium-invite-result .icon-button {
+  grid-column: 2 / 3;
+  grid-row: 1 / span 2;
+}
+
+@media (max-width: 760px) {
+  .day-overview-grid {
+    overflow-x: auto;
+    padding-left: 16px;
+    padding-right: 16px;
+    scroll-padding-left: 16px;
+  }
+
+  .day-tab {
+    flex-basis: min(128px, 40vw);
+    min-width: min(128px, 40vw);
+  }
+
+  .shopping-list-row {
+    grid-template-columns: 32px 28px minmax(44px, auto) minmax(0, 1fr);
+  }
+}
