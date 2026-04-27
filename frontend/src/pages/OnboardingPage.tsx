@@ -724,7 +724,7 @@ export function OnboardingPage() {
             </div>
             <div className="profile-intro-gallery" aria-label="Einordnung und Wirkung">
               <figure className="profile-intro-photo profile-intro-photo-family">
-                <img src="/brand/mahlio-photo-library.png" alt="" />
+                <img src="/brand/mahlio-command-table.png" alt="" />
               </figure>
               <article className="profile-intro-aside">
                 <span className="eyebrow">Im Alltag</span>

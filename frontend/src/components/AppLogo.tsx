@@ -9,9 +9,10 @@ interface AppLogoProps extends HTMLAttributes<HTMLSpanElement> {
 
 export function AppLogo({ compact = false, markOnly = false, tone = 'brand', className = '', ...props }: AppLogoProps) {
   const markId = tone === 'mono' ? 'mahlio-logo-mono' : 'mahlio-logo-fill';
-  const stroke = tone === 'mono' ? 'currentColor' : '#556b2f';
-  const tomato = tone === 'mono' ? 'currentColor' : '#b9311b';
-  const lemon = tone === 'mono' ? 'currentColor' : '#e5c36f';
+  const stroke = tone === 'mono' ? 'currentColor' : '#1f2933';
+  const raspberry = tone === 'mono' ? 'currentColor' : '#c0184a';
+  const turmeric = tone === 'mono' ? 'currentColor' : '#d59612';
+  const mint = tone === 'mono' ? 'currentColor' : '#27a47a';
   return (
     <span
       className={`app-logo app-logo-tone-${tone}${compact ? ' app-logo-compact' : ''}${className ? ` ${className}` : ''}`}
@@ -21,14 +22,14 @@ export function AppLogo({ compact = false, markOnly = false, tone = 'brand', cla
         <rect x="7" y="7" width="50" height="50" rx="18" fill={`url(#${markId})`} />
         <circle cx="32" cy="32" r="16" fill="rgba(255,255,255,0.92)" />
         <path d="M18 32c2.5-4.6 7.5-7.4 14-7.4S43.5 27.4 46 32" stroke={stroke} strokeWidth="3.2" strokeLinecap="round" />
-        <circle cx="24" cy="36.5" r="2.6" fill={tomato} />
-        <circle cx="32" cy="39" r="2.6" fill={stroke} />
-        <circle cx="40" cy="36.5" r="2.6" fill={lemon} />
+        <circle cx="24" cy="36.5" r="2.6" fill={raspberry} />
+        <circle cx="32" cy="39" r="2.6" fill={mint} />
+        <circle cx="40" cy="36.5" r="2.6" fill={turmeric} />
         <defs>
           <linearGradient id="mahlio-logo-fill" x1="12" y1="10" x2="55" y2="55" gradientUnits="userSpaceOnUse">
-            <stop stopColor="#556b2f" />
-            <stop offset="0.55" stopColor="#6f7a43" />
-            <stop offset="1" stopColor="#8d8a5e" />
+            <stop stopColor="#f8fafc" />
+            <stop offset="0.52" stopColor="#d8f5ec" />
+            <stop offset="1" stopColor="#fde68a" />
           </linearGradient>
           <linearGradient id="mahlio-logo-mono" x1="12" y1="10" x2="55" y2="55" gradientUnits="userSpaceOnUse">
             <stop stopColor="currentColor" />

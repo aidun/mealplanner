@@ -108,7 +108,7 @@ export function MealInspector({
 
         <div className="inspector-hero-side">
           <figure className="inspector-photo-card" aria-hidden="true">
-            <img src="/brand/mahlio-photo-library.png" alt="" />
+            <img src="/brand/mahlio-command-table.png" alt="" />
             <figcaption>
               <span>Heute im Fokus</span>
               <strong>{slotLabel(meal.slot)}</strong>
