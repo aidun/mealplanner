@@ -1,6 +1,6 @@
 # Mealplanner Memory
 
-Last updated: 2026-04-26
+Last updated: 2026-04-27
 
 ## Kontext
 
@@ -32,6 +32,7 @@ Last updated: 2026-04-26
 - Seit 2026-04-26 ist der darauffolgende Planner-Pass nochmals klar naeher an Stitch gezogen: das Dashboard fuehrt jetzt utility-naher mit `Diese Woche am Tisch`, das MealBoard ist keine Einzel-Tageskarte mehr, sondern eine echte Wochenagenda mit Tagessektionen und inline Meal-Cards, und der Einkauf bleibt auf Desktop als ruhiger Utility-Sidebar-Block statt konkurrierender Hauptflaeche. Lokal verifiziert ueber frische Desktop-/Tablet-/Mobile-Screens sowie erneut gruenes `npm run build`, `npm run test -- --run` und `npm run test:e2e`.
 - Seit 2026-04-26 ist der Frontend-Redesign-Pass ueber den Planner hinaus auf die gemeinsame App-Shell gezogen: Guided-Onboarding, Backoffice/Admin und Legal nutzen jetzt dieselbe warme `Mahlio`-Sprache mit editorialer Typografie, weicheren Arbeitsflaechen und reduziertem Chrome; Referenz bleibt weiter der Stitch-Handoff `Mahlio Warm Family Planner Redesign`, umgesetzt repo-nativ in `frontend/src/pages/{DashboardPage,OnboardingPage,AdminPage,LegalPage}.tsx` und `frontend/src/styles.css`.
 - Ebenfalls seit 2026-04-26 ist fuer den Workspace eine harte Breakpoint-Regel wichtig: ab `1080px` stackt der Planner-/Recipe-/Shopping-Bereich einspaltig, und unter `760px` muessen `Woche`, `Rezept` und `Einkauf` vollbreit als echte Einzelpane laufen. Eine spaete Basisregel fuer `.workspace` hatte das mobile Raster kurz auf ca. 19px Hauptspalte kollabieren lassen; die finalen Overrides stehen am Ende von `frontend/src/styles.css` und wurden erneut ueber Desktop-/Tablet-/Mobile-Screens sowie gruenes `npm run build`, `npm run test -- --run` und `npm run test:e2e` verifiziert.
+- Seit 2026-04-27 ist der Pitch-Redesign-Pass `Mahlio Reserve` auf `mealplanner-test` ausgerollt: Stitch-Projekt `Mahlio Pitch UI Sprint 2026-04-27` (`7467535621837030012`) lieferte Desktop- und Mobile-Referenzen, der repo-native Planner nutzt jetzt eine kompakte Editorial-Stage, den zweizonigen `workspace-pitch` mit Wochen-Workbench links und Rezept/Einkauf-Rail rechts, image-led Recipe-Inspector, Tomato-Bring-CTA und einen minimierten Feedback-Trigger. Verifiziert wurden lokaler Build, Vitest, Playwright-E2E, Desktop/Tablet/Mobile-Screenshots sowie die oeffentliche Domain mit dem Frontend-Image `ghcr.io/aidun/mealplanner/frontend:master-55015c8-amd64`.
 - Der Admin-Screen darf seit 2026-04-26 bei unvollstaendigen Overview-Daten nicht mehr hart an `stats` scheitern: alle Reads laufen jetzt defensiv ueber `adminOverview?.stats?....` in `frontend/src/pages/AdminPage.tsx`, damit fehlende Kennzahlen den Screen nicht weiss abstuerzen lassen.
 - Test/LAN-Zugang nutzt aktuell `192.168.2.204` plus Cloudflare Tunnel.
 - Testumgebung aktiviert `PROMPT_DEBUG=true` und liefert unter `/api/debug/prompts/latest` den letzten Prompt, eine kurze Historie sowie aggregierte OpenAI-Request-/Token-Metriken fuer das Overlay.
