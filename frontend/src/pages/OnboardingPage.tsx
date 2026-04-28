@@ -40,7 +40,7 @@ const EMPTY_FORM: ProfileFormState = {
 
 const GUIDED_ONBOARDING_STEPS = [
   { id: 'welcome', label: 'Start' },
-  { id: 'household', label: 'Bereich' },
+  { id: 'household', label: 'Familie' },
   { id: 'members', label: 'Menschen' },
   { id: 'taste', label: 'Geschmack' },
   { id: 'rhythm', label: 'Alltag' },
@@ -314,9 +314,7 @@ export function OnboardingPage() {
   const inviteSentByEmail = Boolean((inviteMutation.data as { emailSent?: boolean } | undefined)?.emailSent);
   const canManageFamilyMail = Boolean(session?.isPremium || session?.isAdmin);
   const namedMembersCount = form.members.filter((member) => member.name.trim() !== '').length;
-  const displayHouseholdLabel = familyQuery.data?.personal
-    ? 'Persönlicher Bereich'
-    : familyQuery.data?.name || form.householdName || 'Familienkonto';
+  const activeMealSlotsCount = form.mealPlanDays.reduce((sum, day) => sum + day.slots.filter((slot) => slot.enabled).length, 0);
   const hasUnconfiguredProfile = !form.householdName.trim() && namedMembersCount === 0;
 
   const closeWelcomeDialog = () => {
@@ -333,10 +331,10 @@ export function OnboardingPage() {
   const startWelcomeFlow = () => setGuidedStep(1);
 
   const statusMessage = useMemo(() => {
-    if (saveMutation.isPending) return 'Angaben werden gespeichert.';
-    if (saveMutation.isError) return readableApiError(saveMutation.error, 'Angaben konnten gerade nicht gespeichert werden.');
-    if (saveMutation.isSuccess && !hasEdited) return 'Angaben gespeichert. Der nächste Wochenplan nutzt diese Einstellungen.';
-    if (hasEdited) return 'Ungespeicherte Änderungen.';
+    if (saveMutation.isPending) return 'Wir merken eure Vorlieben.';
+    if (saveMutation.isError) return readableApiError(saveMutation.error, 'Eure Vorlieben konnten gerade nicht gespeichert werden.');
+    if (saveMutation.isSuccess && !hasEdited) return 'Gespeichert. Der nächste Wochenplan nutzt euren Familiengeschmack.';
+    if (hasEdited) return 'Noch nicht gespeichert.';
     return '';
   }, [hasEdited, saveMutation.error, saveMutation.isError, saveMutation.isPending, saveMutation.isSuccess]);
 
@@ -411,8 +409,8 @@ export function OnboardingPage() {
                       <span className="eyebrow">Erster Einstieg</span>
                       <h1 id="guided-onboarding-title">Ein paar lockere Fragen, dann passt die Woche schon deutlich besser.</h1>
                       <p className="guided-onboarding-lead">
-                        Statt dich direkt in einen großen Profil-Editor zu werfen, richten wir {brand.name} kurz mit dir ein.
-                        Du kannst jederzeit überspringen oder später im Detail nachschärfen.
+                        Wir fragen kurz, wer bei euch mitisst und was bei euch gut ankommt. Du kannst jederzeit überspringen
+                        oder später in Ruhe nachschärfen.
                       </p>
                     </div>
                     <div className="guided-onboarding-showcase" aria-label="Produktvorschau">
@@ -472,12 +470,12 @@ export function OnboardingPage() {
               {guidedStep === 1 ? (
                 <div className="guided-onboarding-panel">
                   <span className="eyebrow">Frage 1</span>
-                  <h1 id="guided-onboarding-title">Wie sollen wir euren Bereich nennen?</h1>
+                  <h1 id="guided-onboarding-title">Wie nennt ihr euren Esstisch?</h1>
                   <p className="guided-onboarding-lead">
-                    Das ist nur der Name für euren gemeinsamen Planungsbereich. Er darf ruhig einfach sein.
+                    Das ist der Name, unter dem eure gemeinsamen Wochen und Vorlieben laufen. Er darf ruhig einfach sein.
                   </p>
                   <label className="field guided-onboarding-field">
-                    <span className="field-label">Name des Bereichs</span>
+                    <span className="field-label">Familienname</span>
                     <input
                       className="input guided-onboarding-input"
                       autoComplete="organization"
@@ -486,7 +484,7 @@ export function OnboardingPage() {
                       placeholder="Familie Weber"
                     />
                   </label>
-                  <p className="guided-onboarding-hint">Wenn du allein startest, reicht auch etwas wie „Haushalt Markus“.</p>
+                  <p className="guided-onboarding-hint">Wenn du allein startest, reicht auch etwas wie „Markus' Küche“.</p>
                 </div>
               ) : null}
 
@@ -630,11 +628,11 @@ export function OnboardingPage() {
                   </p>
                   <div className="guided-onboarding-summary">
                     <article>
-                      <span>Bereich</span>
+                      <span>Familie</span>
                       <strong>{form.householdName.trim() || 'Noch offen'}</strong>
                     </article>
                     <article>
-                      <span>Profilpersonen</span>
+                      <span>Mitesser</span>
                       <strong>{namedMembersCount || 0}</strong>
                     </article>
                     <article>
@@ -698,7 +696,7 @@ export function OnboardingPage() {
           <button type="button" className="brand-mark brand-button" onClick={() => navigate('/')}>
             <AppLogo />
           </button>
-          <p className="brand-subtitle">Menschen, Geschmack und Woche an einem Ort.</p>
+          <p className="brand-subtitle">Eure Familie, eure Lieblingsgerichte und euer Wochenrhythmus.</p>
         </div>
       </header>
 
@@ -706,21 +704,21 @@ export function OnboardingPage() {
         <section className="profile-page">
           <div className="profile-page-intro profile-page-intro-split">
             <div className="profile-page-intro-copy">
-              <span className="eyebrow">Küchenprofil</span>
-              <h1>Haushalt & Küchenprofil</h1>
-              <p>Hier legt ihr fest, wer mitisst, was im Alltag gut passt und wie eure Woche verlässlich startet.</p>
+              <span className="eyebrow">Familienküche</span>
+              <h1>Was eure Familie gern isst</h1>
+              <p>Sagt {brand.name}, wer am Tisch sitzt, was gern gegessen wird und welche Alltagsregeln eure Woche leichter machen.</p>
               <div className="profile-overview-grid" aria-label="Haushaltsübersicht">
                 <div className="profile-overview-card">
                   <strong>{namedMembersCount}</strong>
-                  <span>Profilpersonen</span>
+                  <span>Mitesser</span>
                 </div>
                 <div className="profile-overview-card">
-                  <strong>{visibleAccountsCount}</strong>
-                  <span>Login-Zugänge</span>
+                  <strong>{favorites.length}</strong>
+                  <span>Lieblingsgerichte</span>
                 </div>
                 <div className="profile-overview-card">
-                  <strong>{familyQuery.data?.personal ? 'Privat' : 'Familie'}</strong>
-                  <span>{displayHouseholdLabel}</span>
+                  <strong>{activeMealSlotsCount}</strong>
+                  <span>Essenszeiten</span>
                 </div>
               </div>
             </div>
@@ -729,9 +727,9 @@ export function OnboardingPage() {
                 <img src="/brand/mahlio-photo-library.png" alt="" />
               </figure>
               <article className="profile-intro-aside">
-                <span className="eyebrow">Im Alltag</span>
-                <strong>Weniger Grundsatzfragen. Schneller zu einer Woche, die wirklich kochbar ist.</strong>
-                <p>Menschen, Regeln, Favoriten und Zugänge bleiben fachlich sauber getrennt, aber spürbar an einem Ort.</p>
+                <span className="eyebrow">Für euren Tisch</span>
+                <strong>Eine Woche passt besser, wenn {brand.name} eure Vorlieben kennt.</strong>
+                <p>Namen, Lieblingsgerichte, No-Gos und Einkaufsgewohnheiten helfen, Vorschläge familiennah zu planen.</p>
               </article>
             </div>
           </div>
@@ -742,28 +740,28 @@ export function OnboardingPage() {
               className={`profile-tab-button${activeTab === 'family' ? ' profile-tab-button-active' : ''}`}
               onClick={() => setActiveTab('family')}
             >
-              Menschen
+              Familie
             </button>
             <button
               type="button"
               className={`profile-tab-button${activeTab === 'rules' ? ' profile-tab-button-active' : ''}`}
               onClick={() => setActiveTab('rules')}
             >
-              Woche
+              Vorlieben
             </button>
             <button
               type="button"
               className={`profile-tab-button${activeTab === 'favorites' ? ' profile-tab-button-active' : ''}`}
               onClick={() => setActiveTab('favorites')}
             >
-              Favoriten
+              Lieblingsgerichte
             </button>
             <button
               type="button"
               className={`profile-tab-button${activeTab === 'invites' ? ' profile-tab-button-active' : ''}`}
               onClick={() => setActiveTab('invites')}
             >
-              Zugänge
+              Einladen
             </button>
           </nav>
 
@@ -784,7 +782,7 @@ export function OnboardingPage() {
 
           {joinedFamily ? (
             <div className="status-strip status-strip-success" role="status" aria-live="polite">
-              <span>Familienbereich aktiv. Angaben und Zugänge liegen jetzt an einem Ort und können sauber Personen zugeordnet werden.</span>
+              <span>Familienbereich aktiv. Vorlieben, Lieblingsgerichte und Einladungen liegen jetzt an einem Ort.</span>
             </div>
           ) : null}
 
@@ -804,12 +802,12 @@ export function OnboardingPage() {
             <section className={`profile-section${activeTab !== 'family' ? ' profile-section-hidden' : ''}`} aria-labelledby="household-section">
               <div className="profile-section-copy">
                 <span className="section-index">01</span>
-                <h2 id="household-section">Wer mitisst</h2>
-                <p>Nur echte Profilpersonen gehören hier hinein. Sie steuern Portionen, Vorlieben und die Ansprache im Plan.</p>
+                <h2 id="household-section">Wer sitzt mit am Tisch?</h2>
+                <p>Tragt die Menschen ein, für die {brand.name} planen soll: Portionen, Lieblingsessen und Dinge, die nicht auf den Tisch kommen.</p>
               </div>
               <div className="profile-section-fields">
                 <label className="field">
-                  <span className="field-label">Haushaltsname</span>
+                  <span className="field-label">Familienname</span>
                   <input
                     className="input"
                     name="householdName"
@@ -824,7 +822,7 @@ export function OnboardingPage() {
                   {form.members.map((member, index) => (
                     <div key={`roster-${member.id}-${index}`} className="member-pill">
                       <strong>{member.alias.trim() || member.name.trim() || `Mitglied ${index + 1}`}</strong>
-                      <span>{member.role.trim() || 'Haushaltsmitglied'}</span>
+                      <span>{member.role.trim() || 'Familienmitglied'}</span>
                     </div>
                   ))}
                 </div>
@@ -835,7 +833,7 @@ export function OnboardingPage() {
                       <div className="member-editor-header">
                         <div>
                           <strong>{member.alias.trim() || member.name.trim() || `Mitglied ${index + 1}`}</strong>
-                          <p>{member.role.trim() || 'Noch keine Rolle gesetzt'}</p>
+                          <p>{member.role.trim() || 'Noch keine Rolle am Tisch'}</p>
                         </div>
                         {form.members.length > 1 ? (
                           <button
@@ -852,7 +850,7 @@ export function OnboardingPage() {
 
                       <div className="profile-section-fields member-grid">
                         <label className="field">
-                          <span className="field-label">Voller Name</span>
+                          <span className="field-label">Name</span>
                           <input
                             className="input"
                             name={`member-name-${index}`}
@@ -863,7 +861,7 @@ export function OnboardingPage() {
                           />
                         </label>
                         <label className="field">
-                          <span className="field-label">Anrede im Plan</span>
+                          <span className="field-label">Name im Wochenplan</span>
                           <input
                             className="input"
                             name={`member-alias-${index}`}
@@ -874,7 +872,7 @@ export function OnboardingPage() {
                           />
                         </label>
                         <label className="field">
-                          <span className="field-label">Beschreibung</span>
+                          <span className="field-label">Rolle am Tisch</span>
                           <input
                             className="input"
                             name={`member-role-${index}`}
@@ -884,7 +882,7 @@ export function OnboardingPage() {
                           />
                         </label>
                         <label className="field">
-                          <span className="field-label">Kalorienziel</span>
+                          <span className="field-label">Ungefähres Tagesziel</span>
                           <input
                             className="input"
                             inputMode="numeric"
@@ -894,7 +892,7 @@ export function OnboardingPage() {
                           />
                         </label>
                         <label className="field">
-                          <span className="field-label">Mag gern</span>
+                          <span className="field-label">Isst gern</span>
                           <textarea
                             className="input textarea"
                             rows={3}
@@ -904,7 +902,7 @@ export function OnboardingPage() {
                           />
                         </label>
                         <label className="field">
-                          <span className="field-label">Mag nicht</span>
+                          <span className="field-label">Mag nicht so</span>
                           <textarea
                             className="input textarea"
                             rows={3}
@@ -914,7 +912,7 @@ export function OnboardingPage() {
                           />
                         </label>
                         <label className="field member-grid-wide">
-                          <span className="field-label">Einschränkungen</span>
+                          <span className="field-label">Wichtig beim Essen</span>
                           <textarea
                             className="input textarea"
                             rows={3}
@@ -924,13 +922,13 @@ export function OnboardingPage() {
                           />
                         </label>
                         <p className="profile-inline-note member-grid-wide">
-                          Allergien und Unverträglichkeiten werden in Rezepten nicht verbindlich geprüft. Wichtige Unverträglichkeiten und No-Gos hier klar notieren.
+                          Wenn etwas wirklich nicht auf den Teller darf, hier klar notieren. Allergien und Unverträglichkeiten bitte vor Einkauf und Kochen zusätzlich prüfen.
                         </p>
                         <p className="profile-inline-note member-grid-wide">
-                          Kritische Zutaten und Marken bitte vor Einkauf und Kochen noch einmal kurz gegen euren Alltag prüfen.
+                          Marken, Lieblingsprodukte und heikle Zutaten helfen, damit die Vorschläge besser zu eurem Alltag passen.
                         </p>
                         <p className="profile-inline-note member-grid-wide">
-                          Der volle Name beschreibt die Person im Haushalt. Die Anrede ist die kurze Form, die später im Plan auftaucht.
+                          Der Name im Wochenplan ist die kurze Form, die später bei Portionen und Vorlieben auftaucht.
                         </p>
                       </div>
                     </article>
@@ -940,12 +938,12 @@ export function OnboardingPage() {
                 <div className="member-editor-actions">
                   <button type="button" className="button button-secondary" onClick={addMember}>
                     <PlusIcon className="action-icon" />
-                    Mitglied hinzufügen
+                    Person hinzufügen
                   </button>
                 </div>
 
                 <label className="field">
-                  <span className="field-label">Standard-Portionen</span>
+                  <span className="field-label">Portionen pro Mahlzeit</span>
                   <input
                     className="input"
                     inputMode="numeric"
@@ -960,17 +958,21 @@ export function OnboardingPage() {
             <section className={`profile-section${activeTab !== 'family' ? ' profile-section-hidden' : ''}`} aria-labelledby="family-section">
               <div className="profile-section-copy">
                 <span className="section-index">02</span>
-                <h2 id="family-section">Wer gehört digital dazu</h2>
-                <p>Hier ordnest du Logins den sichtbaren Personen zu, damit Einladungen und Zuständigkeiten sauber bleiben.</p>
+                <h2 id="family-section">Wer darf mitplanen?</h2>
+                <p>Wenn mehrere Menschen mitplanen, könnt ihr ihre Logins den passenden Personen am Tisch zuordnen.</p>
               </div>
               <div className="profile-section-fields">
                 <div className="family-overview" aria-label="Familienkonto Übersicht">
                   <strong>{familyQuery.data?.personal ? 'Persönlicher Bereich' : 'Gemeinsames Familienkonto'}</strong>
                   {familyQuery.data?.mergedWarning ? <p>{familyQuery.data.mergedWarning}</p> : null}
                   <div className="family-summary-row">
-                    <span>{linkedAccountsCount} von {visibleAccountsCount} Logins zugeordnet</span>
-                    <span>{namedMembersCount} Profilpersonen sichtbar</span>
-                    {unassignedAccountsCount > 0 ? <span>{unassignedAccountsCount} Logins brauchen noch eine Person</span> : null}
+                    <span>{linkedAccountsCount} von {visibleAccountsCount} Logins verbunden</span>
+                    <span>{namedMembersCount} Mitesser</span>
+                    {unassignedAccountsCount > 0 ? (
+                      <span>
+                        {unassignedAccountsCount} {unassignedAccountsCount === 1 ? 'Einladung braucht' : 'Einladungen brauchen'} noch eine Person
+                      </span>
+                    ) : null}
                   </div>
                 </div>
 
@@ -996,8 +998,8 @@ export function OnboardingPage() {
                   )) : (
                     <article className="family-roster-card family-roster-card-placeholder">
                       <div>
-                        <strong>Noch keine Profilpersonen benannt</strong>
-                        <p>Lege oben zuerst die Personen fest, die im Familienplan auftauchen sollen.</p>
+                        <strong>Noch niemand eingetragen</strong>
+                        <p>Lege oben zuerst fest, wer im Familienplan auftauchen soll.</p>
                       </div>
                     </article>
                   )}
@@ -1113,14 +1115,14 @@ export function OnboardingPage() {
             <section className={`profile-section${activeTab !== 'rules' ? ' profile-section-hidden' : ''}`} aria-labelledby="taste-section">
               <div className="profile-section-copy">
                 <span className="section-index">03</span>
-                <h2 id="taste-section">Küchenregeln</h2>
-                <p>Wie eure Woche schmecken soll: Küchen, Tempo und Zutaten, die draußen bleiben.</p>
+                <h2 id="taste-section">Geschmack & No-Gos</h2>
+                <p>Was bei euch gut ankommt, was draußen bleibt und wie viel Aufwand in eure Woche passt.</p>
               </div>
               <div className="profile-section-fields two-column">
                 <div className="meal-plan-settings member-grid-wide">
                   <div className="meal-plan-settings-copy">
-                    <strong>Mahlzeiten pro Tag</strong>
-                    <p>Lege für Montag bis Sonntag fest, welche Mahlzeiten erzeugt werden und wer jeweils mitessen soll.</p>
+                    <strong>Wann esst ihr zusammen?</strong>
+                    <p>Wählt, an welchen Tagen Frühstück, Mittag, Abendessen oder Snacks wirklich geplant werden sollen.</p>
                   </div>
                   <div className="meal-plan-slot-list">
                     {form.mealPlanDays.map((day) => (
@@ -1184,7 +1186,7 @@ export function OnboardingPage() {
                   </div>
                 </div>
                 <label className="field">
-                  <span className="field-label">Bevorzugte Küchen & Themen</span>
+                  <span className="field-label">Was kommt bei euch gut an?</span>
                   <textarea
                     className="input textarea"
                     rows={4}
@@ -1194,7 +1196,7 @@ export function OnboardingPage() {
                   />
                 </label>
                 <label className="field">
-                  <span className="field-label">Ausgeschlossene Zutaten</span>
+                  <span className="field-label">Kommt nicht auf den Teller</span>
                   <textarea
                     className="input textarea"
                     rows={4}
@@ -1204,7 +1206,7 @@ export function OnboardingPage() {
                   />
                 </label>
                 <label className="field">
-                  <span className="field-label">Lieblingsläden</span>
+                  <span className="field-label">Wo ihr gern einkauft</span>
                   <textarea
                     className="input textarea"
                     rows={3}
@@ -1214,7 +1216,7 @@ export function OnboardingPage() {
                   />
                 </label>
                 <label className="field">
-                  <span className="field-label">Einkauf & Verpackungsgrößen</span>
+                  <span className="field-label">Einkauf & Vorräte</span>
                   <textarea
                     className="input textarea"
                     rows={4}
@@ -1224,7 +1226,7 @@ export function OnboardingPage() {
                   />
                 </label>
                 <label className="field">
-                  <span className="field-label">Kochstil</span>
+                  <span className="field-label">So kocht ihr gern</span>
                   <textarea
                     className="input textarea"
                     rows={4}
@@ -1234,7 +1236,7 @@ export function OnboardingPage() {
                   />
                 </label>
                 <label className="field">
-                  <span className="field-label">Planungsregeln</span>
+                  <span className="field-label">Was in eure Woche passen muss</span>
                   <textarea
                     className="input textarea"
                     rows={4}
@@ -1244,7 +1246,7 @@ export function OnboardingPage() {
                   />
                 </label>
                 <p className="profile-inline-note two-column-note">
-                  Saison, Lieblingsgerichte und kleine Wochenregeln helfen später bei stimmigeren Vorschlägen.
+                  Saison, Lieblingsgerichte und kleine Wochengewohnheiten helfen später bei stimmigeren Vorschlägen.
                 </p>
               </div>
             </section>
@@ -1252,8 +1254,8 @@ export function OnboardingPage() {
             <section className={`profile-section${activeTab !== 'rules' ? ' profile-section-hidden' : ''}`} aria-labelledby="defaults-section">
               <div className="profile-section-copy">
                 <span className="section-index">04</span>
-                <h2 id="defaults-section">Mahlzeiten-Leitplanken</h2>
-                <p>Diese Hinweise geben der Planungslogik pro Tageszeit eine wiedererkennbare Richtung.</p>
+                <h2 id="defaults-section">Vorlieben pro Tageszeit</h2>
+                <p>Damit Frühstück, Mittagessen, Abendessen und Snacks zu euch passen.</p>
               </div>
               <div className="profile-section-fields preset-grid">
                 <label className="field">
@@ -1302,11 +1304,11 @@ export function OnboardingPage() {
             <section className={`profile-section${activeTab !== 'favorites' ? ' profile-section-hidden' : ''}`} aria-labelledby="favorites-section">
               <div className="profile-section-copy">
                 <span className="section-index">05</span>
-                <h2 id="favorites-section">Favoriten</h2>
-                <p>Gespeicherte Gerichte liegen hier gesammelt und geben der nächsten Woche eine vertraute Richtung.</p>
+                <h2 id="favorites-section">Lieblingsgerichte</h2>
+                <p>Gerichte, die bei euch funktionieren, bleiben hier gesammelt und geben der nächsten Woche eine vertraute Richtung.</p>
               </div>
               <div className="profile-section-fields">
-                <div className="family-overview" aria-label="Favoriten Übersicht">
+                <div className="family-overview" aria-label="Lieblingsgerichte Übersicht">
                   <strong>{favorites.length} gespeicherte Rezepte</strong>
                   <p>Diese Sammlung wird beim Planen als bevorzugte Richtung wiederverwendet.</p>
                 </div>
@@ -1331,8 +1333,8 @@ export function OnboardingPage() {
                           className="icon-button"
                           onClick={() => deleteFavoriteMutation.mutate(favorite.id)}
                           disabled={deleteFavoriteMutation.isPending}
-                          aria-label={`${favorite.meal.title} aus Favoriten entfernen`}
-                          title="Favorit entfernen"
+                          aria-label={`${favorite.meal.title} aus Lieblingsgerichten entfernen`}
+                          title="Lieblingsgericht entfernen"
                         >
                           <TrashIcon className="action-icon" />
                         </button>
@@ -1340,7 +1342,7 @@ export function OnboardingPage() {
                     ))}
                   </div>
                 ) : (
-                  <p className="muted">Noch keine Favoriten gespeichert.</p>
+                  <p className="muted">Noch keine Lieblingsgerichte gespeichert.</p>
                 )}
               </div>
             </section>
@@ -1348,8 +1350,8 @@ export function OnboardingPage() {
             <section className={`profile-section${activeTab !== 'invites' ? ' profile-section-hidden' : ''}`} aria-labelledby="invites-section">
               <div className="profile-section-copy">
                 <span className="section-index">06</span>
-                <h2 id="invites-section">Einladungen & Zugänge</h2>
-                <p>Neue Logins an euren gemeinsamen Tisch holen und bestehende Profile sauber zusammenführen.</p>
+                <h2 id="invites-section">Familie einladen</h2>
+                <p>Holt weitere Menschen an euren gemeinsamen Tisch, damit sie mitplanen und Rezepte sehen können.</p>
               </div>
               <div className="profile-section-fields">
                 <p className="panel-feedback" role="note">
@@ -1413,12 +1415,12 @@ export function OnboardingPage() {
 
             <div className="profile-save-bar">
               <div>
-                <strong>Speichern und für die nächste Woche nutzen</strong>
-                <p>Aliase und Zuordnungen werden in zukünftigen Prompts wiederverwendet.</p>
+                <strong>Für die nächste {brand.name}-Woche merken</strong>
+                <p>Vorlieben, No-Gos und Familienrhythmus fließen in die nächsten Vorschläge ein.</p>
               </div>
               <button type="submit" className="button button-primary" disabled={saveMutation.isPending}>
                 <SaveIcon className="action-icon" />
-                {saveMutation.isPending ? 'Angaben werden gespeichert' : 'Angaben speichern'}
+                {saveMutation.isPending ? 'Wird gemerkt' : 'Für unsere Woche merken'}
               </button>
             </div>
           </form>

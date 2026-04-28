@@ -12,7 +12,7 @@ import (
 type fakeGenerator struct{}
 
 func (fakeGenerator) GenerateWeek(context.Context, domain.Profile, time.Time, []domain.FavoriteRecipe) (domain.Plan, error) {
-	return domain.Plan{ID: "plan-1", Days: []domain.DayPlan{{Date: "2026-04-20", Meals: []domain.Meal{{ID: "meal-1", Slot: "breakfast", Ingredients: []domain.Ingredient{{Name: "Hafer", Amount: 100, Unit: "g"}}}}}}}, nil
+	return domain.Plan{ID: "plan-1", Days: []domain.DayPlan{{Date: "2026-04-20", Label: "Sonntag", Meals: []domain.Meal{{ID: "meal-1", Slot: "breakfast", Ingredients: []domain.Ingredient{{Name: "Hafer", Amount: 100, Unit: "g"}}}}}}}, nil
 }
 
 func (fakeGenerator) RegenerateMeal(_ context.Context, _ domain.Profile, _ domain.Plan, mealID string, note string, _ []domain.FavoriteRecipe) (domain.Meal, error) {
@@ -110,8 +110,30 @@ func TestGenerateWeekUsesExplicitWeekMonday(t *testing.T) {
 	if plan.WeekStart != "2026-04-20" {
 		t.Fatalf("expected monday week start, got %s", plan.WeekStart)
 	}
+	if plan.Days[0].Date != "2026-04-20" || plan.Days[0].Label != "Montag" {
+		t.Fatalf("expected label to match normalized date, got %#v", plan.Days[0])
+	}
 	if len(plan.ShoppingList) != 1 {
 		t.Fatalf("expected shopping list")
+	}
+}
+
+func TestGenerateWeekDefaultsToNextMonday(t *testing.T) {
+	p := New(fakeGenerator{}).WithNow(func() time.Time {
+		return time.Date(2026, 4, 27, 11, 0, 0, 0, time.UTC)
+	})
+	plan, err := p.GenerateWeek(context.Background(), domain.DefaultProfile(), "", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if plan.WeekStart != "2026-05-04" {
+		t.Fatalf("expected default week to start on next monday, got %s", plan.WeekStart)
+	}
+	if plan.Days[0].Date != "2026-05-04" || plan.Days[0].Label != "Montag" {
+		t.Fatalf("expected first generated day to be monday, got %#v", plan.Days[0])
+	}
+	if plan.Days[6].Date != "2026-05-10" || plan.Days[6].Label != "Sonntag" {
+		t.Fatalf("expected last generated day to be sunday, got %#v", plan.Days[6])
 	}
 }
 

@@ -26,7 +26,6 @@ func (g MockGenerator) GenerateWeek(_ context.Context, profile domain.Profile, w
 		CreatedAt: g.now(),
 		UpdatedAt: g.now(),
 	}
-	labels := []string{"Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"}
 	slots := []string{"breakfast", "lunch", "dinner"}
 	titles := map[string]string{
 		"breakfast": "Joghurt-Bowl mit Apfel, Nuss und Hafer",
@@ -36,7 +35,7 @@ func (g MockGenerator) GenerateWeek(_ context.Context, profile domain.Profile, w
 	}
 	for i := 0; i < 7; i++ {
 		date := weekStart.AddDate(0, 0, i)
-		day := domain.DayPlan{Date: date.Format("2006-01-02"), Label: labels[int(date.Weekday())]}
+		day := domain.DayPlan{Date: date.Format("2006-01-02"), Label: weekdayLabel(date)}
 		for _, slot := range slots {
 			day.Meals = append(day.Meals, g.meal(profile, date, slot, titles[slot], ""))
 		}
@@ -51,6 +50,11 @@ func (g MockGenerator) GenerateWeek(_ context.Context, profile domain.Profile, w
 	}
 	plan.ShoppingList = domain.ConsolidateShoppingList(plan)
 	return plan, nil
+}
+
+func weekdayLabel(t time.Time) string {
+	labels := []string{"Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"}
+	return labels[int(t.Weekday())]
 }
 
 func (g MockGenerator) RegenerateMeal(_ context.Context, profile domain.Profile, plan domain.Plan, mealID string, note string, _ []domain.FavoriteRecipe) (domain.Meal, error) {

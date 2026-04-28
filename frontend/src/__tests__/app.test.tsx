@@ -29,7 +29,7 @@ const plan = {
   days: [
     {
       date: '2026-04-13',
-      label: 'Mo',
+      label: 'Sonntag',
       meals: [
         {
           id: 'meal-1',
@@ -51,7 +51,7 @@ const plan = {
     },
     {
       date: '2026-04-14',
-      label: 'Di',
+      label: 'Montag',
       meals: [
         {
           id: 'meal-2',
@@ -451,7 +451,7 @@ describe('Mealplanner app', () => {
     renderApp('/');
 
     expect(await screen.findByRole('heading', { name: /Ein paar lockere Fragen/i })).toBeInTheDocument();
-    expect(screen.getByText(/Statt dich direkt in einen großen Profil-Editor zu werfen/)).toBeInTheDocument();
+    expect(screen.getByText(/wer bei euch mitisst und was bei euch gut ankommt/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: "Los geht's" })).toBeInTheDocument();
   });
 
@@ -631,7 +631,7 @@ describe('Mealplanner app', () => {
   it('shows favorites inside the profile area', async () => {
     renderApp('/onboarding');
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Favoriten' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Lieblingsgerichte' }));
     expect(await screen.findByText(/1 gespeicherte Rezepte|gespeicherte Rezepte/)).toBeInTheDocument();
     expect(screen.getByText('Beeren-Porridge')).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: /entfernen/i }).length).toBeGreaterThan(0);
@@ -640,8 +640,8 @@ describe('Mealplanner app', () => {
   it('reads the active profile tab from the url', async () => {
     renderApp('/onboarding?tab=favorites');
 
-    expect(await screen.findByRole('heading', { name: 'Favoriten' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Favoriten' })).toHaveClass('profile-tab-button-active');
+    expect(await screen.findByRole('heading', { name: 'Lieblingsgerichte' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Lieblingsgerichte' })).toHaveClass('profile-tab-button-active');
   });
 
   it('keeps the weekly Bring link stable when shopping list contents change', async () => {
@@ -718,6 +718,9 @@ describe('Mealplanner app', () => {
       )
     );
     expect(screen.getByText('1 von 2 Positionen erledigt')).toBeInTheDocument();
+    const checkedButton = screen.getByRole('button', { name: 'Zucchini wieder öffnen' });
+    expect(checkedButton).toHaveClass('shopping-item-check-done');
+    expect(checkedButton.querySelector('.shopping-item-check-icon')).toBeInTheDocument();
     expect(await screen.findByRole('link', { name: 'Woche zu Bring' })).toHaveAttribute(
       'href',
       expect.stringContaining('exclude=Zucchini')
@@ -767,7 +770,7 @@ describe('Mealplanner app', () => {
 
     expect(await screen.findByText('Wochen-Workbench')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Einkauf' })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByText('Di')).toBeInTheDocument();
+    expect(screen.getByText(/^Di\.?$/)).toBeInTheDocument();
   });
 
   it('shows the updated meal after regeneration', async () => {
@@ -800,15 +803,15 @@ describe('Mealplanner app', () => {
   it('opens onboarding and saves the profile', async () => {
     renderApp('/onboarding');
 
-    expect(await screen.findByText('Haushalt & Küchenprofil')).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText('Haushaltsname'), { target: { value: 'Familie Weber' } });
-    fireEvent.change(screen.getAllByLabelText('Anrede im Plan')[0]!, { target: { value: 'Mama' } });
-    fireEvent.change(screen.getByLabelText('Standard-Portionen'), { target: { value: '4' } });
+    expect(await screen.findByText('Was eure Familie gern isst')).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Familienname'), { target: { value: 'Familie Weber' } });
+    fireEvent.change(screen.getAllByLabelText('Name im Wochenplan')[0]!, { target: { value: 'Mama' } });
+    fireEvent.change(screen.getByLabelText('Portionen pro Mahlzeit'), { target: { value: '4' } });
     const mondayCard = screen.getByLabelText('Montag');
     fireEvent.click(within(mondayCard).getByLabelText('Snack'));
     fireEvent.click(within(screen.getByLabelText('Montag Snack Teilnehmende')).getByLabelText('Ben'));
 
-    fireEvent.click(screen.getByRole('button', { name: 'Angaben speichern' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Für unsere Woche merken' }));
 
     await waitFor(() => {
         expect(fetch).toHaveBeenCalledWith(
@@ -821,7 +824,7 @@ describe('Mealplanner app', () => {
         );
     });
     await waitFor(() => {
-      expect(screen.getAllByText('Angaben gespeichert. Der nächste Wochenplan nutzt diese Einstellungen.').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('Gespeichert. Der nächste Wochenplan nutzt euren Familiengeschmack.').length).toBeGreaterThan(0);
     });
   });
 
@@ -864,8 +867,8 @@ describe('Mealplanner app', () => {
   it('creates a family invite link from onboarding', async () => {
     renderApp('/onboarding');
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Zugänge' }));
-    expect(await screen.findByRole('heading', { name: 'Einladungen & Zugänge' })).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('button', { name: 'Einladen' }));
+    expect(await screen.findByRole('heading', { name: 'Familie einladen' })).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('E-Mail-Adresse für Einladung'), {
       target: { value: 'person@example.test' },
     });
@@ -886,7 +889,7 @@ describe('Mealplanner app', () => {
     expect(screen.getByText(/persönliche Account geht im Familienkonto auf/i)).toBeInTheDocument();
     expect(screen.getAllByText('anna@example.test').length).toBeGreaterThan(0);
     expect(screen.getAllByDisplayValue('Mama').length).toBeGreaterThan(0);
-    expect(screen.getByText(/von 2 Logins zugeordnet/i)).toBeInTheDocument();
+    expect(screen.getByText(/von 2 Logins verbunden/i)).toBeInTheDocument();
   });
 
   it('shows a manual-share fallback when invite email delivery fails', async () => {
@@ -894,7 +897,7 @@ describe('Mealplanner app', () => {
 
     renderApp('/onboarding');
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Zugänge' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Einladen' }));
     fireEvent.change(screen.getByLabelText('E-Mail-Adresse für Einladung'), {
       target: { value: 'person@example.test' },
     });
@@ -951,9 +954,9 @@ describe('Mealplanner app', () => {
 
     renderApp('/onboarding');
 
-    expect(await screen.findByText('Haushalt & Küchenprofil')).toBeInTheDocument();
+    expect(await screen.findByText('Was eure Familie gern isst')).toBeInTheDocument();
     await waitFor(() => {
-      expect(screen.getByLabelText('Haushaltsname')).toHaveValue('Haushalt Anna');
+      expect(screen.getByLabelText('Familienname')).toHaveValue('Haushalt Anna');
     });
     expect(screen.getAllByDisplayValue('Anna').length).toBeGreaterThan(0);
   });
@@ -979,7 +982,7 @@ describe('Mealplanner app', () => {
 
     renderApp('/onboarding');
 
-    expect((await screen.findAllByText(/Logins brauchen noch eine Person/i)).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText(/Einladung braucht noch eine Person|Einladungen brauchen noch eine Person/i)).length).toBeGreaterThan(0);
     expect(screen.getAllByText('Zuordnung offen').length).toBeGreaterThan(0);
   });
 
@@ -1016,7 +1019,7 @@ describe('Mealplanner app', () => {
   it('saves unsaved profile edits before linking a login to a person', async () => {
     renderApp('/onboarding');
 
-    const aliasFields = await screen.findAllByLabelText('Anrede im Plan');
+    const aliasFields = await screen.findAllByLabelText('Name im Wochenplan');
     fireEvent.change(aliasFields[0]!, { target: { value: 'Mama Neu' } });
     const selects = await screen.findAllByLabelText('Zugeordnete Person');
     fireEvent.change(selects[1]!, { target: { value: 'anna' } });
@@ -1120,7 +1123,7 @@ describe('Mealplanner app', () => {
   it('copies the invite link from onboarding', async () => {
     renderApp('/onboarding');
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Zugänge' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Einladen' }));
     fireEvent.change(await screen.findByLabelText('E-Mail-Adresse für Einladung'), {
       target: { value: 'person@example.test' },
     });
@@ -1141,7 +1144,7 @@ describe('Mealplanner app', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Familienkonto beitreten' }));
 
     expect(await screen.findByText(/Familienbereich aktiv\./)).toBeInTheDocument();
-    expect(await screen.findByText('Haushalt & Küchenprofil')).toBeInTheDocument();
+    expect(await screen.findByText('Was eure Familie gern isst')).toBeInTheDocument();
   });
 
   it('shows feedback when plan generation fails', async () => {
@@ -1309,7 +1312,7 @@ describe('Mealplanner app', () => {
   it('shows allergy guidance in the profile settings', async () => {
     renderApp('/onboarding');
 
-    expect(await screen.findByText(/Allergien und Unverträglichkeiten werden in Rezepten nicht verbindlich geprüft/)).toBeInTheDocument();
-    expect(screen.getByText(/Kritische Zutaten und Marken bitte vor Einkauf und Kochen noch einmal kurz gegen euren Alltag prüfen/)).toBeInTheDocument();
+    expect(await screen.findByText(/Allergien und Unverträglichkeiten bitte vor Einkauf und Kochen zusätzlich prüfen/)).toBeInTheDocument();
+    expect(screen.getByText(/Marken, Lieblingsprodukte und heikle Zutaten helfen/)).toBeInTheDocument();
   });
 });

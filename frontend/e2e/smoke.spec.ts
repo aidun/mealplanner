@@ -78,10 +78,10 @@ test('planner smoke path', async ({ page, context }) => {
   await expect(page.getByText('Woche, Rezept und Einkauf an einem Tisch')).toBeVisible();
 
   await page.getByLabel('Primäre Aktionen').getByRole('link', { name: 'Küchenprofil' }).click();
-  await expect(page.getByText('Haushalt & Küchenprofil')).toBeVisible();
-  await page.getByLabel('Haushaltsname').fill('Familie Weber');
-  await page.getByRole('button', { name: 'Angaben speichern' }).click();
-  await expect(page.getByText('Angaben gespeichert. Der nächste Wochenplan nutzt diese Einstellungen.')).toBeVisible();
+  await expect(page.getByText('Was eure Familie gern isst')).toBeVisible();
+  await page.getByLabel('Familienname').fill('Familie Weber');
+  await page.getByRole('button', { name: 'Für unsere Woche merken' }).click();
+  await expect(page.getByText('Gespeichert. Der nächste Wochenplan nutzt euren Familiengeschmack.')).toBeVisible();
   await page.getByRole('button', { name: 'Zum Wochenplan' }).click();
 
   await expect(page.getByRole('textbox', { name: 'Feedback' })).toHaveCount(0);
@@ -104,7 +104,7 @@ test('planner smoke path', async ({ page, context }) => {
   expect(newPage.url()).toContain('/api/plans/plan-1/bring-export?token=test-token');
 
   await page.getByLabel('Primäre Aktionen').getByRole('link', { name: 'Küchenprofil' }).click();
-  await page.getByRole('button', { name: 'Favoriten' }).click();
+  await page.getByRole('button', { name: 'Lieblingsgerichte' }).click();
   await expect(page.getByText('2 gespeicherte Rezepte')).toBeVisible();
 });
 
@@ -251,7 +251,7 @@ test('login and invite acceptance stay on guarded production paths', async ({ pa
   await page.goto('/family/invites/accept?token=invite-token');
   await page.getByRole('button', { name: 'Familienkonto beitreten' }).click();
   await expect(page).toHaveURL(/\/onboarding\?family=joined$/);
-  await expect(page.getByText('Haushalt & Küchenprofil')).toBeVisible();
+  await expect(page.getByText('Was eure Familie gern isst')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Prompt prüfen' })).toHaveCount(0);
 });
 
@@ -318,7 +318,7 @@ function createState() {
       days: [
         {
           date: '2026-04-13',
-          label: 'Mo',
+          label: 'Sonntag',
           meals: [
             {
               id: 'meal-1',
@@ -339,7 +339,7 @@ function createState() {
         },
         {
           date: '2026-04-14',
-          label: 'Di',
+          label: 'Montag',
           meals: [
             {
               id: 'meal-2',

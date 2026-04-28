@@ -186,7 +186,7 @@ func parseOrNextWeekStart(value string, now time.Time) (time.Time, error) {
 		}
 		return monday(parsed), nil
 	}
-	return nextSunday(now), nil
+	return nextMonday(now), nil
 }
 
 func monday(t time.Time) time.Time {
@@ -197,8 +197,11 @@ func monday(t time.Time) time.Time {
 	return dateOnly(t).AddDate(0, 0, -(weekday - 1))
 }
 
-func nextSunday(t time.Time) time.Time {
-	days := (7 - int(t.Weekday())) % 7
+func nextMonday(t time.Time) time.Time {
+	days := (int(time.Monday) - int(t.Weekday()) + 7) % 7
+	if days == 0 {
+		days = 7
+	}
 	return dateOnly(t).AddDate(0, 0, days)
 }
 
@@ -217,7 +220,6 @@ func normalizeDays(days []domain.DayPlan, weekStart time.Time) []domain.DayPlan 
 			byDate[day.Date] = day
 		}
 	}
-	labels := []string{"Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"}
 	out := make([]domain.DayPlan, 0, 7)
 	for i := 0; i < 7; i++ {
 		date := weekStart.AddDate(0, 0, i)
@@ -227,12 +229,15 @@ func normalizeDays(days []domain.DayPlan, weekStart time.Time) []domain.DayPlan 
 			day = domain.DayPlan{Date: key}
 		}
 		day.Date = key
-		if day.Label == "" {
-			day.Label = labels[int(date.Weekday())]
-		}
+		day.Label = weekdayLabel(date)
 		out = append(out, day)
 	}
 	return out
+}
+
+func weekdayLabel(t time.Time) string {
+	labels := []string{"Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"}
+	return labels[int(t.Weekday())]
 }
 
 func annotateFavoriteReusePlan(plan *domain.Plan, favorites []domain.FavoriteRecipe) {

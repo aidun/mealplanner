@@ -280,12 +280,13 @@ export function DashboardPage() {
       : '';
   const logoutMessage = logoutMutation.isError ? 'Logout gerade nicht möglich. Bitte versuche es erneut.' : '';
   const shoppingItemCount = shoppingListQuery.data ? countShoppingItems(shoppingListQuery.data) : 0;
+  const selectedDayLabel = formatDate(selectedDay?.date) || selectedDay?.label;
   const workspaceViews = [
     {
       id: 'plan' as const,
       title: 'Plan',
-      description: selectedDay?.label
-        ? `${selectedDay.label}: ${selectedDay.meals[0]?.title ?? 'noch offen'}`
+      description: selectedDayLabel
+        ? `${selectedDayLabel}: ${selectedDay?.meals[0]?.title ?? 'noch offen'}`
         : 'Tage und Gerichte im Blick',
       meta: `${currentPlanQuery.data?.days.length ?? 0}`,
     },
@@ -330,7 +331,7 @@ export function DashboardPage() {
     },
     {
       label: 'Im Fokus',
-      value: inspectedMeal?.title ?? selectedDay?.label ?? 'Tag auswählen',
+      value: inspectedMeal?.title ?? selectedDayLabel ?? 'Tag auswählen',
     },
   ];
   const showPlanPane = activeWorkspacePane === 'plan';
@@ -442,7 +443,7 @@ export function DashboardPage() {
                 planId={currentPlanQuery.data?.id}
                 dayDate={selectedDay?.date}
                 meal={inspectedMeal}
-                contextNote={selectedDay?.label ?? formatDate(selectedDay?.date)}
+                contextNote={selectedDayLabel}
                 favoriteId={inspectedMeal ? favoriteByMealID.get(inspectedMeal.id) : undefined}
                 canActOnMeal={inspectedMealInPlan}
                 onToggleFavorite={handleToggleFavorite}

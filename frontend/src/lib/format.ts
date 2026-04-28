@@ -2,8 +2,8 @@ import type { Nutrition } from '../types';
 
 export function formatDate(value?: string) {
   if (!value) return '';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
+  const date = parseDateOnly(value);
+  if (!date) return value;
   return new Intl.DateTimeFormat('de-DE', {
     weekday: 'short',
     day: '2-digit',
@@ -13,8 +13,8 @@ export function formatDate(value?: string) {
 
 export function formatWeekRange(weekStart?: string) {
   if (!weekStart) return 'Aktuelle Woche';
-  const start = new Date(weekStart);
-  if (Number.isNaN(start.getTime())) return 'Aktuelle Woche';
+  const start = parseDateOnly(weekStart);
+  if (!start) return 'Aktuelle Woche';
   const end = new Date(start);
   end.setDate(start.getDate() + 6);
   const formatter = new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: '2-digit' });
@@ -23,13 +23,35 @@ export function formatWeekRange(weekStart?: string) {
 
 export function formatWeekRangeCompact(weekStart?: string) {
   if (!weekStart) return 'Diese Woche';
-  const start = new Date(weekStart);
-  if (Number.isNaN(start.getTime())) return 'Diese Woche';
+  const start = parseDateOnly(weekStart);
+  if (!start) return 'Diese Woche';
   const end = new Date(start);
   end.setDate(start.getDate() + 6);
   const startFormatter = new Intl.DateTimeFormat('de-DE', { day: '2-digit' });
   const endFormatter = new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: 'short' });
   return `${startFormatter.format(start)}.–${endFormatter.format(end)}`;
+}
+
+export function parseDateOnly(value?: string) {
+  if (!value) return undefined;
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) {
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+  }
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const parsed = new Date(year, month - 1, day);
+  if (
+    Number.isNaN(parsed.getTime()) ||
+    parsed.getFullYear() !== year ||
+    parsed.getMonth() !== month - 1 ||
+    parsed.getDate() !== day
+  ) {
+    return undefined;
+  }
+  return parsed;
 }
 
 export function formatNutrition(nutrition?: Nutrition) {

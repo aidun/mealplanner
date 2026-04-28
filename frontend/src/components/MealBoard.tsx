@@ -1,5 +1,5 @@
 import type { Day, Meal } from '../types';
-import { formatNutritionPerPortion } from '../lib/format';
+import { formatNutritionPerPortion, parseDateOnly } from '../lib/format';
 import { BringLink } from './BringLink';
 import { HeartIcon } from './icons';
 
@@ -68,7 +68,7 @@ export function MealBoard({
             aria-current={index === safeDayIndex ? 'date' : undefined}
             onClick={() => selectDay(index)}
           >
-            <span>{day.label ?? formatDayRailLabel(day.date, index)}</span>
+            <span>{formatDayRailLabel(day.date)}</span>
             <small className="day-tab-date">{formatDayShort(day.date)}</small>
             <strong>{day.meals[0]?.title ?? 'Noch offen'}</strong>
             <small>
@@ -92,7 +92,7 @@ export function MealBoard({
               <section
                 key={day.date}
                 className={`day-column week-day-section${activeDaySection ? ' week-day-section-active' : ' week-day-section-inactive'}`}
-                aria-label={day.label ?? day.date}
+                aria-label={formatDayHeading(day.date)}
               >
                 <header className="day-header week-day-heading">
                   <button
@@ -189,11 +189,9 @@ export function MealBoard({
   );
 }
 
-function formatDayRailLabel(value: string, index: number) {
-  if (index === 0) return 'Heute';
-  if (index === 1) return 'Morgen';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
+function formatDayRailLabel(value: string) {
+  const date = parseDateOnly(value);
+  if (!date) return value;
   return new Intl.DateTimeFormat('de-DE', {
     weekday: 'short',
   }).format(date);
@@ -215,8 +213,8 @@ function slotLabel(slot?: string) {
 }
 
 function formatDayBadge(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
+  const date = parseDateOnly(value);
+  if (!date) return value;
   return new Intl.DateTimeFormat('de-DE', {
     day: '2-digit',
     month: '2-digit',
@@ -224,8 +222,8 @@ function formatDayBadge(value: string) {
 }
 
 function formatDayShort(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
+  const date = parseDateOnly(value);
+  if (!date) return value;
   return new Intl.DateTimeFormat('de-DE', {
     day: '2-digit',
     month: '2-digit',
@@ -233,16 +231,16 @@ function formatDayShort(value: string) {
 }
 
 function formatDayHeading(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
+  const date = parseDateOnly(value);
+  if (!date) return value;
   return new Intl.DateTimeFormat('de-DE', {
     weekday: 'long',
   }).format(date);
 }
 
 function formatDaySubline(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
+  const date = parseDateOnly(value);
+  if (!date) return value;
   return new Intl.DateTimeFormat('de-DE', {
     day: '2-digit',
     month: '2-digit',

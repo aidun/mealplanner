@@ -64,8 +64,8 @@ test('first-login onboarding stays stable from desktop to small mobile', async (
     await expectNoOverlap(skipButton, startButton);
 
     await startButton.click();
-    await expect(page.getByRole('heading', { name: 'Wie sollen wir euren Bereich nennen?' })).toBeVisible();
-    await page.getByRole('textbox', { name: 'Name des Bereichs' }).fill('Haushalt Markush');
+    await expect(page.getByRole('heading', { name: 'Wie nennt ihr euren Esstisch?' })).toBeVisible();
+    await page.getByRole('textbox', { name: 'Familienname' }).fill("Markushs Küche");
     await page.getByRole('button', { name: 'Weiter' }).click();
     await expect(page.getByRole('heading', { name: 'Wer isst meistens mit?' })).toBeVisible();
     await page.getByRole('textbox', { name: 'Name' }).fill('Markush');
@@ -84,7 +84,7 @@ test('first-login onboarding stays stable from desktop to small mobile', async (
     );
 
     await page.getByRole('button', { name: 'Noch kurz ins Detailprofil' }).click();
-    await expect(page.getByRole('heading', { name: 'Haushalt & Küchenprofil' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Was eure Familie gern isst' })).toBeVisible();
     await assertNoHorizontalOverflow(page);
     await assertHorizontallyWithinViewport(page.locator('.profile-page-intro'), page);
   }

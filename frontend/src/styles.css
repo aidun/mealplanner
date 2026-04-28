@@ -6985,6 +6985,13 @@ h3,
   height: 15px;
 }
 
+.shopping-item-check-done {
+  border-color: rgba(82, 100, 66, 0.78);
+  background: linear-gradient(135deg, #526442 0%, #7f8c55 100%);
+  color: #fffaf2;
+  box-shadow: inset 0 0 0 1px rgba(255, 250, 242, 0.22), 0 8px 18px rgba(82, 100, 66, 0.18);
+}
+
 .shopping-category-icon {
   display: inline-flex;
   align-items: center;
