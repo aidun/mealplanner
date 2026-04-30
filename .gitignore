@@ -8,9 +8,13 @@ backend/api/migrate
 # Frontend
 frontend/node_modules/
 frontend/dist/
+frontend/test-results/
 frontend/*.tsbuildinfo
 frontend/vite.config.js
 frontend/vite.config.d.ts
+
+# Local workspace scratch
+tmp/
 
 # Local env
 .env

@@ -18,7 +18,9 @@
 ## Memory-System
 
 - `CODEX_MEMORY.md` ist die durable Projekt-Memory fuer `mealplanner` und gehoert zur Pflichtlekture bei nicht-trivialer Arbeit.
+- Zusaetzlich muss bei nicht-trivialer Arbeit der globale `memory` MCP mit `mealplanner`, `Mahlio` und aufgabenrelevanten Begriffen abgefragt werden.
 - Wenn sich dauerhaft relevante Projektfakten aendern, muss `CODEX_MEMORY.md` aktualisiert werden.
+- Wenn die Aenderung fuer zukuenftige Sessions uebergreifend nuetzlich ist, auch den `memory` MCP aktualisieren.
 - Fuer globale Setup- oder Agenten-Aenderungen ist stattdessen `/Users/markus/repo/macbook/MEMORY.md` zustaendig.
 - Verwende dafuer das globale Vorgehen aus dem Skill `memory-maintenance`; vermeide doppelte oder widerspruechliche Eintraege.
 
