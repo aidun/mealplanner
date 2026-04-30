@@ -16,6 +16,7 @@ type Profile struct {
 	Notes           string       `json:"notes"`
 	PreferredStores string       `json:"preferredStores,omitempty"`
 	ShoppingNotes   string       `json:"shoppingNotes,omitempty"`
+	Appliances      []string     `json:"appliances,omitempty"`
 	UpdatedAt       time.Time    `json:"updatedAt,omitempty"`
 }
 
@@ -313,6 +314,12 @@ type CreatePlanRequest struct {
 
 type RegenerateMealRequest struct {
 	Note string `json:"note"`
+}
+
+type GenerateMealRequest struct {
+	DayDate string `json:"dayDate"`
+	Slot    string `json:"slot"`
+	Note    string `json:"note,omitempty"`
 }
 
 // Validate enforces only the structural minimum needed before planner/provider calls.

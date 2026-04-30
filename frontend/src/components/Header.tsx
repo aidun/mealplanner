@@ -8,6 +8,7 @@ interface HeaderProps {
   weekStart?: string;
   onCreatePlan?: () => void;
   creatingPlan?: boolean;
+  createPlanLabel?: string;
   onLogout: () => void;
   loggingOut: boolean;
   isAdmin?: boolean;
@@ -18,6 +19,7 @@ export function Header({
   weekStart,
   onCreatePlan,
   creatingPlan = false,
+  createPlanLabel = 'Neue Woche planen',
   onLogout,
   loggingOut,
   isAdmin = false,
@@ -49,15 +51,15 @@ export function Header({
           <button
             type="button"
             className="button button-primary header-primary-action"
-            aria-label={creatingPlan ? 'Neue Woche wird geplant…' : 'Neue Woche planen'}
+            aria-label={creatingPlan ? 'Woche wird geplant…' : createPlanLabel}
             onClick={onCreatePlan}
             disabled={creatingPlan}
           >
             <PlusIcon className="action-icon" />
             <span className="header-primary-label-default">
-              {creatingPlan ? 'Neue Woche wird geplant…' : 'Neue Woche planen'}
+              {creatingPlan ? 'Woche wird geplant…' : createPlanLabel}
             </span>
-            <span className="header-primary-label-compact">{creatingPlan ? 'Plan läuft…' : 'Woche planen'}</span>
+            <span className="header-primary-label-compact">{creatingPlan ? 'Plan läuft…' : createPlanLabel}</span>
           </button>
         ) : null}
         <details className="header-mobile-menu">

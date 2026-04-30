@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"sort"
 	"strings"
 	"time"
 
@@ -97,6 +98,66 @@ func (p Planner) RegenerateMeal(ctx context.Context, profile domain.Profile, pla
 	return plan, nil
 }
 
+// GenerateMeal creates or replaces one meal for a specific day/slot without rebuilding the full week.
+func (p Planner) GenerateMeal(ctx context.Context, profile domain.Profile, plan domain.Plan, dayDate string, slot string, note string, favorites []domain.FavoriteRecipe) (domain.Plan, error) {
+	if err := profile.Validate(); err != nil {
+		return domain.Plan{}, err
+	}
+	dayDate = strings.TrimSpace(dayDate)
+	if _, err := time.Parse("2006-01-02", dayDate); err != nil {
+		return domain.Plan{}, fmt.Errorf("dayDate must use YYYY-MM-DD: %w", err)
+	}
+	slot = normalizeMealSlot(slot)
+	if slot == "" {
+		return domain.Plan{}, fmt.Errorf("slot is required")
+	}
+
+	dayIndex := -1
+	for index := range plan.Days {
+		if plan.Days[index].Date == dayDate {
+			dayIndex = index
+			break
+		}
+	}
+	if dayIndex < 0 {
+		return domain.Plan{}, fmt.Errorf("day %s not found in plan", dayDate)
+	}
+
+	mealIndex := -1
+	mealID := ""
+	for index := range plan.Days[dayIndex].Meals {
+		if normalizeMealSlot(plan.Days[dayIndex].Meals[index].Slot) == slot {
+			mealIndex = index
+			mealID = plan.Days[dayIndex].Meals[index].ID
+			break
+		}
+	}
+	if strings.TrimSpace(mealID) == "" {
+		mealID = fmt.Sprintf("%s-%s", dayDate, slot)
+		plan.Days[dayIndex].Meals = append(plan.Days[dayIndex].Meals, domain.Meal{
+			ID:          mealID,
+			Slot:        slot,
+			Title:       slotFallbackTitle(slot),
+			Description: fmt.Sprintf("Einzelvorschlag für %s.", dayDate),
+		})
+		mealIndex = len(plan.Days[dayIndex].Meals) - 1
+	}
+
+	meal, err := p.generator.RegenerateMeal(ctx, profile, plan, mealID, note, favorites)
+	if err != nil {
+		return domain.Plan{}, err
+	}
+	meal.ID = mealID
+	meal.Slot = slot
+	meal = normalizeGeneratedMeal(meal, profile, dayDate)
+	annotateFavoriteReuseMeal(&meal, favorites)
+	plan.Days[dayIndex].Meals[mealIndex] = meal
+	sortMealsBySlot(plan.Days[dayIndex].Meals)
+	plan.Status = "planned"
+	plan.ShoppingList = domain.ConsolidateShoppingList(plan)
+	return plan, nil
+}
+
 // MergeProfiles combines a personal profile into an existing family profile before the account is moved.
 func (p Planner) MergeProfiles(ctx context.Context, target domain.Profile, incoming domain.Profile) (domain.Profile, error) {
 	if err := target.Validate(); err != nil {
@@ -157,6 +218,8 @@ func repairMergedProfile(merged domain.Profile, target domain.Profile, incoming 
 	if strings.TrimSpace(merged.ShoppingNotes) == "" {
 		merged.ShoppingNotes = firstNonEmpty(target.ShoppingNotes, incoming.ShoppingNotes)
 	}
+	merged.Appliances = appendUniqueStrings(merged.Appliances, target.Appliances...)
+	merged.Appliances = appendUniqueStrings(merged.Appliances, incoming.Appliances...)
 	return merged
 }
 
@@ -179,6 +242,14 @@ func (p Planner) PreviewWeekPrompt(profile domain.Profile, weekStart string, fav
 
 func (p Planner) PreviewRegeneratePrompt(profile domain.Profile, plan domain.Plan, mealID string, note string, favorites []domain.FavoriteRecipe) string {
 	return RegeneratePrompt(profile, plan, mealID, note, favorites)
+}
+
+func (p Planner) ResolveWeekStart(value string) (string, error) {
+	start, err := parseOrNextWeekStart(value, p.now())
+	if err != nil {
+		return "", err
+	}
+	return start.Format("2006-01-02"), nil
 }
 
 func (p Planner) PreviewMergePrompt(target domain.Profile, incoming domain.Profile) string {
@@ -487,6 +558,70 @@ func normalizeSlotSet(slots []string) map[string]bool {
 		if slot != "" {
 			out[slot] = true
 		}
+	}
+	return out
+}
+
+func normalizeMealSlot(value string) string {
+	key := strings.ToLower(strings.TrimSpace(value))
+	switch key {
+	case "frühstück", "fruehstueck", "breakfast":
+		return "breakfast"
+	case "mittagessen", "lunch":
+		return "lunch"
+	case "abendessen", "dinner":
+		return "dinner"
+	case "snack", "snacks":
+		return "snack"
+	default:
+		return ""
+	}
+}
+
+func sortMealsBySlot(meals []domain.Meal) {
+	order := map[string]int{"breakfast": 0, "lunch": 1, "dinner": 2, "snack": 3}
+	sort.SliceStable(meals, func(i, j int) bool {
+		left, leftOK := order[normalizeMealSlot(meals[i].Slot)]
+		right, rightOK := order[normalizeMealSlot(meals[j].Slot)]
+		switch {
+		case leftOK && rightOK:
+			return left < right
+		case leftOK:
+			return true
+		case rightOK:
+			return false
+		default:
+			return meals[i].Slot < meals[j].Slot
+		}
+	})
+}
+
+func appendUniqueStrings(values []string, more ...string) []string {
+	seen := map[string]bool{}
+	out := make([]string, 0, len(values)+len(more))
+	for _, value := range values {
+		trimmed := strings.TrimSpace(value)
+		if trimmed == "" {
+			continue
+		}
+		key := strings.ToLower(trimmed)
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		out = append(out, trimmed)
+	}
+	for _, value := range more {
+		trimmed := strings.TrimSpace(value)
+		if trimmed == "" {
+			continue
+		}
+		key := strings.ToLower(trimmed)
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		out = append(out, trimmed)
 	}
 	return out
 }

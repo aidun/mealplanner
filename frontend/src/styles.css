@@ -1257,6 +1257,64 @@ a:focus-visible {
   gap: 10px;
 }
 
+.week-control-bar {
+  position: relative;
+  z-index: 1;
+  grid-column: 1 / -1;
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  grid-template-columns: 44px minmax(170px, 220px) 44px minmax(0, 1fr);
+  gap: 10px;
+  align-items: end;
+  padding: 12px;
+  border: 1px solid rgba(18, 33, 29, 0.08);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.68);
+}
+
+.week-step-button {
+  min-width: 44px;
+  min-height: 44px;
+  align-self: end;
+}
+
+.week-date-field {
+  min-width: 0;
+}
+
+.single-meal-control {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(120px, 0.75fr) minmax(130px, 0.8fr) minmax(160px, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.single-meal-control .field {
+  min-width: 0;
+}
+
+.single-meal-note {
+  min-width: 0;
+}
+
+.single-meal-button {
+  min-height: 46px;
+  white-space: nowrap;
+}
+
+@media (max-width: 1180px) {
+  .week-control-bar {
+    grid-template-columns: 44px minmax(150px, 1fr) 44px;
+  }
+
+  .single-meal-control {
+    grid-column: 1 / -1;
+    grid-template-columns: minmax(120px, 0.8fr) minmax(130px, 0.8fr) minmax(160px, 1fr) auto;
+  }
+}
+
 .plan-backdrop-canvas {
   position: absolute;
   inset: 0;
@@ -6694,6 +6752,17 @@ h3,
   .plan-stage-copy p {
     font-size: 0.9rem;
     line-height: 1.48;
+  }
+
+  .week-control-bar,
+  .single-meal-control {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .week-step-button,
+  .single-meal-button {
+    width: 100%;
   }
 
   .plan-stage-actions,

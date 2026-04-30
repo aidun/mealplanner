@@ -96,6 +96,19 @@ func TestWeekPromptIncludesFavoritesAsInspiration(t *testing.T) {
 	}
 }
 
+func TestWeekPromptIncludesKitchenAppliances(t *testing.T) {
+	profile := domain.DefaultProfile()
+	profile.Appliances = []string{"Airfryer", "Thermomix", "OptiGrill"}
+
+	prompt := WeekPrompt(profile, time.Date(2026, 4, 20, 0, 0, 0, 0, time.UTC), nil)
+
+	for _, expected := range []string{"Küchengeräte", "Airfryer", "Thermomix", "OptiGrill"} {
+		if !strings.Contains(prompt, expected) {
+			t.Fatalf("prompt should include appliance guidance %q: %s", expected, prompt)
+		}
+	}
+}
+
 func TestRegeneratePromptPrefersFavoritesWhenNoteIsOpen(t *testing.T) {
 	prompt := RegeneratePrompt(domain.DefaultProfile(), domain.Plan{
 		WeekStart: "2026-04-20",

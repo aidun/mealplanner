@@ -274,6 +274,16 @@ func (m *memoryRepo) GetCurrentPlan(r *http.Request) (domain.Plan, error) {
 	return domain.Plan{}, store.ErrNotFound
 }
 
+func (m *memoryRepo) GetPlanByWeek(r *http.Request, weekStart string) (domain.Plan, error) {
+	prefix := m.familyID(mustUserID(r.Context())) + "|"
+	for key, plan := range m.plans {
+		if strings.HasPrefix(key, prefix) && plan.WeekStart == weekStart {
+			return plan, nil
+		}
+	}
+	return domain.Plan{}, store.ErrNotFound
+}
+
 func (m *memoryRepo) GetPlan(r *http.Request, id string) (domain.Plan, error) {
 	plan, ok := m.plans[m.familyID(mustUserID(r.Context()))+"|"+id]
 	if !ok {
@@ -720,6 +730,84 @@ func TestCreatePlanAndShoppingList(t *testing.T) {
 	handler.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d", rec.Code)
+	}
+}
+
+func TestGetPlanByWeekReturnsRequestedFamilyWeek(t *testing.T) {
+	repo := newMemoryRepo()
+	repo.profiles["user-1"] = domain.DefaultProfile()
+	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "test-secret", nil, nil, nil)
+
+	for _, weekStart := range []string{"2026-04-20", "2026-05-04"} {
+		req := httptest.NewRequest(http.MethodPost, "/api/plans", bytes.NewBufferString(`{"weekStart":"`+weekStart+`"}`))
+		setAuth(repo, req, "user-1")
+		req.Header.Set("X-CSRF-Token", "csrf-user-1")
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, req)
+		if rec.Code != http.StatusCreated {
+			t.Fatalf("create %s: expected 201, got %d: %s", weekStart, rec.Code, rec.Body.String())
+		}
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/plans?weekStart=2026-04-20", nil)
+	setAuth(repo, req, "user-1")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+	var plan domain.Plan
+	if err := json.Unmarshal(rec.Body.Bytes(), &plan); err != nil {
+		t.Fatal(err)
+	}
+	if plan.WeekStart != "2026-04-20" {
+		t.Fatalf("expected requested historical week, got %s", plan.WeekStart)
+	}
+}
+
+func TestGenerateSingleMealForSelectedDayAndSlot(t *testing.T) {
+	repo := newMemoryRepo()
+	repo.profiles["user-1"] = domain.DefaultProfile()
+	handler := New(repo, planner.New(provider.NewMockGenerator()), testAuth(), "test-secret", nil, nil, nil)
+
+	createReq := httptest.NewRequest(http.MethodPost, "/api/plans", bytes.NewBufferString(`{"weekStart":"2026-04-20"}`))
+	setAuth(repo, createReq, "user-1")
+	createReq.Header.Set("X-CSRF-Token", "csrf-user-1")
+	createRec := httptest.NewRecorder()
+	handler.ServeHTTP(createRec, createReq)
+	if createRec.Code != http.StatusCreated {
+		t.Fatalf("expected plan create 201, got %d: %s", createRec.Code, createRec.Body.String())
+	}
+	var created domain.Plan
+	if err := json.Unmarshal(createRec.Body.Bytes(), &created); err != nil {
+		t.Fatal(err)
+	}
+
+	body := bytes.NewBufferString(`{"dayDate":"2026-04-20","slot":"dinner","note":"schnell und mild"}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/plans/"+created.ID+"/meals", body)
+	setAuth(repo, req, "user-1")
+	req.Header.Set("X-CSRF-Token", "csrf-user-1")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+	var updated domain.Plan
+	if err := json.Unmarshal(rec.Body.Bytes(), &updated); err != nil {
+		t.Fatal(err)
+	}
+	var dinner domain.Meal
+	for _, meal := range updated.Days[0].Meals {
+		if meal.Slot == "dinner" {
+			dinner = meal
+			break
+		}
+	}
+	if !strings.Contains(dinner.Title, "Neu geplant") || !strings.Contains(dinner.RegenerationNote, "mild") {
+		t.Fatalf("expected a regenerated single dinner with note, got %#v", dinner)
+	}
+	if repo.generation["single_dinner"] != 1 {
+		t.Fatalf("expected single dinner generation event, got %#v", repo.generation)
 	}
 }
 

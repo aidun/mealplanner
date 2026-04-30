@@ -314,7 +314,7 @@ func profileSchema() map[string]any {
 	return map[string]any{
 		"type":                 "object",
 		"additionalProperties": false,
-		"required":             []string{"householdName", "members", "defaults", "presets", "notes"},
+		"required":             []string{"householdName", "members", "defaults", "presets", "notes", "appliances"},
 		"properties": map[string]any{
 			"householdName": stringSchema(),
 			"members":       map[string]any{"type": "array", "items": member},
@@ -329,8 +329,9 @@ func profileSchema() map[string]any {
 					"snacks":    stringSchema(),
 				},
 			},
-			"presets": map[string]any{"type": "array", "items": stringSchema()},
-			"notes":   stringSchema(),
+			"presets":    map[string]any{"type": "array", "items": stringSchema()},
+			"notes":      stringSchema(),
+			"appliances": map[string]any{"type": "array", "items": stringSchema()},
 		},
 	}
 }

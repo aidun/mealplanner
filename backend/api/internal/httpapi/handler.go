@@ -52,6 +52,7 @@ type Repository interface {
 	SaveProfile(r *http.Request, profile domain.Profile) (domain.Profile, error)
 	SavePlan(r *http.Request, plan domain.Plan) (domain.Plan, error)
 	GetCurrentPlan(r *http.Request) (domain.Plan, error)
+	GetPlanByWeek(r *http.Request, weekStart string) (domain.Plan, error)
 	GetPlan(r *http.Request, id string) (domain.Plan, error)
 	GetPlanByID(r *http.Request, id string) (domain.Plan, error)
 	ListFavorites(r *http.Request) ([]domain.FavoriteRecipe, error)
@@ -175,6 +176,10 @@ func (r StoreRepository) SavePlan(req *http.Request, plan domain.Plan) (domain.P
 
 func (r StoreRepository) GetCurrentPlan(req *http.Request) (domain.Plan, error) {
 	return r.Store.GetCurrentPlan(req.Context(), mustUserID(req.Context()))
+}
+
+func (r StoreRepository) GetPlanByWeek(req *http.Request, weekStart string) (domain.Plan, error) {
+	return r.Store.GetPlanByWeek(req.Context(), mustUserID(req.Context()), weekStart)
 }
 
 func (r StoreRepository) GetPlan(req *http.Request, id string) (domain.Plan, error) {
@@ -321,11 +326,13 @@ func New(repo Repository, planner planner.Planner, authService auth.Service, api
 	mux.HandleFunc("POST /api/favorites", h.withSession(h.withCSRF(h.createFavorite)))
 	mux.HandleFunc("DELETE /api/favorites/{favoriteID}", h.withSession(h.withCSRF(h.deleteFavorite)))
 	mux.HandleFunc("GET /api/debug/prompts/latest", h.withSession(h.getLatestPromptDebug))
+	mux.HandleFunc("GET /api/plans", h.withSession(h.getPlanByWeek))
 	mux.HandleFunc("POST /api/plans", h.withSession(h.withCSRF(h.createPlan)))
 	mux.HandleFunc("GET /api/plans/current", h.withSession(h.getCurrentPlan))
 	mux.HandleFunc("GET /api/plans/{planID}/bring-export", h.getBringExport)
 	mux.HandleFunc("GET /api/plans/{planID}/bring-export-url", h.withSession(h.getBringExportURL))
 	mux.HandleFunc("GET /api/plans/{planID}/shopping-list", h.withSession(h.getShoppingList))
+	mux.HandleFunc("POST /api/plans/{planID}/meals", h.withSession(h.withCSRF(h.generateMeal)))
 	mux.HandleFunc("POST /api/plans/{planID}/meals/{mealID}/regenerate", h.withSession(h.withCSRF(h.regenerateMeal)))
 	handler := h.withRecover(mux)
 	handler = h.withRequestContext(handler)
@@ -1019,6 +1026,29 @@ func (h *Handler) getCurrentPlan(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, plan)
 }
 
+func (h *Handler) getPlanByWeek(w http.ResponseWriter, r *http.Request) {
+	weekStart := strings.TrimSpace(r.URL.Query().Get("weekStart"))
+	if weekStart == "" {
+		h.getCurrentPlan(w, r)
+		return
+	}
+	normalizedWeekStart, err := h.planner.ResolveWeekStart(weekStart)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "weekStart must use YYYY-MM-DD")
+		return
+	}
+	plan, err := h.repo.GetPlanByWeek(r, normalizedWeekStart)
+	if errors.Is(err, store.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "plan not found")
+		return
+	}
+	if err != nil {
+		h.serverError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, plan)
+}
+
 func (h *Handler) getShoppingList(w http.ResponseWriter, r *http.Request) {
 	plan, err := h.repo.GetPlan(r, r.PathValue("planID"))
 	if errors.Is(err, store.ErrNotFound) {
@@ -1030,6 +1060,45 @@ func (h *Handler) getShoppingList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, domain.ConsolidateShoppingList(plan))
+}
+
+func (h *Handler) generateMeal(w http.ResponseWriter, r *http.Request) {
+	var req domain.GenerateMealRequest
+	if err := decodeJSON(w, r, &req); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	profile, err := h.repo.GetProfile(r)
+	if err != nil {
+		h.serverError(w, r, err)
+		return
+	}
+	plan, err := h.repo.GetPlan(r, r.PathValue("planID"))
+	if errors.Is(err, store.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "plan not found")
+		return
+	}
+	if err != nil {
+		h.serverError(w, r, err)
+		return
+	}
+	favorites, err := h.repo.ListFavorites(r)
+	if err != nil {
+		h.serverError(w, r, err)
+		return
+	}
+	updated, err := h.planner.GenerateMeal(r.Context(), profile, plan, req.DayDate, req.Slot, req.Note, favorites)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	saved, err := h.repo.SavePlan(r, updated)
+	if err != nil {
+		h.serverError(w, r, err)
+		return
+	}
+	_ = h.repo.RecordGenerationEvent(r, "single_"+strings.ToLower(strings.TrimSpace(req.Slot)))
+	writeJSON(w, http.StatusOK, saved)
 }
 
 func (h *Handler) regenerateMeal(w http.ResponseWriter, r *http.Request) {

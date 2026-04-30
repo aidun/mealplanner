@@ -151,8 +151,20 @@ export async function getCurrentPlan() {
   return request<Plan>('/api/plans/current', undefined, { allow404: true });
 }
 
+export async function getPlanByWeek(weekStart: string) {
+  const params = new URLSearchParams({ weekStart });
+  return request<Plan>(`/api/plans?${params.toString()}`, undefined, { allow404: true });
+}
+
 export async function createPlan(payload: Record<string, unknown> = {}) {
   return request<Plan>('/api/plans', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function generateMeal(planId: string, payload: { dayDate: string; slot: string; note?: string }) {
+  return request<Plan>(`/api/plans/${encodeURIComponent(planId)}/meals`, {
     method: 'POST',
     body: JSON.stringify(payload),
   });

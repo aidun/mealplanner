@@ -125,6 +125,7 @@ export function profileToForm(profile?: Profile | null): ProfileFormState {
     excludedIngredients: noteSections['Ausgeschlossene Zutaten'] ?? '',
     preferredStores: profile?.preferredStores ?? noteSections['Lieblingsläden'] ?? '',
     shoppingNotes: profile?.shoppingNotes ?? noteSections['Einkauf & Verpackungsgrößen'] ?? '',
+    appliances: joinLines(profile?.appliances) || noteSections['Küchengeräte'] || '',
     cookingStyle: noteSections['Kochstil'] ?? profile?.notes ?? '',
     mealPlanningRules: noteSections['Planungsregeln'] ?? '',
     breakfastPresets: objectToBlock(profile?.defaults?.breakfast),
@@ -148,6 +149,7 @@ export function formToProfile(state: ProfileFormState): Profile {
     'Ausgeschlossene Zutaten': state.excludedIngredients,
     Lieblingsläden: state.preferredStores,
     'Einkauf & Verpackungsgrößen': state.shoppingNotes,
+    Küchengeräte: state.appliances,
   };
 
   for (const day of mealPlanDays) {
@@ -173,6 +175,7 @@ export function formToProfile(state: ProfileFormState): Profile {
     notes: formatNoteSections(noteSections),
     preferredStores: state.preferredStores.trim(),
     shoppingNotes: state.shoppingNotes.trim(),
+    appliances: splitLines(state.appliances),
   };
 }
 
@@ -233,6 +236,7 @@ function parseNoteSections(notes: string) {
     'Ausgeschlossene Zutaten',
     'Lieblingsläden',
     'Einkauf & Verpackungsgrößen',
+    'Küchengeräte',
   ];
   let currentTitle = '';
   let currentLines: string[] = [];

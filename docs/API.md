@@ -198,6 +198,131 @@ Regeln:
 - max. 2000 Zeichen
 - `status` startet immer als `open`
 
+## Profil
+
+### `GET /api/profile`
+
+Liefert das aktive Familien-Kuechenprofil oder `404`, wenn noch kein Profil gespeichert ist.
+
+Wichtige Felder:
+
+```json
+{
+  "householdName": "Familie Weber",
+  "members": [],
+  "defaults": {
+    "breakfast": "schnell",
+    "lunch": "vorbereitbar",
+    "dinner": "warm",
+    "snacks": "Obst"
+  },
+  "presets": ["familientauglich"],
+  "notes": "Wochentags simpel",
+  "appliances": ["Airfryer", "Thermomix", "OptiGrill"]
+}
+```
+
+Hinweis:
+
+- `appliances` beschreibt verfuegbare Kuechengeraete und fliesst in Wochen- und Einzelgericht-Prompts ein.
+
+### `PUT /api/profile`
+
+Speichert das aktive Familien-Kuechenprofil. Mutierender Request, daher mit `X-CSRF-Token`.
+
+Antwort:
+
+- `200 OK` mit dem gespeicherten Profil
+
+## Planung
+
+### `GET /api/plans/current`
+
+Liefert den zuletzt gespeicherten Wochenplan der aktiven Familie oder `404`, wenn noch kein Plan existiert.
+
+### `GET /api/plans?weekStart=YYYY-MM-DD`
+
+Liefert den Wochenplan der aktiven Familie fuer die angegebene Woche.
+
+Query-Parameter:
+
+- `weekStart`
+  - optional
+  - wird auf den Montag der angegebenen Woche normalisiert
+  - fehlt der Parameter, entspricht der Endpunkt `GET /api/plans/current`
+
+Antwort:
+
+- `200 OK` mit `Plan`
+- `404`, wenn fuer diese Familie und Woche noch kein Plan existiert
+- `400`, wenn `weekStart` nicht als Datum lesbar ist
+
+### `POST /api/plans`
+
+Erzeugt oder ersetzt einen Wochenplan. Mutierender Request, daher mit `X-CSRF-Token`.
+
+Request:
+
+```json
+{
+  "weekStart": "2026-05-04"
+}
+```
+
+Hinweise:
+
+- `weekStart` ist optional.
+- Wenn `weekStart` gesetzt ist, wird das Datum auf den Montag dieser Woche normalisiert.
+- Ohne `weekStart` plant das Backend die naechste Woche.
+
+Antwort:
+
+- `200 OK` mit dem gespeicherten `Plan`
+
+### `POST /api/plans/{planID}/meals`
+
+Erzeugt oder ersetzt genau ein Gericht fuer Tag und Mahlzeiten-Slot, ohne die gesamte Woche neu aufzubauen.
+Mutierender Request, daher mit `X-CSRF-Token`.
+
+Request:
+
+```json
+{
+  "dayDate": "2026-05-04",
+  "slot": "dinner",
+  "note": "Airfryer und schnell"
+}
+```
+
+Regeln:
+
+- `dayDate` muss im Plan existieren und `YYYY-MM-DD` nutzen.
+- `slot` akzeptiert `breakfast`, `lunch`, `dinner`, `snack` sowie die deutschen Entsprechungen.
+- Existiert in diesem Slot bereits ein Gericht, wird es ersetzt; sonst wird ein neues Gericht an diesem Tag angelegt.
+- Die Einkaufsliste wird nach dem Einzelvorschlag neu konsolidiert.
+
+Antwort:
+
+- `200 OK` mit dem aktualisierten `Plan`
+- `400`, wenn Tag oder Slot ungueltig sind
+- `404`, wenn der Plan nicht gefunden wurde
+
+### `POST /api/plans/{planID}/meals/{mealID}/regenerate`
+
+Ersetzt ein bestehendes Gericht ueber dessen `mealID`. Mutierender Request, daher mit `X-CSRF-Token`.
+
+Request:
+
+```json
+{
+  "note": "Bitte milder und schneller"
+}
+```
+
+Antwort:
+
+- `200 OK` mit dem aktualisierten `Plan`
+
 ## Familie
 
 ### `POST /api/family/invites`

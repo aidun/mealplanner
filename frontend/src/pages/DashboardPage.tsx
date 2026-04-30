@@ -2,21 +2,23 @@ import { startTransition, useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useSearchParams, type SetURLSearchParams } from 'react-router-dom';
 import { Header } from '../components/Header';
-import { RefreshIcon, SparkIcon } from '../components/icons';
+import { ChevronLeftIcon, ChevronRightIcon, RefreshIcon, SparkIcon } from '../components/icons';
 import { MealBoard } from '../components/MealBoard';
 import { MealInspector } from '../components/MealInspector';
 import { PlanBackdrop } from '../components/PlanBackdrop';
 import { ShoppingListPanel } from '../components/ShoppingListPanel';
 import { readableApiError } from '../lib/api-error';
-import { formatDate, formatWeekRange } from '../lib/format';
+import { formatDate, formatWeekRange, parseDateOnly } from '../lib/format';
 import { LoginPage } from './LoginPage';
 import {
   createPlan,
   createFavorite,
   deleteFavorite,
+  generateMeal,
   getCurrentPlan,
   getFavorites,
   getLatestPromptDebug,
+  getPlanByWeek,
   getShoppingList,
   logout,
   regenerateMeal,
@@ -39,17 +41,24 @@ export function DashboardPage() {
   const promptDebug = promptDebugEnabled();
   const [loggedOut, setLoggedOut] = useState(false);
   const [mobileMenuHidden, setMobileMenuHidden] = useState(false);
+  const [singleMealSlot, setSingleMealSlot] = useState('dinner');
+  const [singleMealNote, setSingleMealNote] = useState('');
   const lastScrollYRef = useRef(0);
   const scrollTickingRef = useRef(false);
   const mobileMenuHiddenRef = useRef(false);
   const activeWorkspacePane = parsePane(searchParams.get('pane'));
   const selectedMealId = searchParams.get('meal') ?? undefined;
   const selectedDayParam = searchParams.get('day') ?? undefined;
+  const selectedWeekParam = normalizeWeekStart(searchParams.get('week') ?? undefined);
 
+  const planQueryKey = ['current-plan', selectedWeekParam ?? 'latest'];
   const currentPlanQuery = useQuery({
-    queryKey: ['current-plan'],
-    queryFn: getCurrentPlan,
+    queryKey: planQueryKey,
+    queryFn: () => (selectedWeekParam ? getPlanByWeek(selectedWeekParam) : getCurrentPlan()),
   });
+  const visibleWeekStart = selectedWeekParam ?? currentPlanQuery.data?.weekStart ?? nextMondayISO();
+  const hasVisiblePlan = Boolean(currentPlanQuery.data?.id);
+  const planActionLabel = hasVisiblePlan ? 'Woche neu planen' : 'Woche planen';
 
   const shoppingListQuery = useQuery({
     queryKey: ['shopping-list', currentPlanQuery.data?.id],
@@ -69,9 +78,17 @@ export function DashboardPage() {
   });
 
   const createPlanMutation = useMutation({
-    mutationFn: () => createPlan({}),
-    onSuccess: async () => {
-      updateSearchParams(setSearchParams, { pane: 'plan' });
+    mutationFn: () => createPlan({ weekStart: visibleWeekStart }),
+    onSuccess: async (createdPlan) => {
+      if (createdPlan) {
+        queryClient.setQueryData(['current-plan', createdPlan.weekStart], createdPlan);
+      }
+      updateSearchParams(setSearchParams, {
+        pane: 'plan',
+        week: createdPlan?.weekStart ?? visibleWeekStart,
+        meal: createdPlan?.days?.flatMap((day) => day.meals)[0]?.id,
+        day: createdPlan?.days?.find((day) => day.meals.length > 0)?.date ?? createdPlan?.days?.[0]?.date,
+      });
       await queryClient.invalidateQueries({ queryKey: ['current-plan'] });
       await queryClient.invalidateQueries({ queryKey: ['shopping-list'] });
     },
@@ -82,9 +99,30 @@ export function DashboardPage() {
       regenerateMeal(planId, mealId, note),
     onSuccess: async (updatedPlan) => {
       if (updatedPlan) {
-        queryClient.setQueryData(['current-plan'], updatedPlan);
+        queryClient.setQueryData(planQueryKey, updatedPlan);
       }
       updateSearchParams(setSearchParams, { pane: 'detail' });
+      await queryClient.invalidateQueries({ queryKey: ['shopping-list'] });
+    },
+  });
+
+  const generateMealMutation = useMutation({
+    mutationFn: ({ planId, dayDate, slot, note }: { planId: string; dayDate: string; slot: string; note: string }) =>
+      generateMeal(planId, { dayDate, slot, note }),
+    onSuccess: async (updatedPlan, variables) => {
+      if (updatedPlan) {
+        queryClient.setQueryData(planQueryKey, updatedPlan);
+        queryClient.setQueryData(['current-plan', updatedPlan.weekStart], updatedPlan);
+        const meal = updatedPlan.days
+          .find((day) => day.date === variables.dayDate)
+          ?.meals.find((entry) => entry.slot === variables.slot);
+        updateSearchParams(setSearchParams, {
+          pane: 'detail',
+          week: selectedWeekParam ? updatedPlan.weekStart : undefined,
+          day: variables.dayDate,
+          meal: meal?.id,
+        });
+      }
       await queryClient.invalidateQueries({ queryKey: ['shopping-list'] });
     },
   });
@@ -126,6 +164,7 @@ export function DashboardPage() {
     currentPlanQuery.data,
   ]);
   const allDays = currentPlanQuery.data?.days ?? [];
+  const weekDayOptions = allDays.length > 0 ? allDays : buildWeekDays(visibleWeekStart);
   const activeDayDate = useMemo(() => {
     if (selectedDayParam && allDays.some((day) => day.date === selectedDayParam)) {
       return selectedDayParam;
@@ -266,6 +305,31 @@ export function DashboardPage() {
     updateSearchParams(setSearchParams, { day: dayDate, meal: defaultMealId, pane: activeWorkspacePane });
   };
 
+  const selectWeek = (weekStart: string) => {
+    const normalized = normalizeWeekStart(weekStart);
+    updateSearchParams(setSearchParams, { week: normalized, day: normalized, meal: undefined, pane: 'plan' });
+  };
+
+  const shiftWeek = (days: number) => {
+    selectWeek(addDaysISO(visibleWeekStart, days));
+  };
+
+  const singleMealDay = activeDayDate ?? currentPlanQuery.data?.days[0]?.date ?? visibleWeekStart;
+  const setSingleMealDay = (dayDate: string) => {
+    updateSearchParams(setSearchParams, { day: dayDate, meal: undefined, pane: activeWorkspacePane });
+  };
+
+  const handleGenerateMeal = () => {
+    const plan = currentPlanQuery.data;
+    if (!plan?.id || !singleMealDay || !singleMealSlot) return;
+    generateMealMutation.mutate({
+      planId: plan.id,
+      dayDate: singleMealDay,
+      slot: singleMealSlot,
+      note: singleMealNote.trim(),
+    });
+  };
+
   const planMessage = createPlanMutation.isPending
     ? 'Wir stellen eure Woche zusammen.'
     : createPlanMutation.isError
@@ -279,6 +343,11 @@ export function DashboardPage() {
     ? readableApiError(regenerateMealMutation.error, 'Das Gericht konnte gerade nicht ausgetauscht werden. Bitte versuche es noch einmal.')
     : regenerateMealMutation.isSuccess
       ? 'Das Gericht wurde ausgetauscht.'
+      : '';
+  const generateMealMessage = generateMealMutation.isError
+    ? readableApiError(generateMealMutation.error, 'Der Einzelvorschlag konnte gerade nicht erstellt werden. Bitte versuche es noch einmal.')
+    : generateMealMutation.isSuccess
+      ? 'Der Einzelvorschlag ist fertig.'
       : '';
   const logoutMessage = logoutMutation.isError ? 'Logout gerade nicht möglich. Bitte versuche es erneut.' : '';
   const shoppingItemCount = shoppingListQuery.data ? countShoppingItems(shoppingListQuery.data) : 0;
@@ -307,7 +376,7 @@ export function DashboardPage() {
   ];
   const plannedMealCount = allMeals.length;
   const openDayCount = allDays.filter((day) => day.meals.length === 0).length;
-  const weekRangeLabel = formatWeekRange(currentPlanQuery.data?.weekStart);
+  const weekRangeLabel = formatWeekRange(visibleWeekStart);
   const stageNarrative = useMemo(() => {
     if (!currentPlanQuery.data?.days.length) {
       return 'Noch kein Plan vorhanden. Stelle eine Woche zusammen und öffne danach Tage, Rezepte und Einkauf direkt im Fluss.';
@@ -345,9 +414,10 @@ export function DashboardPage() {
   ) : (
     <div className="app-shell">
       <Header
-        weekStart={currentPlanQuery.data?.weekStart}
+        weekStart={visibleWeekStart}
         onCreatePlan={() => createPlanMutation.mutate()}
         creatingPlan={createPlanMutation.isPending}
+        createPlanLabel={planActionLabel}
         onLogout={() => logoutMutation.mutate()}
         loggingOut={logoutMutation.isPending}
         isAdmin={Boolean(session?.isAdmin)}
@@ -379,6 +449,61 @@ export function DashboardPage() {
               </button>
             </div>
           </div>
+          <div className="week-control-bar" aria-label="Wochensteuerung">
+            <button type="button" className="icon-button week-step-button" onClick={() => shiftWeek(-7)} aria-label="Vorherige Woche" title="Vorherige Woche">
+              <ChevronLeftIcon className="action-icon" />
+            </button>
+            <label className="field week-date-field">
+              <span className="field-label">Woche auswählen</span>
+              <input
+                className="input"
+                type="date"
+                value={visibleWeekStart}
+                onChange={(event) => selectWeek(event.target.value)}
+              />
+            </label>
+            <button type="button" className="icon-button week-step-button" onClick={() => shiftWeek(7)} aria-label="Nächste Woche" title="Nächste Woche">
+              <ChevronRightIcon className="action-icon" />
+            </button>
+            <div className="single-meal-control" aria-label="Einzelvorschlag">
+              <label className="field">
+                <span className="field-label">Tag für Einzelvorschlag</span>
+                <select className="input" value={singleMealDay} onChange={(event) => setSingleMealDay(event.target.value)}>
+                  {weekDayOptions.map((day) => (
+                    <option key={day.date} value={day.date}>
+                      {formatDate(day.date)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="field">
+                <span className="field-label">Mahlzeit für Einzelvorschlag</span>
+                <select className="input" value={singleMealSlot} onChange={(event) => setSingleMealSlot(event.target.value)}>
+                  <option value="breakfast">Frühstück</option>
+                  <option value="lunch">Mittagessen</option>
+                  <option value="dinner">Abendessen</option>
+                  <option value="snack">Snack</option>
+                </select>
+              </label>
+              <label className="field single-meal-note">
+                <span className="field-label">Wunsch für Einzelvorschlag</span>
+                <input
+                  className="input"
+                  value={singleMealNote}
+                  onChange={(event) => setSingleMealNote(event.target.value)}
+                  placeholder="Airfryer, schnell, mild"
+                />
+              </label>
+              <button
+                type="button"
+                className="button button-secondary single-meal-button"
+                onClick={handleGenerateMeal}
+                disabled={!currentPlanQuery.data?.id || generateMealMutation.isPending}
+              >
+                {generateMealMutation.isPending ? 'Gericht läuft…' : 'Ein Gericht vorschlagen'}
+              </button>
+            </div>
+          </div>
           <div className="plan-stage-facts" aria-label="Wochenüberblick">
             {quickFacts.map((fact) => (
               <article key={fact.label} className="stage-stat">
@@ -389,13 +514,13 @@ export function DashboardPage() {
           </div>
         </section>
 
-        {planMessage || regenerateMessage || logoutMessage ? (
+        {planMessage || regenerateMessage || generateMealMessage || logoutMessage ? (
           <div
-            className={`status-strip${createPlanMutation.isError || regenerateMealMutation.isError || currentPlanQuery.isError || logoutMutation.isError ? ' status-strip-error' : ' status-strip-success'}`}
-            role={createPlanMutation.isError || regenerateMealMutation.isError || currentPlanQuery.isError || logoutMutation.isError ? 'alert' : 'status'}
+            className={`status-strip${createPlanMutation.isError || regenerateMealMutation.isError || generateMealMutation.isError || currentPlanQuery.isError || logoutMutation.isError ? ' status-strip-error' : ' status-strip-success'}`}
+            role={createPlanMutation.isError || regenerateMealMutation.isError || generateMealMutation.isError || currentPlanQuery.isError || logoutMutation.isError ? 'alert' : 'status'}
             aria-live="polite"
           >
-            <span>{planMessage || regenerateMessage || logoutMessage}</span>
+            <span>{planMessage || regenerateMessage || generateMealMessage || logoutMessage}</span>
           </div>
         ) : null}
 
@@ -651,6 +776,42 @@ function parsePane(value: string | null): 'plan' | 'detail' | 'shopping' {
     return value;
   }
   return 'plan';
+}
+
+function normalizeWeekStart(value?: string) {
+  const date = parseDateOnly(value);
+  if (!date) return undefined;
+  const weekday = date.getDay() === 0 ? 7 : date.getDay();
+  date.setDate(date.getDate() - (weekday - 1));
+  return toDateInputValue(date);
+}
+
+function nextMondayISO() {
+  const date = new Date();
+  const delta = (1 - date.getDay() + 7) % 7 || 7;
+  date.setDate(date.getDate() + delta);
+  return toDateInputValue(date);
+}
+
+function addDaysISO(value: string, days: number) {
+  const date = parseDateOnly(value) ?? new Date();
+  date.setDate(date.getDate() + days);
+  return toDateInputValue(date);
+}
+
+function buildWeekDays(weekStart: string) {
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = parseDateOnly(weekStart) ?? new Date();
+    date.setDate(date.getDate() + index);
+    return { date: toDateInputValue(date), meals: [] };
+  });
+}
+
+function toDateInputValue(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 function updateSearchParams(

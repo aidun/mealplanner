@@ -221,10 +221,10 @@ export function MealInspector({
             className="button button-primary full-width regenerate-button"
             onClick={() => onRegenerate(note)}
             disabled={isRegenerating || !canActOnMeal}
-            aria-label="Gericht austauschen"
+            aria-label="Einzelnes Gericht vorschlagen"
           >
             <RefreshIcon className="pill-icon" />
-            {isRegenerating ? 'Gericht wird neu generiert…' : 'Gericht neu generieren'}
+            {isRegenerating ? 'Gericht läuft…' : 'Einzelnes Gericht vorschlagen'}
           </button>
         </section>
 

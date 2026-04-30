@@ -30,6 +30,7 @@ const EMPTY_FORM: ProfileFormState = {
   excludedIngredients: '',
   preferredStores: '',
   shoppingNotes: '',
+  appliances: '',
   cookingStyle: '',
   mealPlanningRules: '',
   breakfastPresets: '',
@@ -1227,6 +1228,16 @@ export function OnboardingPage() {
                     value={form.shoppingNotes}
                     onChange={(event) => update('shoppingNotes', event.target.value)}
                     placeholder="500 g Pasta möglichst aufbrauchen, angebrochene Sahne am nächsten Tag einplanen."
+                  />
+                </label>
+                <label className="field">
+                  <span className="field-label">Küchengeräte</span>
+                  <textarea
+                    className="input textarea"
+                    rows={3}
+                    value={form.appliances}
+                    onChange={(event) => update('appliances', event.target.value)}
+                    placeholder={'Airfryer\nThermomix\nOptiGrill'}
                   />
                 </label>
                 <label className="field">

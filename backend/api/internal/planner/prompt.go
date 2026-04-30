@@ -18,6 +18,7 @@ type promptProfile struct {
 	Notes           string               `json:"notes,omitempty"`
 	PreferredStores string               `json:"preferredStores,omitempty"`
 	ShoppingNotes   string               `json:"shoppingNotes,omitempty"`
+	Appliances      []string             `json:"appliances,omitempty"`
 	MealPlan        []promptDaySlotRules `json:"mealPlan,omitempty"`
 }
 
@@ -94,6 +95,7 @@ Regeln:
 - Jede Mahlzeit braucht Beschreibung, Zutaten, Anleitung und geschätzte Nährwerte pro Portion.
 - Beachte alle Vorlieben, Abneigungen und Einschränkungen pro Person.
 - Beachte bevorzugte Einkaufsläden, typische Verpackungsgrößen und Einkaufsnotizen aus dem Profil.
+- Nutze die hinterlegten Küchengeräte, wenn sie sinnvoll passen; erfinde keine vorausgesetzten Spezialgeräte.
 - Plane Zutaten so, dass angebrochene Packungen möglichst über Folgetage verbraucht werden und nicht als Einzelreste stehen bleiben.
 - Nutze Favoriten als Inspiration. Wiederhole passende Favoriten oder Varianten davon, aber mache die Woche nicht monoton.
 - Wenn Favoriten gut passen, übernimm mindestens 2 Mahlzeiten der Woche direkt daraus oder als klar erkennbare Variante.
@@ -203,6 +205,7 @@ func minimizeProfile(profile domain.Profile) promptProfile {
 		Notes:           trimPromptText(profile.Notes, 500),
 		PreferredStores: trimPromptText(profile.PreferredStores, 300),
 		ShoppingNotes:   trimPromptText(profile.ShoppingNotes, 500),
+		Appliances:      trimPromptList(profile.Appliances, 12, 80),
 		MealPlan:        dayRules,
 	}
 }
@@ -319,4 +322,25 @@ func trimPromptText(value string, limit int) string {
 		return value
 	}
 	return strings.TrimSpace(value[:limit])
+}
+
+func trimPromptList(values []string, maxItems int, limit int) []string {
+	if len(values) == 0 || maxItems == 0 {
+		return nil
+	}
+	out := make([]string, 0, len(values))
+	seen := map[string]bool{}
+	for _, value := range values {
+		trimmed := trimPromptText(value, limit)
+		key := strings.ToLower(trimmed)
+		if trimmed == "" || seen[key] {
+			continue
+		}
+		seen[key] = true
+		out = append(out, trimmed)
+		if maxItems > 0 && len(out) >= maxItems {
+			break
+		}
+	}
+	return out
 }

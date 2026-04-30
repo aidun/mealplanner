@@ -93,6 +93,7 @@ func (g MockGenerator) MergeProfiles(_ context.Context, target domain.Profile, i
 		}
 	}
 	merged.Presets = appendUnique(merged.Presets, incoming.Presets...)
+	merged.Appliances = appendUnique(merged.Appliances, incoming.Appliances...)
 	merged.Notes = strings.TrimSpace(strings.Join(nonEmpty(merged.Notes, incoming.Notes), "\n"))
 	merged.UpdatedAt = g.now()
 	return merged, nil

@@ -160,6 +160,7 @@ export interface Profile {
   notes?: string;
   preferredStores?: string;
   shoppingNotes?: string;
+  appliances?: string[];
   updatedAt?: string;
 }
 
@@ -329,6 +330,7 @@ export interface ProfileFormState {
   excludedIngredients: string;
   preferredStores: string;
   shoppingNotes: string;
+  appliances: string;
   cookingStyle: string;
   mealPlanningRules: string;
   breakfastPresets: string;

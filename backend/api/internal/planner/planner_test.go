@@ -179,6 +179,38 @@ func TestRegenerateMealMarksFavoriteReuseOnMatch(t *testing.T) {
 	}
 }
 
+func TestGenerateMealForSlotReplacesOnlyRequestedSlot(t *testing.T) {
+	p := New(fakeGenerator{})
+	plan := domain.Plan{
+		ID:        "plan-1",
+		WeekStart: "2026-04-20",
+		Days: []domain.DayPlan{{
+			Date: "2026-04-20",
+			Meals: []domain.Meal{
+				{ID: "breakfast-1", Slot: "breakfast", Title: "Porridge"},
+				{ID: "dinner-1", Slot: "dinner", Title: "Pasta"},
+			},
+		}},
+	}
+
+	updated, err := p.GenerateMeal(context.Background(), domain.DefaultProfile(), plan, "2026-04-20", "dinner", "mehr Gemüse", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if updated.Days[0].Meals[0].Title != "Porridge" {
+		t.Fatalf("breakfast should be unchanged, got %#v", updated.Days[0].Meals[0])
+	}
+	if updated.Days[0].Meals[1].ID != "dinner-1" || updated.Days[0].Meals[1].Slot != "dinner" {
+		t.Fatalf("expected stable dinner id and slot, got %#v", updated.Days[0].Meals[1])
+	}
+	if !strings.Contains(updated.Days[0].Meals[1].RegenerationNote, "Gemüse") {
+		t.Fatalf("expected note on generated dinner, got %#v", updated.Days[0].Meals[1])
+	}
+	if len(updated.ShoppingList) == 0 {
+		t.Fatal("expected shopping list to be refreshed")
+	}
+}
+
 func TestGenerateWeekNormalizesNutritionAndMealPayload(t *testing.T) {
 	p := New(fakeGeneratorWithNutritionDrift{})
 	plan, err := p.GenerateWeek(context.Background(), domain.DefaultProfile(), "2026-04-20", nil)

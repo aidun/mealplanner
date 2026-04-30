@@ -105,6 +105,7 @@ describe('profile form mapping', () => {
       excludedIngredients: 'Koriander\nSellerie',
       preferredStores: 'Rewe\nWochenmarkt',
       shoppingNotes: '500 g Pasta möglichst aufbrauchen',
+      appliances: 'Airfryer\nThermomix',
       cookingStyle: 'Schnell und warm',
       mealPlanningRules: 'Wochentags unter 30 Minuten',
       breakfastPresets: 'Oats',
@@ -122,6 +123,8 @@ describe('profile form mapping', () => {
     expect(roundtrip.excludedIngredients).toBe('Koriander\nSellerie');
     expect(roundtrip.preferredStores).toBe('Rewe\nWochenmarkt');
     expect(roundtrip.shoppingNotes).toBe('500 g Pasta möglichst aufbrauchen');
+    expect(profile.appliances).toEqual(['Airfryer', 'Thermomix']);
+    expect(roundtrip.appliances).toBe('Airfryer\nThermomix');
     expect(roundtrip.cookingStyle).not.toContain('Wochentags unter 30 Minuten');
     expect(roundtrip.members[0]?.alias).toBe('Mama');
     expect(roundtrip.mealPlanDays.find((day) => day.day === 'monday')?.slots.find((slot) => slot.slot === 'lunch')?.enabled).toBe(false);

@@ -21,6 +21,7 @@ const profile = {
   },
   presets: ['Mediterran', 'schnell'],
   notes: 'Wochentags simpel',
+  appliances: ['Airfryer'],
 };
 
 const plan = {
@@ -86,6 +87,26 @@ const regeneratedPlan = {
         },
       ],
     },
+  ],
+};
+
+const singleMealPlan = {
+  ...plan,
+  days: [
+    {
+      ...baseDay,
+      meals: [
+        ...baseDay.meals,
+        {
+          ...baseMeal,
+          id: '2026-04-13-lunch',
+          slot: 'lunch',
+          title: 'Schnelle Airfryer-Bowl',
+          description: 'Milder Einzelvorschlag mit Gemüse.',
+        },
+      ],
+    },
+    plan.days[1]!,
   ],
 };
 
@@ -255,6 +276,10 @@ function createFetchMock(options: {
       return new Response(JSON.stringify(activeProfile), { status: 200 });
     }
 
+    if (url.includes('/api/plans?weekStart=')) {
+      return new Response(JSON.stringify(plan), { status: 200 });
+    }
+
     if (url.endsWith('/api/plans/current')) {
       return new Response(JSON.stringify(plan), { status: 200 });
     }
@@ -378,6 +403,10 @@ function createFetchMock(options: {
       return new Response(JSON.stringify(regeneratedPlan), { status: 200 });
     }
 
+    if (url.endsWith('/api/plans/plan-1/meals') && init?.method === 'POST') {
+      return new Response(JSON.stringify(singleMealPlan), { status: 200 });
+    }
+
     if (url.endsWith('/api/plans') && init?.method === 'POST') {
       return new Response(JSON.stringify(plan), { status: 200 });
     }
@@ -444,6 +473,7 @@ describe('Mealplanner app', () => {
           },
           presets: ['familientauglich'],
           notes: 'Nährwerte sind Schätzungen und nicht medizinisch verbindlich.',
+          appliances: [],
         },
       })
     );
@@ -532,10 +562,11 @@ describe('Mealplanner app', () => {
 
     expect(await screen.findByText('Wochen-Workbench')).toBeInTheDocument();
     expect(screen.getAllByRole('link', { name: 'Küchenprofil' })).toHaveLength(1);
-    expect(screen.getAllByRole('button', { name: /Neue Woche planen/i })).toHaveLength(1);
+    const mealButton = (await screen.findAllByRole('button', { name: /Pasta mit Gemüse/ }))[0]!;
+    expect(screen.getAllByRole('button', { name: /Woche neu planen/i })).toHaveLength(1);
+    expect(screen.getByLabelText('Woche auswählen')).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Bereiche wechseln' })).toBeInTheDocument();
     expect(fetchMock.mock.calls.filter(([url]) => String(url).includes('/api/session'))).toHaveLength(1);
-    const mealButton = (await screen.findAllByRole('button', { name: /Pasta mit Gemüse/ }))[0]!;
     expect(mealButton).toBeInTheDocument();
     expect(within(mealButton).queryByText('Familienfreundlich und schnell.')).not.toBeInTheDocument();
     expect((await screen.findAllByText('Familienfreundlich und schnell.')).length).toBeGreaterThan(0);
@@ -568,6 +599,28 @@ describe('Mealplanner app', () => {
 
     expect(await screen.findByRole('complementary', { name: 'Premium Feedback' })).toBeInTheDocument();
     expect(screen.queryByRole('textbox', { name: 'Feedback' })).not.toBeInTheDocument();
+  });
+
+  it('loads a selected historical week and creates a plan for that week', async () => {
+    const fetchMock = vi.mocked(fetch);
+    renderApp('/?week=2026-04-20');
+
+    expect(await screen.findByText('Wochen-Workbench')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/api/plans?weekStart=2026-04-20'), expect.anything());
+    });
+    fireEvent.change(screen.getByLabelText('Woche auswählen'), { target: { value: '2026-05-04' } });
+    fireEvent.click(screen.getByRole('button', { name: /Woche planen|Woche neu planen/i }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('/api/plans'),
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ weekStart: '2026-05-04' }),
+        })
+      );
+    });
   });
 
   it('sends premium feedback with page context', async () => {
@@ -779,7 +832,7 @@ describe('Mealplanner app', () => {
     fireEvent.change(await screen.findByLabelText('Wunsch zur Änderung'), {
       target: { value: 'mehr Gemüse' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Gericht austauschen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Einzelnes Gericht vorschlagen' }));
 
     await waitFor(() => {
       expect(screen.getAllByText('Cremige Gemüsepasta').length).toBeGreaterThan(0);
@@ -810,6 +863,8 @@ describe('Mealplanner app', () => {
     const mondayCard = screen.getByLabelText('Montag');
     fireEvent.click(within(mondayCard).getByLabelText('Snack'));
     fireEvent.click(within(screen.getByLabelText('Montag Snack Teilnehmende')).getByLabelText('Ben'));
+    fireEvent.click(screen.getByRole('button', { name: 'Vorlieben' }));
+    fireEvent.change(screen.getByLabelText('Küchengeräte'), { target: { value: 'Airfryer\nThermomix' } });
 
     fireEvent.click(screen.getByRole('button', { name: 'Für unsere Woche merken' }));
 
@@ -823,6 +878,10 @@ describe('Mealplanner app', () => {
           })
         );
     });
+    const profileSave = vi.mocked(fetch).mock.calls.find(
+      ([url, init]) => String(url).includes('/api/profile') && init?.method === 'PUT'
+    );
+    expect(JSON.parse(String(profileSave?.[1]?.body)).appliances).toEqual(['Airfryer', 'Thermomix']);
     await waitFor(() => {
       expect(screen.getAllByText('Gespeichert. Der nächste Wochenplan nutzt euren Familiengeschmack.').length).toBeGreaterThan(0);
     });
@@ -942,6 +1001,7 @@ describe('Mealplanner app', () => {
           defaults: profile.defaults,
           presets: profile.presets,
           notes: profile.notes,
+          appliances: profile.appliances,
         },
         familyOverride: {
           ...family,
@@ -1172,7 +1232,7 @@ describe('Mealplanner app', () => {
 
     renderApp('/');
 
-    fireEvent.click(await screen.findByRole('button', { name: /Neue Woche planen/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /Woche planen/i }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Der Wochenplan konnte gerade nicht erstellt werden. Bitte versuche es gleich noch einmal.'
@@ -1187,7 +1247,7 @@ describe('Mealplanner app', () => {
     const noteField = screen.getByLabelText('Wunsch zur Änderung');
     await user.click(noteField);
     await user.type(noteField, 'Weniger Salz, mehr Gemüse.');
-    fireEvent.click(screen.getByRole('button', { name: 'Gericht austauschen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Einzelnes Gericht vorschlagen' }));
 
     await waitFor(() => {
       expect(fetch).toHaveBeenCalledWith(
@@ -1204,14 +1264,14 @@ describe('Mealplanner app', () => {
   it('covers the main planner smoke path', async () => {
     renderApp('/');
 
-    fireEvent.click((await screen.findAllByRole('button', { name: /Neue Woche planen/i }))[0]!);
+    fireEvent.click((await screen.findAllByRole('button', { name: /Woche neu planen/i }))[0]!);
     expect((await screen.findAllByRole('button', { name: /Pasta mit Gemüse/ })).length).toBeGreaterThan(0);
 
     fireEvent.click((await screen.findAllByRole('button', { name: /Pasta mit Gemüse/ }))[0]!);
     fireEvent.change(screen.getByLabelText('Wunsch zur Änderung'), {
       target: { value: 'Bitte schneller und mit mehr Gemüse.' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Gericht austauschen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Einzelnes Gericht vorschlagen' }));
     await waitFor(() => expect(screen.getAllByText('Cremige Gemüsepasta').length).toBeGreaterThan(0));
 
     fireEvent.click(screen.getByRole('button', { name: 'Als Favorit merken' }));
@@ -1314,5 +1374,28 @@ describe('Mealplanner app', () => {
 
     expect(await screen.findByText(/Allergien und Unverträglichkeiten bitte vor Einkauf und Kochen zusätzlich prüfen/)).toBeInTheDocument();
     expect(screen.getByText(/Marken, Lieblingsprodukte und heikle Zutaten helfen/)).toBeInTheDocument();
+  });
+
+  it('requests one new meal without rebuilding the whole week', async () => {
+    const fetchMock = vi.mocked(fetch);
+    renderApp('/');
+
+    expect(await screen.findByText('Wochen-Workbench')).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Tag für Einzelvorschlag'), { target: { value: '2026-04-13' } });
+    fireEvent.change(screen.getByLabelText('Mahlzeit für Einzelvorschlag'), { target: { value: 'lunch' } });
+    fireEvent.change(screen.getByLabelText('Wunsch für Einzelvorschlag'), { target: { value: 'Airfryer und schnell' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Ein Gericht vorschlagen' }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('/api/plans/plan-1/meals'),
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({ 'X-CSRF-Token': 'csrf-token-1' }),
+          body: JSON.stringify({ dayDate: '2026-04-13', slot: 'lunch', note: 'Airfryer und schnell' }),
+        })
+      );
+    });
+    expect((await screen.findAllByText('Schnelle Airfryer-Bowl')).length).toBeGreaterThan(0);
   });
 });
