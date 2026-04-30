@@ -12,6 +12,7 @@ interface BringLinkProps {
 }
 
 export function BringLink({ planId, scope = {}, label, className, disabled, hideLabel = false }: BringLinkProps) {
+  // Signed URLs depend on the exact scope, including excluded shopping items.
   const [state, setState] = useState<'idle' | 'loading' | 'ready' | 'failed'>('idle');
   const [url, setUrl] = useState('');
   const excludeKey = useMemo(() => [...new Set(scope.exclude ?? [])].map((item) => item.trim()).filter(Boolean).sort().join('|'), [

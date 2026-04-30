@@ -19,6 +19,7 @@ import (
 	"github.com/aidun/mealplanner/backend/api/internal/store"
 )
 
+// bringExportView is the sanitized template model for the public Bring import page.
 type bringExportView struct {
 	BrandName    string
 	Title        string
@@ -34,6 +35,7 @@ type bringExportView struct {
 	SchemaJSON   template.JS
 }
 
+// bringExportScope narrows a signed export URL to a week, day or single meal.
 type bringExportScope struct {
 	Day     string
 	Meal    string
@@ -48,6 +50,7 @@ type bringExportItem struct {
 	Line     string
 }
 
+// getBringExportURL validates the requested scope before returning a signed Bring deep link.
 func (h *Handler) getBringExportURL(w http.ResponseWriter, r *http.Request) {
 	planID := r.PathValue("planID")
 	scope := bringScopeFromRequest(r)
@@ -88,6 +91,7 @@ func (h *Handler) getBringExportURL(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"url": bringDirectURL(pageURL, exportURL.Host), "pageUrl": pageURL})
 }
 
+// getBringExport serves the schema.org recipe page that Bring imports from.
 func (h *Handler) getBringExport(w http.ResponseWriter, r *http.Request) {
 	planID := r.PathValue("planID")
 	scope := bringScopeFromRequest(r)
@@ -125,6 +129,7 @@ func (h *Handler) getBringExport(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// planForBringExport accepts either a valid signed public token or the current authenticated family session.
 func (h *Handler) planForBringExport(r *http.Request, planID string) (domain.Plan, error) {
 	token := strings.TrimSpace(r.URL.Query().Get("token"))
 	scope := bringScopeFromRequest(r)
@@ -142,6 +147,7 @@ func (h *Handler) planForBringExport(r *http.Request, planID string) (domain.Pla
 	return h.repo.GetPlan(withUserID(r, userID), planID)
 }
 
+// signBringExport binds the HMAC to the plan ID and scope so checked-off items cannot be altered later.
 func (h *Handler) signBringExport(planID string, scope bringExportScope) (string, bool) {
 	if !configuredSecret(h.apiSecret) {
 		return "", false
@@ -160,6 +166,7 @@ func (h *Handler) signBringExport(planID string, scope bringExportScope) (string
 	return base64.RawURLEncoding.EncodeToString(mac.Sum(nil)), true
 }
 
+// verifyBringExport keeps old week-level tokens valid while enforcing scoped tokens for newer links.
 func (h *Handler) verifyBringExport(planID string, scope bringExportScope, token string) bool {
 	expected, ok := h.signBringExport(planID, scope)
 	if !ok {
@@ -279,6 +286,7 @@ func bringDirectURL(recipeURL string, domain string) string {
 	return "https://enjoy.getbring.com/ZAzR?" + values.Encode()
 }
 
+// scopedBringPlan drops unrelated days/meals before ingredients and schema data are derived.
 func scopedBringPlan(plan domain.Plan, scope bringExportScope) (domain.Plan, error) {
 	if scope.Day == "" && scope.Meal == "" {
 		return plan, nil
@@ -308,6 +316,7 @@ func scopedBringPlan(plan domain.Plan, scope bringExportScope) (domain.Plan, err
 	return filtered, nil
 }
 
+// newBringExportView converts an internal plan into the recipe-shaped page Bring expects.
 func newBringExportView(plan domain.Plan, canonicalURL string, scope bringExportScope) (bringExportView, error) {
 	kind, onlyDay, onlyMeal := detectBringExportKind(plan)
 	shoppingItems := filterBringShoppingItems(bringShoppingItems(plan, kind, onlyMeal), scope.Exclude)
@@ -450,6 +459,7 @@ func detectBringExportKind(plan domain.Plan) (kind string, onlyDay domain.DayPla
 	return "week", onlyDay, onlyMeal
 }
 
+// bringShoppingItems prefers the stored week list but can rebuild a list for meal-scoped exports.
 func bringShoppingItems(plan domain.Plan, kind string, onlyMeal domain.Meal) []domain.ShoppingItem {
 	if len(plan.ShoppingList) > 0 {
 		return plan.ShoppingList
@@ -464,6 +474,7 @@ func bringShoppingItems(plan domain.Plan, kind string, onlyMeal domain.Meal) []d
 	return domain.ConsolidateShoppingList(plan)
 }
 
+// filterBringShoppingItems removes items the frontend marked as already handled before sharing to Bring.
 func filterBringShoppingItems(items []domain.ShoppingItem, excludes []string) []domain.ShoppingItem {
 	if len(excludes) == 0 {
 		return items

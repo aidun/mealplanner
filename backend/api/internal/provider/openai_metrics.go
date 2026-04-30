@@ -27,6 +27,7 @@ type openAIRequestMetric struct {
 	DurationSum float64
 }
 
+// OpenAIRequestMetricSnapshot is exported for API/debug surfaces without exposing the mutable registry.
 type OpenAIRequestMetricSnapshot struct {
 	Operation   string
 	Model       string
@@ -82,6 +83,7 @@ func recordOpenAIUsage(operation, model string, usage openAIUsage) {
 	}
 }
 
+// WriteOpenAIMetrics renders the in-process counters in Prometheus text format.
 func WriteOpenAIMetrics(w io.Writer) {
 	requestMetrics, tokenMetrics := OpenAIMetricsSnapshot()
 
@@ -107,6 +109,7 @@ func WriteOpenAIMetrics(w io.Writer) {
 	}
 }
 
+// OpenAIMetricsSnapshot copies and sorts metrics so callers can read without holding the mutex.
 func OpenAIMetricsSnapshot() ([]OpenAIRequestMetricSnapshot, []OpenAITokenMetricSnapshot) {
 	openAIMetrics.mu.Lock()
 	requests := make([]OpenAIRequestMetricSnapshot, 0, len(openAIMetrics.requests))

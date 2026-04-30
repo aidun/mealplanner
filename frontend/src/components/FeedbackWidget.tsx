@@ -7,6 +7,7 @@ import { MailIcon } from './icons';
 
 const maxLength = 2000;
 
+// FeedbackWidget is available only after AuthenticatedRoute confirms premium or admin access.
 export function FeedbackWidget() {
   const location = useLocation();
   const [message, setMessage] = useState('');

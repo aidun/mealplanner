@@ -24,6 +24,9 @@ const WEEKDAY_CONFIG: Array<{ day: MealPlanDayFormState['day']; label: string }>
   { day: 'sunday', label: 'Sonntag' },
 ];
 
+// The backend stores profile rules in Profile.notes, so this module is the single translation layer
+// between editable form fields and the compact text sections the planner understands.
+
 function splitLines(value: string) {
   return value
     .split(/\r?\n|,/)
@@ -36,6 +39,7 @@ function joinLines(values?: string[]) {
 }
 
 function objectToBlock(value: unknown) {
+  // Older profiles may contain arrays or objects in defaults; flatten them into editable multiline text.
   if (Array.isArray(value)) {
     return value.map((entry) => String(entry)).join('\n');
   }
@@ -93,6 +97,7 @@ export function defaultMealPlanDays(memberIds: string[] = []): MealPlanDayFormSt
 }
 
 export function profileToForm(profile?: Profile | null): ProfileFormState {
+  // Untouched placeholder profiles should open as an empty real setup, not as "Person 1".
   const noteSections = parseNoteSections(profile?.notes ?? '');
   const members =
     profile?.members?.length && !isPlaceholderProfile(profile) ? profile.members.map(memberToForm) : [emptyMember(0)];
@@ -130,6 +135,7 @@ export function profileToForm(profile?: Profile | null): ProfileFormState {
 }
 
 export function formToProfile(state: ProfileFormState): Profile {
+  // Keep the notes format stable because the Go planner parses these headings directly.
   const mealPlanDays = state.mealPlanDays ?? defaultMealPlanDays(state.members.map((member) => member.id));
   const members = state.members
     .map((member, index) => formToMember(member, index))
@@ -214,6 +220,7 @@ function formatNoteSections(sections: Record<string, string>) {
 }
 
 function parseNoteSections(notes: string) {
+  // Only known headings are parsed; free-form prose outside these sections is intentionally ignored.
   const sections: Record<string, string> = {};
   const knownTitles = [
     'Aktive Mahlzeiten',
@@ -282,6 +289,7 @@ function normalizeSlotLabel(value: string) {
 }
 
 function parseParticipantIds(value: string | undefined, members: MemberFormState[], fallback: string[]) {
+  // Participant sections may contain IDs, aliases or display names from older saved profiles.
   const entries = parseLines(value);
   if (entries.length === 0) {
     return [...fallback];
@@ -328,6 +336,7 @@ function syncMealPlanSlots(slots: MealPlanSlotFormState[], members: MemberFormSt
 }
 
 export function syncMealPlanDays(days: MealPlanDayFormState[], members: MemberFormState[]) {
+  // Adding/removing members should not leave meal-slot participant lists pointing at missing IDs.
   const memberIds = members.map((member) => member.id);
   if (days.length === 0) {
     return defaultMealPlanDays(memberIds);

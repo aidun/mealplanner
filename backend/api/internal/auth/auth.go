@@ -28,6 +28,7 @@ var (
 	ErrInvalidState     = errors.New("invalid oauth state")
 )
 
+// Provider is exposed to the frontend so unavailable login methods can stay visible but disabled.
 type Provider struct {
 	ID       string `json:"id"`
 	Name     string `json:"name"`
@@ -48,11 +49,13 @@ type Config struct {
 	ApplePrivateKey      string
 }
 
+// Service owns OAuth URL construction, provider checks and stable HMAC hashing for identities.
 type Service struct {
 	cfg    Config
 	client *http.Client
 }
 
+// Identity contains only normalized values safe to persist; raw provider identifiers are hashed first.
 type Identity struct {
 	Provider    string
 	SubjectHash string
@@ -121,6 +124,7 @@ func (s Service) RedirectURL(provider string) string {
 	return strings.TrimRight(s.cfg.BaseURL, "/") + "/api/auth/" + provider + "/callback"
 }
 
+// ExchangeGoogleCode completes the PKCE flow and immediately verifies the returned ID token.
 func (s Service) ExchangeGoogleCode(ctx context.Context, code, verifier, expectedNonce string) (Identity, error) {
 	form := url.Values{}
 	form.Set("client_id", s.cfg.GoogleClientID)
@@ -151,6 +155,7 @@ func (s Service) ExchangeGoogleCode(ctx context.Context, code, verifier, expecte
 	return s.VerifyGoogleIDToken(ctx, tokenResp.IDToken, expectedNonce)
 }
 
+// VerifyGoogleIDToken validates issuer, audience, nonce and verified email before deriving hashes.
 func (s Service) VerifyGoogleIDToken(ctx context.Context, idToken string, expectedNonce string) (Identity, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://oauth2.googleapis.com/tokeninfo?id_token="+url.QueryEscape(idToken), nil)
 	if err != nil {
@@ -222,6 +227,7 @@ func idTokenNonce(idToken string) (string, error) {
 	return claims.Nonce, nil
 }
 
+// Allowed checks the static allowlists; premium and family-level access are enforced later in the store.
 func (s Service) Allowed(identity Identity) bool {
 	if len(s.cfg.AllowedSubjectHashes) == 0 && len(s.cfg.AllowedEmailHashes) == 0 {
 		return false
@@ -232,12 +238,14 @@ func (s Service) Allowed(identity Identity) bool {
 	return identity.EmailHash != "" && contains(s.cfg.AllowedEmailHashes, identity.EmailHash)
 }
 
+// Hash creates stable, non-reversible identifiers for subjects and emails using the session secret.
 func (s Service) Hash(value string) string {
 	mac := hmac.New(sha256.New, []byte(s.cfg.SessionSecret))
 	_, _ = mac.Write([]byte(value))
 	return hex.EncodeToString(mac.Sum(nil))
 }
 
+// NewOAuthState returns the state, nonce and PKCE verifier/challenge tuple for a browser OAuth start.
 func NewOAuthState() (state, nonce, verifier, challenge string, err error) {
 	state, err = randomURLToken(32)
 	if err != nil {

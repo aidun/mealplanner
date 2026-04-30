@@ -10,12 +10,15 @@ import (
 	"github.com/aidun/mealplanner/backend/api/internal/domain"
 )
 
+// Generator is implemented by both live AI and deterministic mock providers.
 type Generator interface {
 	GenerateWeek(ctx context.Context, profile domain.Profile, weekStart time.Time, favorites []domain.FavoriteRecipe) (domain.Plan, error)
 	RegenerateMeal(ctx context.Context, profile domain.Profile, plan domain.Plan, mealID string, note string, favorites []domain.FavoriteRecipe) (domain.Meal, error)
 	MergeProfiles(ctx context.Context, target domain.Profile, incoming domain.Profile) (domain.Profile, error)
 }
 
+// Planner owns deterministic post-processing around provider output.
+// Providers generate candidates; this layer enforces dates, slots, servings and shopping lists.
 type Planner struct {
 	generator Generator
 	now       func() time.Time
@@ -30,6 +33,7 @@ func (p Planner) WithNow(now func() time.Time) Planner {
 	return p
 }
 
+// GenerateWeek creates a complete seven-day plan and removes meals for disabled day/slot rules.
 func (p Planner) GenerateWeek(ctx context.Context, profile domain.Profile, weekStart string, favorites []domain.FavoriteRecipe) (domain.Plan, error) {
 	if err := profile.Validate(); err != nil {
 		return domain.Plan{}, err
@@ -62,6 +66,7 @@ func (p Planner) GenerateWeek(ctx context.Context, profile domain.Profile, weekS
 	return plan, nil
 }
 
+// RegenerateMeal replaces exactly one meal while preserving its stable ID and slot in the existing plan.
 func (p Planner) RegenerateMeal(ctx context.Context, profile domain.Profile, plan domain.Plan, mealID string, note string, favorites []domain.FavoriteRecipe) (domain.Plan, error) {
 	if err := profile.Validate(); err != nil {
 		return domain.Plan{}, err
@@ -92,6 +97,7 @@ func (p Planner) RegenerateMeal(ctx context.Context, profile domain.Profile, pla
 	return plan, nil
 }
 
+// MergeProfiles combines a personal profile into an existing family profile before the account is moved.
 func (p Planner) MergeProfiles(ctx context.Context, target domain.Profile, incoming domain.Profile) (domain.Profile, error) {
 	if err := target.Validate(); err != nil {
 		return domain.Profile{}, err
@@ -110,6 +116,7 @@ func (p Planner) MergeProfiles(ctx context.Context, target domain.Profile, incom
 	return merged, nil
 }
 
+// repairMergedProfile keeps provider merges usable even when the model omits required profile fields.
 func repairMergedProfile(merged domain.Profile, target domain.Profile, incoming domain.Profile) domain.Profile {
 	if strings.TrimSpace(merged.HouseholdName) == "" {
 		merged.HouseholdName = firstNonEmpty(target.HouseholdName, incoming.HouseholdName, "Privater Haushalt")
@@ -178,6 +185,7 @@ func (p Planner) PreviewMergePrompt(target domain.Profile, incoming domain.Profi
 	return MergeProfilePrompt(target, incoming)
 }
 
+// parseOrNextWeekStart normalizes every requested date to its Monday week boundary.
 func parseOrNextWeekStart(value string, now time.Time) (time.Time, error) {
 	if value != "" {
 		parsed, err := time.Parse("2006-01-02", value)
@@ -210,6 +218,7 @@ func dateOnly(t time.Time) time.Time {
 	return time.Date(y, m, d, 0, 0, 0, 0, t.Location())
 }
 
+// normalizeDays returns exactly seven ordered days and derives German labels from the ISO date.
 func normalizeDays(days []domain.DayPlan, weekStart time.Time) []domain.DayPlan {
 	byDate := map[string]domain.DayPlan{}
 	for _, day := range days {
@@ -248,6 +257,7 @@ func annotateFavoriteReusePlan(plan *domain.Plan, favorites []domain.FavoriteRec
 	}
 }
 
+// annotateFavoriteReuseMeal stores lightweight UI hints without changing the generated meal body.
 func annotateFavoriteReuseMeal(meal *domain.Meal, favorites []domain.FavoriteRecipe) {
 	if meal == nil {
 		return
@@ -340,6 +350,7 @@ func isFavoriteVariant(title string, favoriteTitle string) bool {
 	return shared >= 2 && float64(shared)/float64(minTokens) >= 0.5
 }
 
+// normalizeGeneratedMeal trims and repairs provider output before it is stored or shown to users.
 func normalizeGeneratedMeal(meal domain.Meal, profile domain.Profile, dayDate string) domain.Meal {
 	meal.Title = strings.TrimSpace(meal.Title)
 	if meal.Title == "" {
@@ -416,6 +427,7 @@ func normalizeStrings(values []string) []string {
 	return out
 }
 
+// normalizeServings limits portions to the participants configured for the meal slot on that weekday.
 func normalizeServings(servings []domain.Serving, profile domain.Profile, slot string, dayDate string) []domain.Serving {
 	selectedMembers := participantsForSlotOnDay(profile, slot, weekdayKeyFromDate(dayDate))
 	if len(servings) == 0 {
@@ -486,6 +498,7 @@ func portionLabel(factor float64) string {
 	return fmt.Sprintf("%d%% Portion", int(math.Round(factor*100)))
 }
 
+// normalizeNutrition reconciles provider nutrition with local ingredient and macro heuristics.
 func normalizeNutrition(meal domain.Meal, warnings []string) (domain.Nutrition, []string, string) {
 	nutrition := meal.Nutrition
 	nutrition.Calories = maxInt(nutrition.Calories, 0)

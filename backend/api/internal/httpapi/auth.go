@@ -24,6 +24,7 @@ const (
 	premiumKey contextKey = "premium"
 )
 
+// oauthState is kept in an HttpOnly cookie while the provider roundtrip is in progress.
 type oauthState struct {
 	State    string `json:"state"`
 	Nonce    string `json:"nonce"`
@@ -34,6 +35,7 @@ func (h *Handler) getAuthProviders(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"providers": h.auth.Providers()})
 }
 
+// getSession returns frontend boot data without leaking anything for anonymous visitors.
 func (h *Handler) getSession(w http.ResponseWriter, r *http.Request) {
 	userID, csrf, _, ok := h.readSession(r)
 	if !ok {
@@ -72,6 +74,7 @@ func (h *Handler) getSession(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// startGoogle supports both normal browser redirects and XHR starts used by the React login page.
 func (h *Handler) startGoogle(w http.ResponseWriter, r *http.Request) {
 	if !h.auth.GoogleEnabled() {
 		writeError(w, http.StatusServiceUnavailable, "google login is not configured")
@@ -100,6 +103,7 @@ func (h *Handler) startGoogle(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, redirectURL, http.StatusFound)
 }
 
+// googleCallback verifies the stored state before any token exchange to keep the OAuth flow CSRF-safe.
 func (h *Handler) googleCallback(w http.ResponseWriter, r *http.Request) {
 	var saved oauthState
 	cookie, err := r.Cookie(auth.StateCookieName)
@@ -158,6 +162,7 @@ func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
+// withSession enriches the request context with account, admin and family-level premium flags.
 func (h *Handler) withSession(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID, csrf, _, ok := h.readSession(r)
@@ -184,6 +189,7 @@ func (h *Handler) withSession(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+// withCSRF protects mutating cookie-authenticated routes with the session-scoped token.
 func (h *Handler) withCSRF(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		csrf, _ := r.Context().Value(csrfKey).(string)
@@ -206,6 +212,7 @@ func (h *Handler) withAdmin(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+// withPremium lets the hard-privileged admin use support flows even without a normal premium grant.
 func (h *Handler) withPremium(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		isPremium, _ := r.Context().Value(premiumKey).(bool)
@@ -218,6 +225,7 @@ func (h *Handler) withPremium(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+// readSession treats missing or expired sessions as anonymous and logs only unexpected store failures.
 func (h *Handler) readSession(r *http.Request) (string, string, time.Time, bool) {
 	cookie, err := r.Cookie(auth.SessionCookieName)
 	if err != nil || cookie.Value == "" {

@@ -15,12 +15,14 @@ import (
 //go:embed migrations/*.sql
 var migrationFS embed.FS
 
+// migration pairs one numbered up/down SQL file from the embedded migrations directory.
 type migration struct {
 	Version int
 	UpSQL   string
 	DownSQL string
 }
 
+// MigrateUp applies missing migrations in version order, one transaction per migration.
 func MigrateUp(ctx context.Context, pool *pgxpool.Pool) error {
 	migrations, err := loadMigrations()
 	if err != nil {
@@ -78,6 +80,7 @@ func getAppliedVersions(ctx context.Context, pool *pgxpool.Pool) (map[int]bool, 
 	return out, rows.Err()
 }
 
+// loadMigrations validates that every version has both an up and a down file.
 func loadMigrations() ([]migration, error) {
 	entries, err := migrationFS.ReadDir("migrations")
 	if err != nil {

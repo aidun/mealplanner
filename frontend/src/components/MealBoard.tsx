@@ -22,6 +22,7 @@ export function MealBoard({
   onSelectMeal,
   onSelectDay,
 }: MealBoardProps) {
+  // The board keeps the selected day authoritative while still falling back to the first available meal.
   const resolvedDayIndex = activeDayDate ? days.findIndex((day) => day.date === activeDayDate) : 0;
   const safeDayIndex = days.length === 0 ? 0 : resolvedDayIndex >= 0 ? resolvedDayIndex : 0;
   const activeDay = days[safeDayIndex];
@@ -248,5 +249,6 @@ function formatDaySubline(value: string) {
 }
 
 function compactDescription(value: string) {
+  // Keep agenda cards scanable; the full description remains in the inspector.
   return value.length > 132 ? `${value.slice(0, 129).trimEnd()}…` : value;
 }

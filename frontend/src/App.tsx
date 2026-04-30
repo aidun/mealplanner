@@ -26,6 +26,7 @@ export function App() {
   );
 }
 
+// AcceptInvitePage keeps the destructive family-merge action explicit before sending the token.
 function AcceptInvitePage() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -69,6 +70,7 @@ function AcceptInvitePage() {
   );
 }
 
+// AuthenticatedRoute centralizes session boot, first-login routing and premium/admin feedback visibility.
 function AuthenticatedRoute({ element }: { element: ReactElement }) {
   const location = useLocation();
   const sessionQuery = useQuery({

@@ -3,6 +3,7 @@ import type { Session } from './types';
 
 const SessionContext = createContext<Session | null>(null);
 
+// SessionProvider exposes the already-fetched boot session without duplicating /api/session calls.
 export function SessionProvider({
   session,
   children,

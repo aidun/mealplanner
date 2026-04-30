@@ -9,6 +9,7 @@ import (
 	"github.com/aidun/mealplanner/backend/api/internal/domain"
 )
 
+// promptProfile is the privacy-minimized profile shape sent to the model.
 type promptProfile struct {
 	Household       string               `json:"household"`
 	Members         []promptMember       `json:"members"`
@@ -75,6 +76,7 @@ type promptMealSummary struct {
 	Tags  []string `json:"tags,omitempty"`
 }
 
+// WeekPrompt describes the week-generation contract and includes only minimized profile/favorite data.
 func WeekPrompt(profile domain.Profile, weekStart time.Time, favorites []domain.FavoriteRecipe) string {
 	body, _ := json.MarshalIndent(minimizeProfile(profile), "", "  ")
 	favoriteBody, _ := json.MarshalIndent(minimizeFavorites(favorites), "", "  ")
@@ -104,6 +106,7 @@ Favoriten:
 %s`, weekStart.Format("2006-01-02"), slotRuleText, string(body), string(favoriteBody))
 }
 
+// RegeneratePrompt gives the model one target meal plus surrounding context, not the whole raw account state.
 func RegeneratePrompt(profile domain.Profile, plan domain.Plan, mealID string, note string, favorites []domain.FavoriteRecipe) string {
 	cleanNote := strings.TrimSpace(note)
 	body, _ := json.MarshalIndent(struct {
@@ -133,6 +136,7 @@ Kontext:
 %s`, mealID, cleanNote, string(body))
 }
 
+// MergeProfilePrompt asks for a cooking-profile merge and explicitly excludes login/account invention.
 func MergeProfilePrompt(target domain.Profile, incoming domain.Profile) string {
 	body, _ := json.MarshalIndent(struct {
 		Target   promptProfile `json:"targetFamilyProfile"`
@@ -150,6 +154,7 @@ Kontext:
 %s`, string(body))
 }
 
+// minimizeProfile removes real member names and truncates free text before model calls.
 func minimizeProfile(profile domain.Profile) promptProfile {
 	members := make([]promptMember, 0, len(profile.Members))
 	for i, member := range profile.Members {
@@ -241,6 +246,7 @@ func preferredAlias(member domain.Member) string {
 	return strings.TrimSpace(member.Name)
 }
 
+// minimizeFavorites keeps favorite context bounded so prompts stay useful and cheap.
 func minimizeFavorites(favorites []domain.FavoriteRecipe) []promptFavorite {
 	out := make([]promptFavorite, 0, len(favorites))
 	for _, favorite := range favorites {
@@ -262,6 +268,7 @@ func minimizeFavorites(favorites []domain.FavoriteRecipe) []promptFavorite {
 	return out
 }
 
+// minimizePlanContext includes the target recipe and compact titles for neighboring meals.
 func minimizePlanContext(plan domain.Plan, mealID string) promptPlanContext {
 	context := promptPlanContext{WeekStart: plan.WeekStart}
 	for _, day := range plan.Days {

@@ -6,6 +6,8 @@ import (
 	"strings"
 )
 
+// ConsolidateShoppingList folds meal ingredients into a stable, category-sorted shopping list.
+// Items merge only when name and unit match, so "2 Stk Zitrone" does not combine with "200 g Zitrone".
 func ConsolidateShoppingList(plan Plan) []ShoppingItem {
 	type key struct {
 		name string

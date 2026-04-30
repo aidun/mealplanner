@@ -7,6 +7,7 @@ import (
 	"github.com/aidun/mealplanner/backend/api/internal/domain"
 )
 
+// slotPlanRule is the parsed planning rule for one meal slot on one weekday.
 type slotPlanRule struct {
 	Slot      string
 	Enabled   bool
@@ -41,6 +42,7 @@ func planningRules(profile domain.Profile) []slotPlanRule {
 	return planningRulesForDay(profile, "monday")
 }
 
+// planningRulesForDay parses the profile notes DSL that the frontend writes for active meals and participants.
 func planningRulesForDay(profile domain.Profile, weekday string) []slotPlanRule {
 	sections := parseNoteSections(profile.Notes)
 	weekdayTitle := weekdayTitle(weekday)
@@ -90,6 +92,7 @@ func participantsForSlot(profile domain.Profile, slot string) []domain.Member {
 	return participantsForSlotOnDay(profile, slot, "monday")
 }
 
+// participantsForSlotOnDay falls back to all profile members when no explicit participant rule exists.
 func participantsForSlotOnDay(profile domain.Profile, slot string, weekday string) []domain.Member {
 	slot = strings.ToLower(strings.TrimSpace(slot))
 	var matched *slotPlanRule
@@ -157,6 +160,7 @@ func weekdayTitle(key string) string {
 	return ""
 }
 
+// parseNoteSections extracts only known structured headings from the otherwise human-readable notes field.
 func parseNoteSections(notes string) map[string]string {
 	knownTitles := []string{
 		"Standard-Portionen",
@@ -234,6 +238,7 @@ func splitRuleLines(value string) []string {
 	return out
 }
 
+// normalizeTokenSet accepts German labels and API slot keys so older saved profiles keep working.
 func normalizeTokenSet(values []string) map[string]bool {
 	if len(values) == 0 {
 		return nil

@@ -23,6 +23,7 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
 
 let csrfToken = '';
 
+// ApiError preserves the HTTP status so UI copy can distinguish validation, auth and server failures.
 export class ApiError extends Error {
   status: number;
 
@@ -38,6 +39,7 @@ async function request<T>(
   init: RequestInit = {},
   options: { allow404?: boolean } = {}
 ): Promise<T | null> {
+  // All mutating routes are cookie-authenticated and require the CSRF token from /api/session.
   const hasBody = init.body !== undefined && init.body !== null;
   const method = (init.method ?? 'GET').toUpperCase();
   const mutating = method === 'POST' || method === 'PUT' || method === 'DELETE';
@@ -187,6 +189,7 @@ export interface BringExportScope {
   exclude?: string[];
 }
 
+// getBringExportUrl asks the backend to sign the exact week/day/meal scope before opening Bring.
 export async function getBringExportUrl(planId: string, scope: BringExportScope = {}) {
   const params = new URLSearchParams();
   if (scope.day) params.set('day', scope.day);

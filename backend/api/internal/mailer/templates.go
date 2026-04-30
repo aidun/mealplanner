@@ -7,6 +7,7 @@ import (
 	"github.com/aidun/mealplanner/backend/api/internal/brand"
 )
 
+// TemplateDefaults is the immutable catalog metadata that admin overrides are layered onto.
 type TemplateDefaults struct {
 	Label       string
 	Subject     string
@@ -22,6 +23,7 @@ const (
 	TemplateKindWeeklyPlanReady = "weekly_plan_ready"
 )
 
+// DefaultTemplate keeps operational mail copy in code so migrations and empty databases have safe defaults.
 func DefaultTemplate(kind string) (TemplateDefaults, bool) {
 	switch strings.TrimSpace(kind) {
 	case TemplateKindFamilyInvite:
@@ -188,6 +190,7 @@ func htmlEscape(value string) string {
 	return replacer.Replace(value)
 }
 
+// RenderTemplate performs placeholder substitution for plain-text templates.
 func RenderTemplate(template string, values map[string]string) string {
 	rendered := template
 	for key, value := range values {
@@ -196,6 +199,7 @@ func RenderTemplate(template string, values map[string]string) string {
 	return strings.TrimSpace(rendered)
 }
 
+// RenderHTMLTemplate escapes values before placeholder substitution for admin-editable HTML templates.
 func RenderHTMLTemplate(template string, values map[string]string) string {
 	escaped := make(map[string]string, len(values))
 	for key, value := range values {

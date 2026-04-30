@@ -24,6 +24,8 @@ import (
 	"github.com/aidun/mealplanner/backend/api/internal/store"
 )
 
+// Repository is the handler's persistence boundary. It accepts the request so middleware context
+// can provide the authenticated user while tests can use an in-memory implementation.
 type Repository interface {
 	UpsertUser(r *http.Request, provider, subjectHash string, email string, emailHash string) (string, error)
 	GetUserEmail(r *http.Request, userID string) (string, error)
@@ -70,6 +72,7 @@ type Repository interface {
 	RecordGenerationEvent(r *http.Request, category string) error
 }
 
+// StoreRepository adapts the concrete Postgres store to the HTTP-facing Repository interface.
 type StoreRepository struct {
 	Store store.Store
 }
@@ -246,6 +249,7 @@ func (r StoreRepository) RecordGenerationEvent(req *http.Request, category strin
 	return r.Store.RecordGenerationEvent(req.Context(), mustUserID(req.Context()), category)
 }
 
+// Handler wires API routes, auth boundaries, prompt debug, metrics and transactional mail.
 type Handler struct {
 	repo        Repository
 	planner     planner.Planner
@@ -261,6 +265,7 @@ type Handler struct {
 
 const maxJSONBodyBytes = 1 << 20
 
+// New builds the HTTP surface and applies global middleware in the same order for every route.
 func New(repo Repository, planner planner.Planner, authService auth.Service, apiSecret string, corsOrigins []string, logger *slog.Logger, appMailer mailer.Mailer) http.Handler {
 	if logger == nil {
 		logger = slog.Default()
@@ -440,6 +445,7 @@ func (h *Handler) createFamilyInvite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	template := mailTemplateByKind(templates, mailer.TemplateKindFamilyInvite)
+	// Mail delivery is best effort: the invite token is still valid when Resend or DNS is temporarily unavailable.
 	values := map[string]string{
 		"{{family_name}}":   family.Name,
 		"{{invite_link}}":   invite.InviteLink,
@@ -494,6 +500,7 @@ func (h *Handler) acceptFamilyInvite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if h.promptDebug {
+		// Prompt debug is test-only and stores the merge prompt before the family state changes.
 		_ = h.repo.SavePromptDebug(r, domain.PromptDebugEntry{
 			Operation: "merge_profile",
 			Model:     "mealplanner",

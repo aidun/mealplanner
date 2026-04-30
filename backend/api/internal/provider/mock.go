@@ -9,6 +9,7 @@ import (
 	"github.com/aidun/mealplanner/backend/api/internal/domain"
 )
 
+// MockGenerator produces deterministic, database-free plans for local development and tests.
 type MockGenerator struct {
 	now func() time.Time
 }
@@ -17,6 +18,7 @@ func NewMockGenerator() MockGenerator {
 	return MockGenerator{now: time.Now}
 }
 
+// GenerateWeek returns a complete fixture week and threads at least one favorite into the first day.
 func (g MockGenerator) GenerateWeek(_ context.Context, profile domain.Profile, weekStart time.Time, favorites []domain.FavoriteRecipe) (domain.Plan, error) {
 	plan := domain.Plan{
 		ID:        fmt.Sprintf("plan-%s", weekStart.Format("20060102")),
@@ -72,6 +74,7 @@ func (g MockGenerator) RegenerateMeal(_ context.Context, profile domain.Profile,
 	return domain.Meal{}, fmt.Errorf("meal %s not found", mealID)
 }
 
+// MergeProfiles approximates the live merge while keeping member IDs unique for tests.
 func (g MockGenerator) MergeProfiles(_ context.Context, target domain.Profile, incoming domain.Profile) (domain.Profile, error) {
 	merged := target
 	seen := map[string]bool{}

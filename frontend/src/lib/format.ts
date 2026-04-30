@@ -33,6 +33,7 @@ export function formatWeekRangeCompact(weekStart?: string) {
 }
 
 export function parseDateOnly(value?: string) {
+  // Parse YYYY-MM-DD in local time to avoid UTC shifts changing the displayed weekday.
   if (!value) return undefined;
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
   if (!match) {
@@ -71,6 +72,7 @@ export function formatNutritionPerPortion(nutrition?: Nutrition) {
 }
 
 export function scaleNutrition(nutrition: Nutrition | undefined, factor = 1): Nutrition | undefined {
+  // Per-person portions scale display values only; the stored meal keeps provider nutrition unchanged.
   if (!nutrition) return undefined;
   const safeFactor = Number.isFinite(factor) && factor > 0 ? factor : 1;
   return {

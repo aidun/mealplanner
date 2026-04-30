@@ -30,6 +30,7 @@ export function MealInspector({
   isRegenerating,
   isFavoriteBusy,
 }: MealInspectorProps) {
+  // The inspector combines recipe detail, local warning dismissals and actions for the selected meal.
   const [note, setNote] = useState('');
   const allergens = meal ? detectCriticalAllergens(meal.ingredients) : [];
   const visibleWarnings = meal ? filterVisibleWarnings(meal.warnings) : [];
@@ -64,6 +65,7 @@ export function MealInspector({
   }, [meal?.id]);
 
   useEffect(() => {
+    // Warning dismissals are local-only so one person can clear noise without changing family data.
     if (!meal?.id) {
       setDismissedWarnings([]);
       return;
@@ -339,6 +341,7 @@ function mealOriginLabel(meal: Meal) {
 }
 
 function filterVisibleWarnings(warnings?: string[]) {
+  // Nutrition-estimation notes are useful context elsewhere; this pane only surfaces actionable warnings.
   if (!warnings?.length) return [];
   return warnings.filter((warning) => {
     const value = warning.toLowerCase();
@@ -356,6 +359,7 @@ function filterVisibleWarnings(warnings?: string[]) {
 }
 
 function warningEntriesForMeal(mealId: string, warnings: string[], allergens: string[]) {
+  // Allergy hints are derived client-side and use stable keys so local dismissals survive rerenders.
   const entries: Array<{ key: string; kind: 'warning' | 'allergen'; text: string }> = warnings.map((warning, index) => ({
     key: `${mealId}:warning:${index}:${warning}`,
     kind: 'warning' as const,

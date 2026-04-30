@@ -27,10 +27,12 @@ var (
 
 const adminEmail = "markush1986@gmail.com"
 
+// Store is the Postgres-backed persistence layer. Most read/write methods are family-scoped.
 type Store struct {
 	pool *pgxpool.Pool
 }
 
+// familyMembershipState is the minimal data needed to decide whether an account can be merged.
 type familyMembershipState struct {
 	userID      string
 	familyID    string
@@ -38,6 +40,7 @@ type familyMembershipState struct {
 	memberCount int
 }
 
+// isPersonal means the account still owns a one-person family and can safely join another family.
 func (s familyMembershipState) isPersonal() bool {
 	return strings.TrimSpace(s.userID) != "" && s.userID == s.ownerUserID && s.memberCount <= 1
 }
@@ -46,6 +49,7 @@ func New(pool *pgxpool.Pool) Store {
 	return Store{pool: pool}
 }
 
+// UpsertUser records a provider identity and guarantees the login has an active personal family.
 func (s Store) UpsertUser(ctx context.Context, provider, subjectHash string, email string, emailHash string) (string, error) {
 	var id string
 	err := s.pool.QueryRow(ctx, `
@@ -101,6 +105,7 @@ func (s Store) GetUserEmail(ctx context.Context, userID string) (string, error) 
 	return strings.TrimSpace(email), err
 }
 
+// IsPremiumUser grants premium when any account in the active family is premium or the admin logs in.
 func (s Store) IsPremiumUser(ctx context.Context, userID string) (bool, error) {
 	familyID, err := s.activeFamilyID(ctx, userID)
 	if err != nil {
@@ -143,6 +148,7 @@ func (s Store) IsPremiumUser(ctx context.Context, userID string) (bool, error) {
 	return premiumCount > 0, nil
 }
 
+// LoginAllowed permits the admin, directly premium emails and members of an already premium family.
 func (s Store) LoginAllowed(ctx context.Context, email string, emailHash string) (bool, error) {
 	email = normalizeEmail(email)
 	if email == adminEmail {
@@ -398,6 +404,7 @@ func (s Store) ListUserIDs(ctx context.Context) ([]string, error) {
 	return ids, rows.Err()
 }
 
+// GetProfile reads the active family profile and returns the onboarding placeholder when none exists.
 func (s Store) GetProfile(ctx context.Context, userID string) (domain.Profile, error) {
 	familyID, err := s.activeFamilyID(ctx, userID)
 	if err != nil {
@@ -420,6 +427,7 @@ func (s Store) GetProfile(ctx context.Context, userID string) (domain.Profile, e
 	return profile, nil
 }
 
+// SaveProfile stores one shared cooking profile per active family.
 func (s Store) SaveProfile(ctx context.Context, userID string, profile domain.Profile) (domain.Profile, error) {
 	if err := profile.Validate(); err != nil {
 		return domain.Profile{}, err
@@ -446,6 +454,7 @@ func (s Store) SaveProfile(ctx context.Context, userID string, profile domain.Pr
 	return profile, nil
 }
 
+// SavePlan upserts by family/week so regenerating a week replaces the previous family plan.
 func (s Store) SavePlan(ctx context.Context, userID string, plan domain.Plan) (domain.Plan, error) {
 	familyID, err := s.activeFamilyID(ctx, userID)
 	if err != nil {
@@ -507,6 +516,7 @@ func (s Store) GetPlan(ctx context.Context, userID string, id string) (domain.Pl
 	return decodePlan(data)
 }
 
+// GetFamily assembles account membership, profile members and per-account mail settings for the UI.
 func (s Store) GetFamily(ctx context.Context, userID string) (domain.FamilySummary, error) {
 	familyID, err := s.activeFamilyID(ctx, userID)
 	if err != nil {
@@ -583,6 +593,7 @@ func (s Store) GetFamily(ctx context.Context, userID string) (domain.FamilySumma
 	return summary, err
 }
 
+// CreateFamilyInvite allows inviting unknown accounts or personal one-person accounts, but not active families.
 func (s Store) CreateFamilyInvite(ctx context.Context, userID string, emailHash string, ttl time.Duration) (domain.FamilyInvite, string, error) {
 	familyID, err := s.activeFamilyID(ctx, userID)
 	if err != nil {
@@ -619,6 +630,7 @@ func (s Store) CreateFamilyInvite(ctx context.Context, userID string, emailHash 
 	return invite, token, nil
 }
 
+// AcceptFamilyInvite atomically moves a personal account into the target family and stores the merged profile.
 func (s Store) AcceptFamilyInvite(ctx context.Context, userID string, token string, mergedProfile domain.Profile) (domain.FamilySummary, error) {
 	tokenHash := tokenDigest(token)
 	tx, err := s.pool.Begin(ctx)
@@ -693,6 +705,7 @@ func (s Store) AcceptFamilyInvite(ctx context.Context, userID string, token stri
 	return s.GetFamily(ctx, userID)
 }
 
+// UpdateFamilyMemberLink connects a login account to a profile member for display and settings ownership.
 func (s Store) UpdateFamilyMemberLink(ctx context.Context, userID string, accountUserID string, memberID string) (domain.FamilySummary, error) {
 	familyID, err := s.activeFamilyID(ctx, userID)
 	if err != nil {
@@ -814,6 +827,7 @@ func (s Store) ListFavorites(ctx context.Context, userID string) ([]domain.Favor
 	return favorites, rows.Err()
 }
 
+// SaveFavorite de-duplicates recipes within the active family by a stable meal hash.
 func (s Store) SaveFavorite(ctx context.Context, userID string, meal domain.Meal) (domain.FavoriteRecipe, error) {
 	familyID, err := s.activeFamilyID(ctx, userID)
 	if err != nil {
@@ -885,6 +899,7 @@ func (s Store) ListPremiumUsers(ctx context.Context) ([]domain.PremiumUser, erro
 	return users, rows.Err()
 }
 
+// SavePremiumUser rejects grants that would duplicate direct or family-level premium access.
 func (s Store) SavePremiumUser(ctx context.Context, grantedByUserID string, email string, emailHash string) (domain.PremiumUser, error) {
 	email = normalizeEmail(email)
 	emailHash = strings.TrimSpace(emailHash)
@@ -930,6 +945,7 @@ func (s Store) SavePremiumUser(ctx context.Context, grantedByUserID string, emai
 	return user, err
 }
 
+// ListMailTemplates layers database overrides onto the code-defined default template catalog.
 func (s Store) ListMailTemplates(ctx context.Context) ([]domain.MailTemplate, error) {
 	rows, err := s.pool.Query(ctx, `
 		SELECT kind, subject_template, text_template, html_template, updated_at
@@ -1023,6 +1039,7 @@ func (s Store) RecordGenerationEvent(ctx context.Context, userID string, categor
 	return err
 }
 
+// AdminStats aggregates small operational counters for the support/admin dashboard.
 func (s Store) AdminStats(ctx context.Context) (domain.AdminStats, error) {
 	accountCounts, err := s.familyCounts(ctx, `
 		SELECT f.id::text, COUNT(fm.user_id)::int
@@ -1118,6 +1135,7 @@ func (s Store) ListPromptDebug(ctx context.Context, userID string, limit int) ([
 	return entries, nil
 }
 
+// decodePromptMeta treats malformed debug metadata as absent so diagnostics never break the app.
 func decodePromptMeta(value []byte) map[string]string {
 	if len(value) == 0 || string(value) == "null" {
 		return nil
@@ -1132,6 +1150,7 @@ func decodePromptMeta(value []byte) map[string]string {
 	return meta
 }
 
+// activeFamilyID self-heals missing memberships before returning the current family scope.
 func (s Store) activeFamilyID(ctx context.Context, userID string) (string, error) {
 	if err := s.ensurePersonalFamily(ctx, userID); err != nil {
 		return "", err
@@ -1203,6 +1222,7 @@ func queryFamilyState(ctx context.Context, querier interface {
 	return state, nil
 }
 
+// ensurePersonalFamily creates the initial one-login family and repairs missing membership rows.
 func (s Store) ensurePersonalFamily(ctx context.Context, userID string) error {
 	var activeFamilyID *string
 	err := s.pool.QueryRow(ctx, `SELECT active_family_id::text FROM users WHERE id = $1`, userID).Scan(&activeFamilyID)
@@ -1353,6 +1373,7 @@ func decodePlan(data []byte) (domain.Plan, error) {
 	return plan, nil
 }
 
+// scopedPlanID keeps old plan IDs unique after plans moved from user to family scoping.
 func scopedPlanID(userID string, planID string) string {
 	prefix := strings.ReplaceAll(userID, "-", "")
 	if len(prefix) > 12 {

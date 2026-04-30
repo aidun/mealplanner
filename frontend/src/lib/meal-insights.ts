@@ -14,6 +14,7 @@ const ALLERGEN_KEYWORDS: Record<string, string[]> = {
   Sesam: ['sesam', 'tahin'],
 };
 
+// detectCriticalAllergens is a lightweight UI hint and does not replace real allergen validation.
 export function detectCriticalAllergens(ingredients: Ingredient[]) {
   const haystack = ingredients
     .map((ingredient) => `${ingredient.name} ${ingredient.note ?? ''}`.toLowerCase())
@@ -29,6 +30,7 @@ export function detectCriticalAllergens(ingredients: Ingredient[]) {
 }
 
 export function inferSelectionReason(meal: Meal) {
+  // Explain the visible choice using metadata users can inspect, not hidden prompt internals.
   const reasons: string[] = [];
 
   if (meal.meta?.favoriteReuse === 'direct') {

@@ -16,6 +16,7 @@ const previewDays = [
 const previewIngredients = ['Zitronen', 'Brokkoli', 'Burrata', 'Pasta', 'Basilikum'] as const;
 const previewShopping = ['Zitronen 2 Stk', 'Brokkoli 1 Kopf', 'Burrata 2 Kugeln', 'Pasta 500 g'] as const;
 
+// LoginPage starts OAuth through the backend so state, nonce and PKCE stay server-controlled.
 export function LoginPage() {
   const [loginError, setLoginError] = useState('');
   const [startingGoogleLogin, setStartingGoogleLogin] = useState(false);
@@ -172,6 +173,7 @@ export function LoginPage() {
 }
 
 function safeAuthStartUrl(value: string | undefined, fallback: string) {
+  // Provider start URLs must stay same-origin API paths; never redirect to arbitrary absolute URLs.
   const candidate = value?.trim() || fallback;
   if (!candidate.startsWith('/api/auth/')) {
     return fallback;

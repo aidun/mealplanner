@@ -6,6 +6,7 @@ import (
 	"strings"
 )
 
+// Mailer abstracts transactional email so tests and local development can use Noop safely.
 type Mailer interface {
 	SendInviteEmail(ctx context.Context, payload InviteEmail) error
 	SendPremiumInviteEmail(ctx context.Context, payload PremiumInviteEmail) error
@@ -43,6 +44,7 @@ type WeeklyPlanReadyEmail struct {
 	HTMLBody     string
 }
 
+// Config contains provider setup only; message copy comes from templates or admin overrides.
 type Config struct {
 	Enabled      bool
 	Provider     string
@@ -51,6 +53,7 @@ type Config struct {
 	ResendAPIKey string
 }
 
+// New selects the configured provider and deliberately falls back to Noop when email is disabled.
 func New(cfg Config) (Mailer, error) {
 	if !cfg.Enabled {
 		return Noop{}, nil

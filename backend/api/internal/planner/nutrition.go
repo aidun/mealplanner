@@ -7,6 +7,7 @@ import (
 	"github.com/aidun/mealplanner/backend/api/internal/domain"
 )
 
+// ingredientNutritionProfile is a deliberately small local fallback, not a nutrition database.
 type ingredientNutritionProfile struct {
 	keywords  []string
 	nutrition domain.Nutrition // per 100g
@@ -42,6 +43,7 @@ var ingredientProfiles = []ingredientNutritionProfile{
 	{keywords: []string{"nuss", "nut", "mandel", "almond"}, nutrition: domain.Nutrition{Calories: 607, ProteinG: 20, CarbsG: 21, FatG: 54, FiberG: 10}},
 }
 
+// estimateNutritionFromIngredients creates a rough per-portion estimate when provider values are missing or flagged estimated.
 func estimateNutritionFromIngredients(meal domain.Meal) (domain.Nutrition, bool) {
 	if len(meal.Ingredients) == 0 {
 		return domain.Nutrition{}, false
@@ -112,6 +114,7 @@ func lookupIngredientProfile(ingredient domain.Ingredient) (ingredientNutritionP
 	return ingredientNutritionProfile{}, false
 }
 
+// estimateIngredientGrams maps common household units to grams so the local heuristic has a usable base.
 func estimateIngredientGrams(ingredient domain.Ingredient, profile ingredientNutritionProfile) float64 {
 	amount := ingredient.Amount
 	if amount <= 0 {

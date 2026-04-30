@@ -10,6 +10,7 @@ interface ShoppingListPanelProps {
 }
 
 export function ShoppingListPanel({ planId, shoppingList, loading }: ShoppingListPanelProps) {
+  // Checked items stay local per plan and are excluded from generated Bring links.
   const [expanded, setExpanded] = useState(true);
   const items = useMemo(() => flattenShoppingList(shoppingList), [shoppingList]);
   const itemKeySignature = useMemo(() => items.map(shoppingItemKey).join('|'), [items]);
@@ -205,6 +206,7 @@ function CategoryIcon({ category }: { category?: string }) {
 }
 
 function flattenShoppingList(shoppingList?: ShoppingList | null): ShoppingListItem[] {
+  // Support both backend list shapes while the UI is migrating to sectioned shopping documents.
   if (!shoppingList) return [];
   if (Array.isArray(shoppingList)) return shoppingList;
   if (shoppingList.sections?.length) {

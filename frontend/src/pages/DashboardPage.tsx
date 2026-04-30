@@ -31,6 +31,7 @@ function promptDebugEnabled() {
   return window.localStorage.getItem('mealplanner.promptDebug') !== 'false';
 }
 
+// DashboardPage is the main workspace: URL params keep the active pane, day and meal shareable.
 export function DashboardPage() {
   const queryClient = useQueryClient();
   const session = useSession();
@@ -181,6 +182,7 @@ export function DashboardPage() {
   }, [allMeals, currentPlanQuery.data?.days, selectedMealId, setSearchParams]);
 
   useEffect(() => {
+    // On mobile the pane switcher hides only while scrolling down, keeping the hero stable.
     lastScrollYRef.current = Math.max(window.scrollY, 0);
 
     const updateMenuVisibility = (nextHidden: boolean) => {
@@ -484,6 +486,7 @@ function PromptDebugOverlay({
   snapshot?: PromptDebugSnapshot;
   onRefresh: () => void;
 }) {
+  // The overlay summarizes prompt history and OpenAI metrics without exposing it in production builds.
   const [open, setOpen] = useState(false);
   const latest = snapshot?.latest;
   const recent = snapshot?.recent ?? [];
@@ -600,6 +603,7 @@ function formatPromptTimestamp(value: string) {
 }
 
 function mergePromptOperations(snapshot?: PromptDebugSnapshot) {
+  // Token and request metrics arrive as separate series; merge them for a compact operator view.
   const operations = new Map<string, { operation: string; model?: string; tokens: number; requests: number }>();
   for (const token of snapshot?.openai?.tokens ?? []) {
     if (token.type !== 'total') continue;
@@ -653,6 +657,7 @@ function updateSearchParams(
   setSearchParams: SetURLSearchParams,
   updates: Record<string, string | undefined>
 ) {
+  // Replace history entries so pane/day/meal navigation does not pollute the browser back stack.
   setSearchParams((current) => {
     const next = new URLSearchParams(current);
     for (const [key, value] of Object.entries(updates)) {
@@ -667,6 +672,7 @@ function updateSearchParams(
 }
 
 function countShoppingItems(shoppingList: unknown) {
+  // Accept both legacy flat shopping lists and the newer sectioned document returned by the API.
   if (!shoppingList) return 0;
   if (Array.isArray(shoppingList)) return shoppingList.length;
   if (typeof shoppingList === 'object' && shoppingList !== null) {

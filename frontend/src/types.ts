@@ -27,6 +27,7 @@ export interface Serving {
 
 export type MealSlot = 'breakfast' | 'lunch' | 'dinner' | 'snack' | string;
 
+// Meal mirrors the backend provider contract; meta carries narrow UI hints such as favorite reuse.
 export interface Meal {
   id: string;
   slot: MealSlot;
@@ -63,6 +64,7 @@ export interface FamilyAccount {
   settings?: AccountSettings;
 }
 
+// FamilySummary separates login accounts from cooking-profile members.
 export interface FamilySummary {
   id: string;
   name: string;
@@ -105,6 +107,7 @@ export interface OpenAITokenMetric {
   count: number;
 }
 
+// PromptDebugSnapshot is available only in test/debug builds and powers the prompt overlay.
 export interface PromptDebugSnapshot {
   latest?: PromptDebugEntry;
   recent?: PromptDebugEntry[];
@@ -148,6 +151,7 @@ export interface MealDefaults {
   snacks?: string;
 }
 
+// Profile is the shared cooking profile for a family, not the authenticated login account.
 export interface Profile {
   householdName: string;
   members: Member[];
@@ -180,6 +184,7 @@ export interface ShoppingListDocument {
   items?: ShoppingListItem[];
 }
 
+// ShoppingList supports both the old flat array and the newer sectioned document shape.
 export type ShoppingList = ShoppingListItem[] | ShoppingListDocument;
 
 export type AuthProviderID = 'google' | 'apple' | string;
@@ -195,6 +200,7 @@ export interface AuthProvidersResponse {
   providers: AuthProvider[];
 }
 
+// Session is frontend boot data; csrfToken is cached by api.ts for mutating requests.
 export interface Session {
   authenticated: boolean;
   csrfToken?: string;
@@ -313,6 +319,7 @@ export interface MealPlanDayFormState {
   slots: MealPlanSlotFormState[];
 }
 
+// ProfileFormState is intentionally denormalized so the large profile editor can stay controlled.
 export interface ProfileFormState {
   householdName: string;
   members: MemberFormState[];

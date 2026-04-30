@@ -15,17 +15,20 @@ import (
 	"github.com/aidun/mealplanner/backend/api/internal/planner"
 )
 
+// OpenAIConfig contains only the live provider values; secrets are never logged or persisted.
 type OpenAIConfig struct {
 	APIKey string
 	Model  string
 }
 
+// OpenAIGenerator implements planner.Generator through the OpenAI Responses API.
 type OpenAIGenerator struct {
 	apiKey string
 	model  string
 	client *http.Client
 }
 
+// NewOpenAIGenerator rejects placeholder keys so live mode fails fast during startup.
 func NewOpenAIGenerator(cfg OpenAIConfig) (OpenAIGenerator, error) {
 	apiKey := strings.TrimSpace(cfg.APIKey)
 	if apiKey == "" || strings.HasPrefix(apiKey, "__set_") {
@@ -76,6 +79,7 @@ func (g OpenAIGenerator) MergeProfiles(ctx context.Context, target domain.Profil
 	return profile, nil
 }
 
+// call sends a strict JSON-schema request and decodes the structured response into target.
 func (g OpenAIGenerator) call(ctx context.Context, operation string, prompt string, schema map[string]any, target any) error {
 	start := time.Now()
 	status := "error"
@@ -134,6 +138,7 @@ func (g OpenAIGenerator) call(ctx context.Context, operation string, prompt stri
 	return nil
 }
 
+// sanitizeOpenAIErrorBody keeps useful failure context while redacting likely secrets from logs/errors.
 func sanitizeOpenAIErrorBody(body []byte) string {
 	const limit = 512
 	text := strings.TrimSpace(string(body))
@@ -187,6 +192,7 @@ func parseUsage(body []byte) openAIUsage {
 	}
 }
 
+// extractOutputText supports both the shortcut output_text field and nested Responses content.
 func extractOutputText(body []byte) (string, error) {
 	var parsed struct {
 		OutputText string `json:"output_text"`
@@ -213,6 +219,7 @@ func extractOutputText(body []byte) (string, error) {
 	return "", errors.New("openai response did not contain output text")
 }
 
+// planSchema mirrors the frontend/backend domain contract for strict model output.
 func planSchema() map[string]any {
 	meal := mealSchema()
 	return map[string]any{

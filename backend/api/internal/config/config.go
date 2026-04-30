@@ -6,6 +6,8 @@ import (
 	"strings"
 )
 
+// Config is the normalized runtime configuration after environment parsing.
+// Validation is stricter in production than in local/test modes.
 type Config struct {
 	AppEnv                   string
 	Port                     string
@@ -32,6 +34,7 @@ type Config struct {
 	ApplePrivateKey          string
 }
 
+// Load reads environment variables, applies local-safe defaults and validates the result.
 func Load() (Config, error) {
 	cfg := Config{
 		AppEnv:                   getenvDefault("APP_ENV", "development"),
@@ -72,6 +75,7 @@ func Load() (Config, error) {
 	return cfg, nil
 }
 
+// Validate rejects unsupported providers and blocks production startup when security-critical values are placeholders.
 func (c Config) Validate() error {
 	c.AppEnv = strings.ToLower(strings.TrimSpace(c.AppEnv))
 	if c.AppEnv == "" {

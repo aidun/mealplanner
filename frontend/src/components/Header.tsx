@@ -23,6 +23,7 @@ export function Header({
   isAdmin = false,
   showCreatePlan = true,
 }: HeaderProps) {
+  // The header keeps desktop actions visible while mobile groups account actions behind one touch target.
   const navigate = useNavigate();
 
   return (

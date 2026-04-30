@@ -55,6 +55,7 @@ const GUIDED_WEEK_PREVIEW = [
 
 const GUIDED_SHOPPING_PREVIEW = ['Gemüse für zwei Abende', 'ein Einkauf statt Einzelideen', 'Rezepte direkt am Tag'] as const;
 
+// OnboardingPage hosts both the short first-login flow and the full family/profile management screen.
 export function OnboardingPage() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -125,6 +126,7 @@ export function OnboardingPage() {
 
   const linkMutation = useMutation({
     mutationFn: async (payload: { accountUserId: string; memberId: string }) => {
+      // Persist unsaved profile edits before linking a login to a profile member.
       const needsSave = hasEdited;
       setLinkSuccessMessage('');
       if (hasEdited) {
@@ -230,6 +232,7 @@ export function OnboardingPage() {
   };
 
   const familyMembersForAssignments = useMemo(() => {
+    // Merge local unsaved members with backend family members so account assignment never lags behind edits.
     const merged = new Map<string, { id: string; name: string; alias?: string; role?: string }>();
     for (const member of form.members) {
       const id = member.id.trim();
@@ -344,6 +347,7 @@ export function OnboardingPage() {
   const guidedProgressPercent = `${Math.round((guidedStep / (GUIDED_ONBOARDING_STEPS.length - 1)) * 100)}%`;
 
   const completeGuidedOnboarding = async (mode: 'dashboard' | 'profile') => {
+    // Completing the guided flow writes the same profile contract as the detailed editor.
     await saveMutation.mutateAsync(formToProfile(form));
     closeWelcomeDialog();
     if (mode === 'dashboard') {
@@ -1442,6 +1446,7 @@ function seedProfileForm(
   sessionEmail?: string,
   accounts?: FamilyAccount[]
 ): ProfileFormState {
+  // Seed a blank first profile from the login email so the first screen is not an anonymous placeholder.
   const accountEmail = [sessionEmail, ...(accounts ?? []).map((account) => account.email ?? '')]
     .map((value) => (value ?? '').trim())
     .find(Boolean);
@@ -1468,6 +1473,7 @@ function seedProfileForm(
 }
 
 function deriveSeedFromEmail(email: string) {
+  // Best-effort display names only; users can overwrite all seeded values before saving.
   const localPart = email.split('@')[0] ?? '';
   const cleaned = localPart
     .replace(/\+/g, ' ')

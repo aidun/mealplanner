@@ -10,6 +10,7 @@ import { useSession } from '../session';
 import type { MailTemplate } from '../types';
 import { getBuildInfo } from '../lib/build-info';
 
+// AdminPage keeps support triage, premium grants, mail copy and deploy metadata in one operator view.
 export function AdminPage() {
   const queryClient = useQueryClient();
   const session = useSession();
@@ -34,6 +35,7 @@ export function AdminPage() {
   });
 
   useEffect(() => {
+    // Copy server templates into editable drafts once; mutations save explicit admin changes.
     const nextDrafts: Record<string, MailTemplate> = {};
     for (const template of mailTemplatesQuery.data ?? []) {
       nextDrafts[template.kind] = template;
@@ -496,6 +498,7 @@ export function AdminPage() {
 }
 
 function summarizeFeedbackThemes(messages: string[]) {
+  // The theme chips are intentionally heuristic: they help Markus spot UI pressure, not analytics truth.
   const text = messages.join(' ').toLowerCase();
   const themes: string[] = [];
   if (text.includes('profil') || text.includes('onboarding')) {

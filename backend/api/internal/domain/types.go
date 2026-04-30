@@ -6,6 +6,8 @@ import (
 	"time"
 )
 
+// Profile is the family-facing planning profile shared by every account in a family.
+// Login accounts stay separate from these cooking-profile members.
 type Profile struct {
 	HouseholdName   string       `json:"householdName"`
 	Members         []Member     `json:"members"`
@@ -23,6 +25,8 @@ type FamilyMemberSummary struct {
 	Alias string `json:"alias,omitempty"`
 }
 
+// FamilyAccount describes one login that currently belongs to a family.
+// LinkedMemberID optionally connects that login to a cooking-profile person.
 type FamilyAccount struct {
 	UserID         string          `json:"userId"`
 	Email          string          `json:"email,omitempty"`
@@ -31,6 +35,8 @@ type FamilyAccount struct {
 	Settings       AccountSettings `json:"settings"`
 }
 
+// FamilySummary is the account-management view returned to the frontend.
+// Personal marks the default one-login family that can still be merged into another family.
 type FamilySummary struct {
 	ID            string                `json:"id"`
 	Name          string                `json:"name"`
@@ -46,6 +52,7 @@ type CreateFamilyInviteRequest struct {
 	Email string `json:"email"`
 }
 
+// FamilyInvite carries the safe public metadata for an invite; the raw token is returned separately.
 type FamilyInvite struct {
 	ID          string    `json:"id"`
 	InviteLink  string    `json:"inviteLink,omitempty"`
@@ -57,6 +64,7 @@ type FamilyInvite struct {
 	WarningText string    `json:"warningText,omitempty"`
 }
 
+// PremiumUser represents a premium grant by email hash. Premium is evaluated on family level.
 type PremiumUser struct {
 	ID        string    `json:"id"`
 	Email     string    `json:"email"`
@@ -76,6 +84,7 @@ type PremiumInvite struct {
 	CreatedAt time.Time `json:"createdAt,omitempty"`
 }
 
+// FeedbackEntry is part of the support workflow and remains visible to admins until resolved.
 type FeedbackEntry struct {
 	ID               string    `json:"id"`
 	Message          string    `json:"message"`
@@ -99,12 +108,14 @@ type CreatePremiumInviteRequest struct {
 	Email string `json:"email"`
 }
 
+// AccountSettings are scoped to a login account, not to a cooking-profile member.
 type AccountSettings struct {
 	WeeklyPlanEmailEnabled bool      `json:"weeklyPlanEmailEnabled"`
 	RecipeEmailEnabled     bool      `json:"recipeEmailEnabled"`
 	UpdatedAt              time.Time `json:"updatedAt,omitempty"`
 }
 
+// MailTemplate combines admin-edited copy with immutable metadata from the default template catalog.
 type MailTemplate struct {
 	Kind         string    `json:"kind"`
 	Label        string    `json:"label,omitempty"`
@@ -140,6 +151,7 @@ type AdminStats struct {
 	Generations                    []GenerationCount `json:"generations,omitempty"`
 }
 
+// AdminOverview is the compact backoffice payload for premium, feedback, mail copy and usage stats.
 type AdminOverview struct {
 	PremiumUsers     []PremiumUser   `json:"premiumUsers,omitempty"`
 	PremiumInvites   []PremiumInvite `json:"premiumInvites,omitempty"`
@@ -163,6 +175,7 @@ type UpdateFamilyAccountSettingsRequest struct {
 	Settings      AccountSettings `json:"settings"`
 }
 
+// Member is a planning participant in the cooking profile, independent of authentication.
 type Member struct {
 	ID             string   `json:"id"`
 	Name           string   `json:"name"`
@@ -183,6 +196,7 @@ type MealDefaults struct {
 	Snacks    string `json:"snacks,omitempty"`
 }
 
+// Plan is stored as JSONB for the generated weekly plan while IDs remain scoped by family in the store.
 type Plan struct {
 	ID           string         `json:"id"`
 	WeekStart    string         `json:"weekStart"`
@@ -199,6 +213,7 @@ type DayPlan struct {
 	Meals []Meal `json:"meals"`
 }
 
+// Meal is the provider-facing recipe contract. Meta stores narrow diagnostic flags such as favorite reuse.
 type Meal struct {
 	ID                 string            `json:"id"`
 	Slot               string            `json:"slot"`
@@ -226,6 +241,7 @@ type CreateFavoriteRequest struct {
 	Meal Meal `json:"meal"`
 }
 
+// PromptDebugEntry is persisted only in the test/debug environment for prompt inspection.
 type PromptDebugEntry struct {
 	Operation string            `json:"operation"`
 	Model     string            `json:"model,omitempty"`
@@ -299,6 +315,7 @@ type RegenerateMealRequest struct {
 	Note string `json:"note"`
 }
 
+// Validate enforces only the structural minimum needed before planner/provider calls.
 func (p Profile) Validate() error {
 	if strings.TrimSpace(p.HouseholdName) == "" {
 		return errors.New("householdName is required")
@@ -317,6 +334,7 @@ func (p Profile) Validate() error {
 	return nil
 }
 
+// DefaultProfile is intentionally neutral so first-login onboarding can detect an unfinished profile.
 func DefaultProfile() Profile {
 	return Profile{
 		HouseholdName: "Privater Haushalt",
@@ -334,6 +352,7 @@ func DefaultProfile() Profile {
 	}
 }
 
+// IsPlaceholderProfile detects the untouched first-login profile without relying on database flags.
 func IsPlaceholderProfile(profile Profile) bool {
 	if strings.TrimSpace(profile.HouseholdName) != "Privater Haushalt" {
 		return false
