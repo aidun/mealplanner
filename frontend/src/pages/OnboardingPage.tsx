@@ -212,23 +212,27 @@ export function OnboardingPage() {
   };
 
   const addMember = () => {
-    setForm((current) => ({
-      ...current,
-      members: [...current.members, emptyMember(current.members.length)],
-      mealPlanDays: syncMealPlanDays(current.mealPlanDays, [...current.members, emptyMember(current.members.length)]),
-    }));
+    setForm((current) => {
+      const nextMembers = [...current.members, emptyMember(current.members.length)];
+      return {
+        ...current,
+        members: nextMembers,
+        mealPlanDays: syncMealPlanDays(current.mealPlanDays, nextMembers, current.members),
+      };
+    });
     setHasEdited(true);
   };
 
   const removeMember = (index: number) => {
-    setForm((current) => ({
-      ...current,
-      members: current.members.length > 1 ? current.members.filter((_, memberIndex) => memberIndex !== index) : current.members,
-      mealPlanDays: syncMealPlanDays(
-        current.mealPlanDays,
-        current.members.length > 1 ? current.members.filter((_, memberIndex) => memberIndex !== index) : current.members
-      ),
-    }));
+    setForm((current) => {
+      const nextMembers =
+        current.members.length > 1 ? current.members.filter((_, memberIndex) => memberIndex !== index) : current.members;
+      return {
+        ...current,
+        members: nextMembers,
+        mealPlanDays: syncMealPlanDays(current.mealPlanDays, nextMembers, current.members),
+      };
+    });
     setHasEdited(true);
   };
 
@@ -1479,7 +1483,7 @@ function seedProfileForm(
     ...form,
     householdName: form.householdName.trim() || suggestion.householdName,
     members: nextMembers,
-    mealPlanDays: syncMealPlanDays(form.mealPlanDays, nextMembers),
+    mealPlanDays: syncMealPlanDays(form.mealPlanDays, nextMembers, form.members),
   };
 }
 

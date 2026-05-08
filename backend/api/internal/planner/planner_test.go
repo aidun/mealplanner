@@ -317,6 +317,60 @@ func TestGenerateWeekFiltersDisabledSlotsAndParticipants(t *testing.T) {
 	}
 }
 
+func TestParticipantsExpandLegacySingleMemberDefaults(t *testing.T) {
+	profile := domain.DefaultProfile()
+	profile.Members = []domain.Member{
+		{ID: "markus", Name: "Markus", Alias: "Markus"},
+		{ID: "alex", Name: "Alex", Alias: "Alex"},
+		{ID: "paul", Name: "Paul", Alias: "Paul"},
+	}
+	profile.Notes = strings.Join([]string{
+		"Standard-Portionen:\n3",
+		"Aktive Mahlzeiten Samstag:\nFrühstück\nMittagessen\nAbendessen",
+		"Teilnehmende Frühstück Samstag:\nMarkus",
+		"Teilnehmende Mittagessen Samstag:\nMarkus",
+		"Teilnehmende Abendessen Samstag:\nMarkus",
+		"Aktive Mahlzeiten Sonntag:\nFrühstück\nMittagessen\nAbendessen",
+		"Teilnehmende Frühstück Sonntag:\nMarkus",
+		"Teilnehmende Mittagessen Sonntag:\nMarkus",
+		"Teilnehmende Abendessen Sonntag:\nMarkus",
+	}, "\n\n")
+
+	participants := participantsForSlotOnDay(profile, "lunch", "saturday")
+
+	if got := len(participants); got != 3 {
+		t.Fatalf("expected legacy single-member defaults to expand to all members, got %#v", participants)
+	}
+}
+
+func TestNormalizeServingsFillsMissingSelectedParticipants(t *testing.T) {
+	profile := domain.DefaultProfile()
+	profile.Members = []domain.Member{
+		{ID: "markus", Name: "Markus", Alias: "Markus"},
+		{ID: "alex", Name: "Alex", Alias: "Alex"},
+		{ID: "paul", Name: "Paul", Alias: "Paul"},
+	}
+	profile.Notes = "Aktive Mahlzeiten Samstag:\nMittagessen\n\nTeilnehmende Mittagessen Samstag:\nMarkus\nAlex\nPaul"
+
+	got := normalizeServings([]domain.Serving{{MemberID: "markus", Name: "Markus", Factor: 1}}, profile, "lunch", "2026-05-09")
+
+	if len(got) != 3 {
+		t.Fatalf("expected missing selected participants to be filled, got %#v", got)
+	}
+	for _, memberID := range []string{"markus", "alex", "paul"} {
+		found := false
+		for _, serving := range got {
+			if serving.MemberID == memberID {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("expected serving for %s, got %#v", memberID, got)
+		}
+	}
+}
+
 func TestWeekPromptIncludesMealPlanRules(t *testing.T) {
 	profile := domain.DefaultProfile()
 	profile.Members = []domain.Member{

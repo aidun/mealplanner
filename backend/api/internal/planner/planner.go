@@ -504,12 +504,7 @@ func normalizeServings(servings []domain.Serving, profile domain.Profile, slot s
 	if len(servings) == 0 {
 		out := make([]domain.Serving, 0, len(selectedMembers))
 		for _, member := range selectedMembers {
-			out = append(out, domain.Serving{
-				MemberID: member.ID,
-				Name:     preferredAlias(member),
-				Portion:  "100% Portion",
-				Factor:   1,
-			})
+			out = append(out, defaultServingForMember(member))
 		}
 		return out
 	}
@@ -518,6 +513,7 @@ func normalizeServings(servings []domain.Serving, profile domain.Profile, slot s
 		allowed[strings.ToLower(strings.TrimSpace(member.ID))] = member
 	}
 	out := make([]domain.Serving, 0, len(servings))
+	seen := map[string]bool{}
 	for _, serving := range servings {
 		serving.MemberID = strings.TrimSpace(serving.MemberID)
 		serving.Name = strings.TrimSpace(serving.Name)
@@ -536,16 +532,35 @@ func normalizeServings(servings []domain.Serving, profile domain.Profile, slot s
 			if !ok {
 				continue
 			}
+			serving.MemberID = member.ID
 			if serving.Name == "" {
 				serving.Name = preferredAlias(member)
 			}
+			key := strings.ToLower(strings.TrimSpace(member.ID))
+			if seen[key] {
+				continue
+			}
+			seen[key] = true
 		}
 		out = append(out, serving)
 	}
-	if len(out) == 0 {
-		return normalizeServings(nil, profile, slot, dayDate)
+	for _, member := range selectedMembers {
+		key := strings.ToLower(strings.TrimSpace(member.ID))
+		if key == "" || seen[key] {
+			continue
+		}
+		out = append(out, defaultServingForMember(member))
 	}
 	return out
+}
+
+func defaultServingForMember(member domain.Member) domain.Serving {
+	return domain.Serving{
+		MemberID: member.ID,
+		Name:     preferredAlias(member),
+		Portion:  "100% Portion",
+		Factor:   1,
+	}
 }
 
 func normalizeSlotSet(slots []string) map[string]bool {

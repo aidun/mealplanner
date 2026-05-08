@@ -325,21 +325,39 @@ function stringifyParticipants(slots: MealPlanSlotFormState[], slotName: MealPla
   return labels.join('\n');
 }
 
-function syncMealPlanSlots(slots: MealPlanSlotFormState[], members: MemberFormState[]) {
+function syncMealPlanSlots(
+  slots: MealPlanSlotFormState[],
+  members: MemberFormState[],
+  previousMembers?: MemberFormState[]
+) {
   const memberIds = members.map((member) => member.id);
   if (slots.length === 0) {
     return defaultMealPlanSlots(memberIds);
   }
+  const previousMemberIds =
+    previousMembers?.map((member) => member.id) ?? Array.from(new Set(slots.flatMap((slot) => slot.memberIds)));
+  const previousMemberSet = new Set(previousMemberIds);
+  const addedMemberIds = memberIds.filter((memberId) => !previousMemberSet.has(memberId));
   return slots.map((slot) => ({
     ...slot,
     memberIds: (() => {
       const filtered = slot.memberIds.filter((memberId) => memberIds.includes(memberId));
-      return filtered.length > 0 ? filtered : [...memberIds];
+      const next = filtered.length > 0 ? [...filtered] : [...memberIds];
+      for (const memberId of addedMemberIds) {
+        if (!next.includes(memberId)) {
+          next.push(memberId);
+        }
+      }
+      return next;
     })(),
   }));
 }
 
-export function syncMealPlanDays(days: MealPlanDayFormState[], members: MemberFormState[]) {
+export function syncMealPlanDays(
+  days: MealPlanDayFormState[],
+  members: MemberFormState[],
+  previousMembers?: MemberFormState[]
+) {
   // Adding/removing members should not leave meal-slot participant lists pointing at missing IDs.
   const memberIds = members.map((member) => member.id);
   if (days.length === 0) {
@@ -348,6 +366,6 @@ export function syncMealPlanDays(days: MealPlanDayFormState[], members: MemberFo
   return days.map((day, index) => ({
     day: day.day || WEEKDAY_CONFIG[index]?.day || 'monday',
     label: day.label || WEEKDAY_CONFIG[index]?.label || 'Montag',
-    slots: syncMealPlanSlots(day.slots, members),
+    slots: syncMealPlanSlots(day.slots, members, previousMembers),
   }));
 }

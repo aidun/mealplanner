@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formToProfile, profileToForm } from '../lib/profile-form';
+import { formToProfile, profileToForm, syncMealPlanDays } from '../lib/profile-form';
 import type { ProfileFormState } from '../types';
 
 describe('profile form mapping', () => {
@@ -130,5 +130,84 @@ describe('profile form mapping', () => {
     expect(roundtrip.mealPlanDays.find((day) => day.day === 'monday')?.slots.find((slot) => slot.slot === 'lunch')?.enabled).toBe(false);
     expect(roundtrip.mealPlanDays.find((day) => day.day === 'monday')?.slots.find((slot) => slot.slot === 'breakfast')?.memberIds).toEqual(['anna']);
     expect(roundtrip.mealPlanDays.find((day) => day.day === 'tuesday')?.slots.find((slot) => slot.slot === 'lunch')?.memberIds).toEqual(['anna']);
+  });
+
+  it('adds newly created members to existing meal participants by default', () => {
+    const anna = {
+      id: 'anna',
+      name: 'Anna',
+      alias: 'Anna',
+      role: 'Erwachsen',
+      caloriesTarget: '',
+      likes: '',
+      dislikes: '',
+      restrictions: '',
+    };
+    const ben = {
+      id: 'ben',
+      name: 'Ben',
+      alias: 'Ben',
+      role: 'Kind',
+      caloriesTarget: '',
+      likes: '',
+      dislikes: '',
+      restrictions: '',
+    };
+
+    const days: ProfileFormState['mealPlanDays'] = [
+      {
+        day: 'monday',
+        label: 'Montag',
+        slots: [
+          { slot: 'breakfast', label: 'Frühstück', enabled: true, memberIds: ['anna'] },
+          { slot: 'lunch', label: 'Mittagessen', enabled: true, memberIds: ['anna'] },
+          { slot: 'dinner', label: 'Abendessen', enabled: true, memberIds: ['anna'] },
+          { slot: 'snack', label: 'Snack', enabled: false, memberIds: ['anna'] },
+        ],
+      },
+    ];
+
+    const synced = syncMealPlanDays(days, [anna, ben]);
+
+    expect(synced[0]?.slots.every((slot) => slot.memberIds.includes('ben'))).toBe(true);
+  });
+
+  it('keeps intentionally excluded existing members when syncing the same member set', () => {
+    const anna = {
+      id: 'anna',
+      name: 'Anna',
+      alias: 'Anna',
+      role: 'Erwachsen',
+      caloriesTarget: '',
+      likes: '',
+      dislikes: '',
+      restrictions: '',
+    };
+    const ben = {
+      id: 'ben',
+      name: 'Ben',
+      alias: 'Ben',
+      role: 'Kind',
+      caloriesTarget: '',
+      likes: '',
+      dislikes: '',
+      restrictions: '',
+    };
+    const days: ProfileFormState['mealPlanDays'] = [
+      {
+        day: 'monday',
+        label: 'Montag',
+        slots: [
+          { slot: 'breakfast', label: 'Frühstück', enabled: true, memberIds: ['anna', 'ben'] },
+          { slot: 'lunch', label: 'Mittagessen', enabled: true, memberIds: ['anna'] },
+          { slot: 'dinner', label: 'Abendessen', enabled: true, memberIds: ['anna', 'ben'] },
+          { slot: 'snack', label: 'Snack', enabled: false, memberIds: [] },
+        ],
+      },
+    ];
+
+    const synced = syncMealPlanDays(days, [anna, ben], [anna, ben]);
+
+    expect(synced[0]?.slots.find((slot) => slot.slot === 'lunch')?.memberIds).toEqual(['anna']);
   });
 });

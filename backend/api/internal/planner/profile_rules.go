@@ -1,6 +1,7 @@
 package planner
 
 import (
+	"strconv"
 	"strings"
 	"time"
 
@@ -106,6 +107,9 @@ func participantsForSlotOnDay(profile domain.Profile, slot string, weekday strin
 	if matched == nil || len(matched.MemberIDs) == 0 {
 		return append([]domain.Member(nil), profile.Members...)
 	}
+	if len(matched.MemberIDs) == 1 && hasLegacySingleMemberParticipantDefaults(profile) {
+		return append([]domain.Member(nil), profile.Members...)
+	}
 	memberByID := map[string]domain.Member{}
 	for _, member := range profile.Members {
 		memberByID[strings.ToLower(strings.TrimSpace(member.ID))] = member
@@ -120,6 +124,45 @@ func participantsForSlotOnDay(profile domain.Profile, slot string, weekday strin
 		return append([]domain.Member(nil), profile.Members...)
 	}
 	return out
+}
+
+func hasLegacySingleMemberParticipantDefaults(profile domain.Profile) bool {
+	if len(profile.Members) < 2 {
+		return false
+	}
+	sections := parseNoteSections(profile.Notes)
+	if standardServings(sections) < len(profile.Members) {
+		return false
+	}
+	firstMemberID := strings.ToLower(strings.TrimSpace(profile.Members[0].ID))
+	if firstMemberID == "" {
+		return false
+	}
+	explicitRules := 0
+	for _, weekday := range weekdayConfig {
+		for _, rule := range planningRulesForDay(profile, weekday.Key) {
+			if !rule.Enabled || len(rule.MemberIDs) == 0 {
+				continue
+			}
+			explicitRules++
+			if len(rule.MemberIDs) != 1 || strings.ToLower(strings.TrimSpace(rule.MemberIDs[0])) != firstMemberID {
+				return false
+			}
+		}
+	}
+	return explicitRules >= len(profile.Members)
+}
+
+func standardServings(sections map[string]string) int {
+	fields := strings.Fields(sections["Standard-Portionen"])
+	if len(fields) == 0 {
+		return 0
+	}
+	value, err := strconv.Atoi(fields[0])
+	if err != nil {
+		return 0
+	}
+	return value
 }
 
 func weekdayKeyFromDate(value string) string {
