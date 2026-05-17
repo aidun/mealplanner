@@ -77,7 +77,13 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 		h.serverError(w, r, err)
 		return
 	}
-	if !found || !auth.CheckPassword(hash, req.Password) {
+	// Always run CheckPassword to prevent timing-based user enumeration.
+	const dummyHash = "$2a$10$YIJeB3PfMkZQW8Xu9u5xtOoQxWQjZrVjXjJMsHpP7NfBqRZ0kVWkC"
+	checkHash := hash
+	if !found {
+		checkHash = dummyHash
+	}
+	if !auth.CheckPassword(checkHash, req.Password) || !found {
 		writeError(w, http.StatusUnauthorized, "invalid credentials")
 		return
 	}
