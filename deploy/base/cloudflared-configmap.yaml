@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cloudflared-config
+  labels:
+    app: cloudflared
+data:
+  config.yaml: |
+    tunnel: 7580e06c-c1de-4fa8-9b9a-b9d7e04e6ff8
+    credentials-file: /etc/cloudflared/creds/credentials.json
+    metrics: 0.0.0.0:2000
+    ingress:
+      - hostname: mealplanner.markushartmann.dev
+        service: https://entrypoint:443
+        originRequest:
+          httpHostHeader: mealplanner.markushartmann.dev
+          originServerName: mealplanner.markushartmann.dev
+          noTLSVerify: true
+      - service: http_status:404

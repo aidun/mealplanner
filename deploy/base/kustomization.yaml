@@ -26,3 +26,5 @@ resources:
   - api-servicemonitor.yaml
   - frontend-deployment.yaml
   - frontend-service.yaml
+  - cloudflared-configmap.yaml
+  - cloudflared-deployment.yaml
