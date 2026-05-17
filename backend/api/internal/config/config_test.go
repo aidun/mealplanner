@@ -1,41 +1,55 @@
 package config
 
 import (
-	"reflect"
 	"testing"
 )
 
-func TestLoadTrimsAndDefaults(t *testing.T) {
-	t.Setenv("APP_ENV", " development ")
-	t.Setenv("DATABASE_URL", " postgres://example ")
-	t.Setenv("AUTH_BASE_URL", " https://mealplanner.example/ ")
-	t.Setenv("CORS_ORIGINS", " https://mealplanner.example, ,https://admin.example ")
-	t.Setenv("AUTH_ALLOWED_EMAIL_HASHES", " hash-1,hash-2 ")
+func TestLoadDefaults(t *testing.T) {
+	t.Setenv("DATABASE_URL", "postgres://example")
+	t.Setenv("SESSION_SECRET", "12345678901234567890123456789012")
 
 	cfg, err := Load()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.AppEnv != "development" {
-		t.Fatalf("app env was not normalized: %q", cfg.AppEnv)
+	if cfg.Port != "3001" {
+		t.Fatalf("unexpected default port: %q", cfg.Port)
 	}
-	if cfg.Port != "3001" || cfg.OpenAIModel != "gpt-5.4-mini" || cfg.ProviderMode != "mock" {
-		t.Fatalf("unexpected defaults: %+v", cfg)
+	if cfg.OpenAIModel != "gpt-5.4-mini" {
+		t.Fatalf("unexpected default model: %q", cfg.OpenAIModel)
+	}
+	if cfg.ProviderMode != "mock" {
+		t.Fatalf("unexpected default provider mode: %q", cfg.ProviderMode)
+	}
+	if cfg.OpenAIBaseURL != "https://api.openai.com" {
+		t.Fatalf("unexpected default base url: %q", cfg.OpenAIBaseURL)
+	}
+}
+
+func TestLoadTrimsDatabaseURL(t *testing.T) {
+	t.Setenv("DATABASE_URL", "  postgres://example  ")
+	t.Setenv("SESSION_SECRET", "12345678901234567890123456789012")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
 	}
 	if cfg.DatabaseURL != "postgres://example" {
 		t.Fatalf("database url was not trimmed: %q", cfg.DatabaseURL)
 	}
-	if cfg.AuthBaseURL != "https://mealplanner.example" {
-		t.Fatalf("base url was not normalized: %q", cfg.AuthBaseURL)
+}
+
+func TestLoadParsesCORSOrigins(t *testing.T) {
+	t.Setenv("DATABASE_URL", "postgres://example")
+	t.Setenv("SESSION_SECRET", "12345678901234567890123456789012")
+	t.Setenv("CORS_ORIGINS", " https://a.example, ,https://b.example ")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(cfg.CORSOrigins, []string{"https://mealplanner.example", "https://admin.example"}) {
+	if len(cfg.CORSOrigins) != 2 || cfg.CORSOrigins[0] != "https://a.example" || cfg.CORSOrigins[1] != "https://b.example" {
 		t.Fatalf("unexpected cors origins: %#v", cfg.CORSOrigins)
-	}
-	if !reflect.DeepEqual(cfg.AuthAllowedEmailHashes, []string{"hash-1", "hash-2"}) {
-		t.Fatalf("unexpected email hashes: %#v", cfg.AuthAllowedEmailHashes)
-	}
-	if cfg.EmailEnabled || cfg.EmailProvider != "noop" {
-		t.Fatalf("unexpected email defaults: enabled=%v provider=%q", cfg.EmailEnabled, cfg.EmailProvider)
 	}
 }
 
@@ -46,56 +60,39 @@ func TestLoadRequiresDatabaseURL(t *testing.T) {
 	}
 }
 
-func TestLoadRequiresProductionConfig(t *testing.T) {
-	t.Setenv("APP_ENV", "production")
+func TestLoadRequiresSessionSecret(t *testing.T) {
 	t.Setenv("DATABASE_URL", "postgres://example")
-	t.Setenv("AUTH_BASE_URL", "https://mealplanner.example")
+	t.Setenv("SESSION_SECRET", "")
+	if _, err := Load(); err == nil {
+		t.Fatal("expected missing session secret error")
+	}
+}
+
+func TestLoadRejectsShortSessionSecret(t *testing.T) {
+	t.Setenv("DATABASE_URL", "postgres://example")
+	t.Setenv("SESSION_SECRET", "tooshort")
+	if _, err := Load(); err == nil {
+		t.Fatal("expected short session secret error")
+	}
+}
+
+func TestLoadRequiresOpenAIKeyInLiveMode(t *testing.T) {
+	t.Setenv("DATABASE_URL", "postgres://example")
 	t.Setenv("SESSION_SECRET", "12345678901234567890123456789012")
-	t.Setenv("CORS_ORIGINS", "https://mealplanner.example")
-	t.Setenv("GOOGLE_CLIENT_ID", "client-id")
-	t.Setenv("GOOGLE_CLIENT_SECRET", "client-secret")
-	t.Setenv("AUTH_ALLOWED_EMAIL_HASHES", "hash-1")
 	t.Setenv("PROVIDER_MODE", "live")
-	t.Setenv("OPENAI_API_KEY", "api-key")
+	t.Setenv("OPENAI_API_KEY", "")
+	if _, err := Load(); err == nil {
+		t.Fatal("expected openai api key error")
+	}
+}
+
+func TestLoadLiveModeWithKey(t *testing.T) {
+	t.Setenv("DATABASE_URL", "postgres://example")
+	t.Setenv("SESSION_SECRET", "12345678901234567890123456789012")
+	t.Setenv("PROVIDER_MODE", "live")
+	t.Setenv("OPENAI_API_KEY", "sk-test")
 
 	if _, err := Load(); err != nil {
-		t.Fatalf("expected valid production config, got %v", err)
-	}
-}
-
-func TestLoadRejectsPromptlyWhenProductionConfigIsIncomplete(t *testing.T) {
-	t.Setenv("APP_ENV", "production")
-	t.Setenv("DATABASE_URL", "postgres://example")
-	t.Setenv("AUTH_BASE_URL", "http://mealplanner.example")
-
-	if _, err := Load(); err == nil {
-		t.Fatal("expected production validation error")
-	}
-}
-
-func TestLoadRequiresEmailConfigWhenEnabled(t *testing.T) {
-	t.Setenv("DATABASE_URL", "postgres://example")
-	t.Setenv("EMAIL_ENABLED", "true")
-	t.Setenv("EMAIL_PROVIDER", "resend")
-
-	if _, err := Load(); err == nil {
-		t.Fatal("expected email validation error")
-	}
-}
-
-func TestLoadAcceptsConfiguredResendMailer(t *testing.T) {
-	t.Setenv("DATABASE_URL", "postgres://example")
-	t.Setenv("EMAIL_ENABLED", "true")
-	t.Setenv("EMAIL_PROVIDER", "resend")
-	t.Setenv("EMAIL_FROM", "info@markushartmann.dev")
-	t.Setenv("EMAIL_REPLY_TO", "info@markushartmann.dev")
-	t.Setenv("RESEND_API_KEY", "re_test_key")
-
-	cfg, err := Load()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !cfg.EmailEnabled || cfg.EmailProvider != "resend" {
-		t.Fatalf("unexpected email config: %+v", cfg)
+		t.Fatalf("expected valid live config, got: %v", err)
 	}
 }
