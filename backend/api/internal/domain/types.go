@@ -58,31 +58,10 @@ type FamilyInvite struct {
 	ID          string    `json:"id"`
 	InviteLink  string    `json:"inviteLink,omitempty"`
 	EmailHash   string    `json:"emailHash,omitempty"`
-	EmailSent   bool      `json:"emailSent"`
 	ExpiresAt   time.Time `json:"expiresAt"`
 	CreatedAt   time.Time `json:"createdAt,omitempty"`
 	AcceptedAt  time.Time `json:"acceptedAt,omitempty"`
 	WarningText string    `json:"warningText,omitempty"`
-}
-
-// PremiumUser represents a premium grant by email hash. Premium is evaluated on family level.
-type PremiumUser struct {
-	ID        string    `json:"id"`
-	Email     string    `json:"email"`
-	CreatedAt time.Time `json:"createdAt,omitempty"`
-}
-
-type PremiumInviteResult struct {
-	PremiumUser PremiumUser `json:"premiumUser"`
-	EmailSent   bool        `json:"emailSent"`
-	InviteLink  string      `json:"inviteLink,omitempty"`
-}
-
-type PremiumInvite struct {
-	ID        string    `json:"id"`
-	Email     string    `json:"email"`
-	EmailSent bool      `json:"emailSent"`
-	CreatedAt time.Time `json:"createdAt,omitempty"`
 }
 
 // FeedbackEntry is part of the support workflow and remains visible to admins until resolved.
@@ -101,37 +80,9 @@ type CreateFeedbackRequest struct {
 	Page    string `json:"page,omitempty"`
 }
 
-type CreatePremiumUserRequest struct {
-	Email string `json:"email"`
-}
-
-type CreatePremiumInviteRequest struct {
-	Email string `json:"email"`
-}
-
 // AccountSettings are scoped to a login account, not to a cooking-profile member.
 type AccountSettings struct {
-	WeeklyPlanEmailEnabled bool      `json:"weeklyPlanEmailEnabled"`
-	RecipeEmailEnabled     bool      `json:"recipeEmailEnabled"`
-	UpdatedAt              time.Time `json:"updatedAt,omitempty"`
-}
-
-// MailTemplate combines admin-edited copy with immutable metadata from the default template catalog.
-type MailTemplate struct {
-	Kind         string    `json:"kind"`
-	Label        string    `json:"label,omitempty"`
-	Subject      string    `json:"subject"`
-	TextBody     string    `json:"textBody"`
-	HTMLBody     string    `json:"htmlBody"`
-	UpdatedAt    time.Time `json:"updatedAt,omitempty"`
-	Description  string    `json:"description,omitempty"`
-	VariableHint []string  `json:"variableHint,omitempty"`
-}
-
-type UpdateMailTemplateRequest struct {
-	Subject  string `json:"subject"`
-	TextBody string `json:"textBody"`
-	HTMLBody string `json:"htmlBody"`
+	UpdatedAt time.Time `json:"updatedAt,omitempty"`
 }
 
 type StatsBucket struct {
@@ -152,13 +103,10 @@ type AdminStats struct {
 	Generations                    []GenerationCount `json:"generations,omitempty"`
 }
 
-// AdminOverview is the compact backoffice payload for premium, feedback, mail copy and usage stats.
+// AdminOverview is the compact backoffice payload for feedback and usage stats.
 type AdminOverview struct {
-	PremiumUsers     []PremiumUser   `json:"premiumUsers,omitempty"`
-	PremiumInvites   []PremiumInvite `json:"premiumInvites,omitempty"`
 	Feedback         []FeedbackEntry `json:"feedback,omitempty"`
 	ResolvedFeedback []FeedbackEntry `json:"resolvedFeedback,omitempty"`
-	MailTemplates    []MailTemplate  `json:"mailTemplates,omitempty"`
 	Stats            AdminStats      `json:"stats"`
 }
 

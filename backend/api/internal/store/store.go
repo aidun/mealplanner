@@ -86,12 +86,12 @@ func (s Store) GetUserEmail(ctx context.Context, userID string) (string, error) 
 func (s Store) GetAccountSettings(ctx context.Context, userID string) (domain.AccountSettings, error) {
 	var settings domain.AccountSettings
 	err := s.pool.QueryRow(ctx, `
-		SELECT weekly_plan_email_enabled, recipe_email_enabled, updated_at
+		SELECT updated_at
 		FROM user_settings
 		WHERE user_id = $1::uuid
-	`, userID).Scan(&settings.WeeklyPlanEmailEnabled, &settings.RecipeEmailEnabled, &settings.UpdatedAt)
+	`, userID).Scan(&settings.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return domain.AccountSettings{WeeklyPlanEmailEnabled: true, RecipeEmailEnabled: true}, nil
+		return domain.AccountSettings{}, nil
 	}
 	return settings, err
 }
@@ -122,14 +122,12 @@ func (s Store) MarkProfileOnboardingSeen(ctx context.Context, userID string) err
 
 func (s Store) SaveAccountSettings(ctx context.Context, userID string, settings domain.AccountSettings) (domain.AccountSettings, error) {
 	err := s.pool.QueryRow(ctx, `
-		INSERT INTO user_settings(user_id, weekly_plan_email_enabled, recipe_email_enabled, updated_at)
-		VALUES ($1::uuid, $2, $3, now())
+		INSERT INTO user_settings(user_id, updated_at)
+		VALUES ($1::uuid, now())
 		ON CONFLICT (user_id) DO UPDATE
-		SET weekly_plan_email_enabled = EXCLUDED.weekly_plan_email_enabled,
-		    recipe_email_enabled = EXCLUDED.recipe_email_enabled,
-		    updated_at = now()
+		SET updated_at = now()
 		RETURNING updated_at
-	`, userID, settings.WeeklyPlanEmailEnabled, settings.RecipeEmailEnabled).Scan(&settings.UpdatedAt)
+	`, userID).Scan(&settings.UpdatedAt)
 	return settings, err
 }
 
@@ -435,8 +433,6 @@ func (s Store) GetFamily(ctx context.Context, userID string) (domain.FamilySumma
 		       COALESCE(u.email, ''),
 		       fm.role,
 		       COALESCE(fm.linked_member_id, ''),
-		       COALESCE(us.weekly_plan_email_enabled, true),
-		       COALESCE(us.recipe_email_enabled, true),
 		       us.updated_at
 		FROM family_members fm
 		JOIN users u ON u.id = fm.user_id
@@ -456,8 +452,6 @@ func (s Store) GetFamily(ctx context.Context, userID string) (domain.FamilySumma
 			&account.Email,
 			&account.Role,
 			&account.LinkedMemberID,
-			&account.Settings.WeeklyPlanEmailEnabled,
-			&account.Settings.RecipeEmailEnabled,
 			&settingsUpdatedAt,
 		); err != nil {
 			return domain.FamilySummary{}, err

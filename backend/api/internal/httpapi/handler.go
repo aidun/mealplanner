@@ -18,7 +18,6 @@ import (
 
 	"github.com/aidun/mealplanner/backend/api/internal/auth"
 	"github.com/aidun/mealplanner/backend/api/internal/domain"
-	"github.com/aidun/mealplanner/backend/api/internal/mailer"
 	"github.com/aidun/mealplanner/backend/api/internal/planner"
 	"github.com/aidun/mealplanner/backend/api/internal/provider"
 	"github.com/aidun/mealplanner/backend/api/internal/store"
@@ -61,11 +60,6 @@ type Repository interface {
 	SavePromptDebug(r *http.Request, entry domain.PromptDebugEntry) error
 	LatestPromptDebug(r *http.Request) (domain.PromptDebugEntry, error)
 	ListPromptDebug(r *http.Request, limit int) ([]domain.PromptDebugEntry, error)
-	ListPremiumUsers(r *http.Request) ([]domain.PremiumUser, error)
-	SavePremiumUser(r *http.Request, email string, emailHash string) (domain.PremiumUser, error)
-	DeletePremiumUser(r *http.Request, id string) error
-	ListMailTemplates(r *http.Request) ([]domain.MailTemplate, error)
-	SaveMailTemplate(r *http.Request, kind string, update domain.UpdateMailTemplateRequest) (domain.MailTemplate, error)
 	SaveFeedback(r *http.Request, message string, page string) (domain.FeedbackEntry, error)
 	ListFeedback(r *http.Request, status string, limit int) ([]domain.FeedbackEntry, error)
 	ResolveFeedback(r *http.Request, feedbackID string) (domain.FeedbackEntry, error)
@@ -214,26 +208,6 @@ func (r StoreRepository) ListPromptDebug(req *http.Request, limit int) ([]domain
 	return r.Store.ListPromptDebug(req.Context(), mustUserID(req.Context()), limit)
 }
 
-func (r StoreRepository) ListPremiumUsers(req *http.Request) ([]domain.PremiumUser, error) {
-	return r.Store.ListPremiumUsers(req.Context())
-}
-
-func (r StoreRepository) SavePremiumUser(req *http.Request, email string, emailHash string) (domain.PremiumUser, error) {
-	return r.Store.SavePremiumUser(req.Context(), mustUserID(req.Context()), email, emailHash)
-}
-
-func (r StoreRepository) DeletePremiumUser(req *http.Request, id string) error {
-	return r.Store.DeletePremiumUser(req.Context(), id)
-}
-
-func (r StoreRepository) ListMailTemplates(req *http.Request) ([]domain.MailTemplate, error) {
-	return r.Store.ListMailTemplates(req.Context())
-}
-
-func (r StoreRepository) SaveMailTemplate(req *http.Request, kind string, update domain.UpdateMailTemplateRequest) (domain.MailTemplate, error) {
-	return r.Store.SaveMailTemplate(req.Context(), kind, update)
-}
-
 func (r StoreRepository) SaveFeedback(req *http.Request, message string, page string) (domain.FeedbackEntry, error) {
 	return r.Store.SaveFeedback(req.Context(), mustUserID(req.Context()), message, page)
 }
@@ -254,7 +228,7 @@ func (r StoreRepository) RecordGenerationEvent(req *http.Request, category strin
 	return r.Store.RecordGenerationEvent(req.Context(), mustUserID(req.Context()), category)
 }
 
-// Handler wires API routes, auth boundaries, prompt debug, metrics and transactional mail.
+// Handler wires API routes, auth boundaries, prompt debug and metrics.
 type Handler struct {
 	repo        Repository
 	planner     planner.Planner
@@ -263,7 +237,6 @@ type Handler struct {
 	apiSecret   string
 	corsOrigins []string
 	logger      *slog.Logger
-	mailer      mailer.Mailer
 	promptDebug bool
 	rateLimiter *rateLimiter
 }
@@ -271,12 +244,9 @@ type Handler struct {
 const maxJSONBodyBytes = 1 << 20
 
 // New builds the HTTP surface and applies global middleware in the same order for every route.
-func New(repo Repository, planner planner.Planner, authService auth.Service, apiSecret string, corsOrigins []string, logger *slog.Logger, appMailer mailer.Mailer) http.Handler {
+func New(repo Repository, planner planner.Planner, authService auth.Service, apiSecret string, corsOrigins []string, logger *slog.Logger) http.Handler {
 	if logger == nil {
 		logger = slog.Default()
-	}
-	if appMailer == nil {
-		appMailer = mailer.Noop{}
 	}
 	appEnv := strings.ToLower(strings.TrimSpace(getenv("APP_ENV")))
 	if appEnv == "" {
@@ -290,7 +260,6 @@ func New(repo Repository, planner planner.Planner, authService auth.Service, api
 		apiSecret:   strings.TrimSpace(apiSecret),
 		corsOrigins: corsOrigins,
 		logger:      logger,
-		mailer:      appMailer,
 		promptDebug: appEnv == "test" && strings.EqualFold(strings.TrimSpace(getenv("PROMPT_DEBUG")), "true"),
 		rateLimiter: newRateLimiter(rateLimitFromEnv(), time.Minute),
 	}
@@ -318,10 +287,6 @@ func New(repo Repository, planner planner.Planner, authService auth.Service, api
 	mux.HandleFunc("PUT /api/family/account-settings", h.withSession(h.withCSRF(h.updateFamilyAccountSettings)))
 	mux.HandleFunc("GET /api/admin/overview", h.withSession(h.withAdmin(h.getAdminOverview)))
 	mux.HandleFunc("POST /api/admin/feedback/{feedbackID}/resolve", h.withSession(h.withAdmin(h.withCSRF(h.resolveFeedback))))
-	mux.HandleFunc("POST /api/admin/premium-users", h.withSession(h.withAdmin(h.withCSRF(h.createPremiumUser))))
-	mux.HandleFunc("DELETE /api/admin/premium-users/{premiumUserID}", h.withSession(h.withAdmin(h.withCSRF(h.deletePremiumUser))))
-	mux.HandleFunc("GET /api/admin/mail-templates", h.withSession(h.withAdmin(h.getMailTemplates)))
-	mux.HandleFunc("PUT /api/admin/mail-templates/{kind}", h.withSession(h.withAdmin(h.withCSRF(h.putMailTemplate))))
 	mux.HandleFunc("GET /api/favorites", h.withSession(h.getFavorites))
 	mux.HandleFunc("POST /api/favorites", h.withSession(h.withCSRF(h.createFavorite)))
 	mux.HandleFunc("DELETE /api/favorites/{favoriteID}", h.withSession(h.withCSRF(h.deleteFavorite)))
@@ -446,33 +411,6 @@ func (h *Handler) createFamilyInvite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	invite.InviteLink = h.absoluteRequestURL(r, "/family/invites/accept").String() + "?token=" + token
-	templates, err := h.repo.ListMailTemplates(r)
-	if err != nil {
-		h.serverError(w, r, err)
-		return
-	}
-	template := mailTemplateByKind(templates, mailer.TemplateKindFamilyInvite)
-	// Mail delivery is best effort: the invite token is still valid when Resend or DNS is temporarily unavailable.
-	values := map[string]string{
-		"{{family_name}}":   family.Name,
-		"{{invite_link}}":   invite.InviteLink,
-		"{{warning_text}}":  invite.WarningText,
-		"{{support_email}}": "info@markushartmann.dev",
-	}
-	if err := h.mailer.SendInviteEmail(r.Context(), mailer.InviteEmail{
-		To:           strings.TrimSpace(req.Email),
-		FamilyName:   family.Name,
-		InviteLink:   invite.InviteLink,
-		WarningText:  invite.WarningText,
-		SupportEmail: "info@markushartmann.dev",
-		Subject:      renderMailTemplate(template.Subject, values),
-		TextBody:     renderMailTemplate(template.TextBody, values),
-		HTMLBody:     renderHTMLMailTemplate(template.HTMLBody, values),
-	}); err != nil {
-		h.logger.Error("invite email failed", "family_id", family.ID, "email", strings.TrimSpace(req.Email), "error", err)
-	} else {
-		invite.EmailSent = true
-	}
 	writeJSON(w, http.StatusCreated, invite)
 }
 
@@ -589,16 +527,6 @@ func (h *Handler) updateFamilyAccountSettings(w http.ResponseWriter, r *http.Req
 }
 
 func (h *Handler) getAdminOverview(w http.ResponseWriter, r *http.Request) {
-	premiumUsers, err := h.repo.ListPremiumUsers(r)
-	if err != nil {
-		h.serverError(w, r, err)
-		return
-	}
-	mailTemplates, err := h.repo.ListMailTemplates(r)
-	if err != nil {
-		h.serverError(w, r, err)
-		return
-	}
 	feedback, err := h.repo.ListFeedback(r, "open", 50)
 	if err != nil && !errors.Is(err, store.ErrNotFound) {
 		h.serverError(w, r, err)
@@ -618,10 +546,8 @@ func (h *Handler) getAdminOverview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, domain.AdminOverview{
-		PremiumUsers:     premiumUsers,
 		Feedback:         feedback,
 		ResolvedFeedback: resolvedFeedback,
-		MailTemplates:    mailTemplates,
 		Stats:            stats,
 	})
 }
@@ -637,101 +563,6 @@ func (h *Handler) resolveFeedback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, entry)
-}
-
-func (h *Handler) createPremiumUser(w http.ResponseWriter, r *http.Request) {
-	var req struct {
-		Email      string `json:"email"`
-		SendInvite bool   `json:"sendInvite"`
-	}
-	if err := decodeJSON(w, r, &req); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
-		return
-	}
-	email := strings.ToLower(strings.TrimSpace(req.Email))
-	if email == "" {
-		writeError(w, http.StatusBadRequest, "Bitte gib eine E-Mail-Adresse an.")
-		return
-	}
-	premiumUser, err := h.repo.SavePremiumUser(r, email, h.auth.Hash("email:"+email))
-	if errors.Is(err, store.ErrAlreadyPremium) {
-		writeError(w, http.StatusConflict, "Diese E-Mail hat bereits Premium-Zugriff.")
-		return
-	}
-	if err != nil {
-		h.serverError(w, r, err)
-		return
-	}
-	appURL := h.absoluteRequestURL(r, "/").String()
-	emailSent := false
-	if req.SendInvite {
-		templates, err := h.repo.ListMailTemplates(r)
-		if err != nil {
-			h.serverError(w, r, err)
-			return
-		}
-		template := mailTemplateByKind(templates, mailer.TemplateKindPremiumInvite)
-		values := map[string]string{
-			"{{app_url}}":       appURL,
-			"{{support_email}}": "info@markushartmann.dev",
-		}
-		if err := h.mailer.SendPremiumInviteEmail(r.Context(), mailer.PremiumInviteEmail{
-			To:           email,
-			SupportEmail: "info@markushartmann.dev",
-			FeedbackURL:  appURL,
-			Subject:      renderMailTemplate(template.Subject, values),
-			TextBody:     renderMailTemplate(template.TextBody, values),
-			HTMLBody:     renderHTMLMailTemplate(template.HTMLBody, values),
-		}); err != nil {
-			h.logger.Error("premium invite email failed", "email", email, "error", err)
-		} else {
-			emailSent = true
-		}
-	}
-	writeJSON(w, http.StatusCreated, domain.PremiumInviteResult{PremiumUser: premiumUser, EmailSent: emailSent, InviteLink: appURL})
-}
-
-func (h *Handler) getMailTemplates(w http.ResponseWriter, r *http.Request) {
-	templates, err := h.repo.ListMailTemplates(r)
-	if err != nil {
-		h.serverError(w, r, err)
-		return
-	}
-	writeJSON(w, http.StatusOK, templates)
-}
-
-func (h *Handler) deletePremiumUser(w http.ResponseWriter, r *http.Request) {
-	if err := h.repo.DeletePremiumUser(r, r.PathValue("premiumUserID")); err != nil {
-		if errors.Is(err, store.ErrNotFound) {
-			writeError(w, http.StatusNotFound, "premium user not found")
-			return
-		}
-		h.serverError(w, r, err)
-		return
-	}
-	w.WriteHeader(http.StatusNoContent)
-}
-
-func (h *Handler) putMailTemplate(w http.ResponseWriter, r *http.Request) {
-	var req domain.UpdateMailTemplateRequest
-	if err := decodeJSON(w, r, &req); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
-		return
-	}
-	if strings.TrimSpace(req.Subject) == "" || strings.TrimSpace(req.TextBody) == "" || strings.TrimSpace(req.HTMLBody) == "" {
-		writeError(w, http.StatusBadRequest, "Bitte alle Template-Felder ausfüllen.")
-		return
-	}
-	saved, err := h.repo.SaveMailTemplate(r, r.PathValue("kind"), req)
-	if errors.Is(err, store.ErrNotFound) {
-		writeError(w, http.StatusNotFound, "template not found")
-		return
-	}
-	if err != nil {
-		h.serverError(w, r, err)
-		return
-	}
-	writeJSON(w, http.StatusOK, saved)
 }
 
 func (h *Handler) createFeedback(w http.ResponseWriter, r *http.Request) {
@@ -910,21 +741,8 @@ func (h *Handler) createPlansForAllUsers(w http.ResponseWriter, r *http.Request)
 	}
 	var created []string
 	var failures []map[string]string
-	var emailFailures []map[string]string
-	emailsSent := 0
-	templates, err := h.repo.ListMailTemplates(r)
-	if err != nil {
-		h.serverError(w, r, err)
-		return
-	}
-	weeklyTemplate := mailTemplateByKind(templates, mailer.TemplateKindWeeklyPlanReady)
 	for _, userID := range userIDs {
 		req := withUserID(r, userID)
-		family, err := h.repo.GetFamily(req)
-		if err != nil {
-			failures = append(failures, map[string]string{"userID": userID, "error": err.Error()})
-			continue
-		}
 		profile, err := h.repo.GetProfile(req)
 		if err != nil {
 			failures = append(failures, map[string]string{"userID": userID, "error": err.Error()})
@@ -947,69 +765,15 @@ func (h *Handler) createPlansForAllUsers(w http.ResponseWriter, r *http.Request)
 		}
 		_ = h.repo.RecordGenerationEvent(req, "weekly_cron")
 		created = append(created, saved.ID)
-		planURL := h.absoluteRequestURL(req, "/").String()
-		seenEmails := map[string]struct{}{}
-		for _, account := range family.Accounts {
-			email := strings.TrimSpace(account.Email)
-			if email == "" {
-				continue
-			}
-			normalized := strings.ToLower(email)
-			if _, ok := seenEmails[normalized]; ok {
-				continue
-			}
-			seenEmails[normalized] = struct{}{}
-			settings, err := h.repo.GetAccountSettingsForUser(req, account.UserID)
-			if err != nil {
-				emailFailures = append(emailFailures, map[string]string{
-					"userID":   userID,
-					"familyID": family.ID,
-					"email":    email,
-					"error":    err.Error(),
-				})
-				continue
-			}
-			if !settings.WeeklyPlanEmailEnabled {
-				continue
-			}
-			values := map[string]string{
-				"{{family_name}}":   family.Name,
-				"{{week_start}}":    saved.WeekStart,
-				"{{plan_url}}":      planURL,
-				"{{support_email}}": "info@markushartmann.dev",
-			}
-			if err := h.mailer.SendWeeklyPlanReadyEmail(req.Context(), mailer.WeeklyPlanReadyEmail{
-				To:           email,
-				FamilyName:   family.Name,
-				WeekStart:    saved.WeekStart,
-				PlanURL:      planURL,
-				SupportEmail: "info@markushartmann.dev",
-				Subject:      renderMailTemplate(weeklyTemplate.Subject, values),
-				TextBody:     renderMailTemplate(weeklyTemplate.TextBody, values),
-				HTMLBody:     renderHTMLMailTemplate(weeklyTemplate.HTMLBody, values),
-			}); err != nil {
-				h.logger.Error("weekly plan email failed", "family_id", family.ID, "user_id", userID, "email", email, "error", err)
-				emailFailures = append(emailFailures, map[string]string{
-					"userID":   userID,
-					"familyID": family.ID,
-					"email":    email,
-					"error":    err.Error(),
-				})
-				continue
-			}
-			emailsSent++
-		}
 	}
 	status := http.StatusCreated
-	if len(failures) > 0 || len(emailFailures) > 0 {
+	if len(failures) > 0 {
 		status = http.StatusMultiStatus
 	}
 	writeJSON(w, status, map[string]any{
-		"created":       created,
-		"failures":      failures,
-		"users":         len(userIDs),
-		"emailsSent":    emailsSent,
-		"emailFailures": emailFailures,
+		"created":  created,
+		"failures": failures,
+		"users":    len(userIDs),
 	})
 }
 
@@ -1435,29 +1199,3 @@ func rateLimitFromEnv() int {
 	return parsed
 }
 
-func mailTemplateByKind(templates []domain.MailTemplate, kind string) domain.MailTemplate {
-	for _, template := range templates {
-		if strings.TrimSpace(template.Kind) == strings.TrimSpace(kind) {
-			return template
-		}
-	}
-	if defaults, ok := mailer.DefaultTemplate(kind); ok {
-		return domain.MailTemplate{
-			Kind:         kind,
-			Subject:      defaults.Subject,
-			TextBody:     defaults.TextBody,
-			HTMLBody:     defaults.HTMLBody,
-			Description:  defaults.Description,
-			VariableHint: append([]string(nil), defaults.Variables...),
-		}
-	}
-	return domain.MailTemplate{Kind: kind}
-}
-
-func renderMailTemplate(template string, values map[string]string) string {
-	return mailer.RenderTemplate(template, values)
-}
-
-func renderHTMLMailTemplate(template string, values map[string]string) string {
-	return mailer.RenderHTMLTemplate(template, values)
-}
