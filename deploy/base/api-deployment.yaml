@@ -13,11 +13,9 @@ spec:
         app: api
     spec:
       automountServiceAccountToken: false
-      imagePullSecrets:
-        - name: ghcr-pull-secret
       initContainers:
         - name: migrate
-          image: ghcr.io/aidun/mealplanner-api:master
+          image: ghcr.io/aidun/mealplanner/api:master
           imagePullPolicy: IfNotPresent
           command: ["/app/bin/migrate", "up"]
           env:
@@ -38,7 +36,7 @@ spec:
               type: RuntimeDefault
       containers:
         - name: api
-          image: ghcr.io/aidun/mealplanner-api:master
+          image: ghcr.io/aidun/mealplanner/api:master
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 3001
