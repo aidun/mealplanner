@@ -44,7 +44,7 @@ jobs:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.source_ref || github.sha }}
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.25.9'
+          go-version: '1.25.10'
           cache: true
           cache-dependency-path: backend/api/go.sum
       - name: Verify backend
@@ -82,18 +82,12 @@ jobs:
       - uses: azure/setup-kubectl@v4
         with:
           version: v1.33.0
-      - run: kubectl kustomize deploy/test > /tmp/deploy-test.yaml
-      - run: kubectl kustomize deploy/production > /tmp/deploy-production.yaml
+      - run: kubectl kustomize deploy/base > /tmp/deploy-base.yaml
 
   publish-test-images:
     name: Build and publish test images
     needs: [verify-backend, verify-frontend, verify-manifests]
     runs-on: ubuntu-latest
-    outputs:
-      short_sha: ${{ steps.meta.outputs.short_sha }}
-      full_sha: ${{ steps.meta.outputs.full_sha }}
-      source_ref: ${{ steps.meta.outputs.source_ref }}
-      branch_short_sha: ${{ steps.meta.outputs.branch_short_sha }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -131,52 +125,3 @@ jobs:
             ghcr.io/aidun/mealplanner/frontend:master
             ghcr.io/aidun/mealplanner/frontend:master-${{ steps.meta.outputs.short_sha }}
 
-  update-test-target:
-    name: Open GitOps PR for test image tags
-    needs: [publish-test-images]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: master
-      - name: Update test overlay image tags
-        shell: python
-        env:
-          SHORT_SHA: ${{ needs.publish-test-images.outputs.short_sha }}
-        run: |
-          from pathlib import Path
-          import os
-
-          overlay = Path("deploy/test/kustomization.yaml")
-          short_sha = os.environ["SHORT_SHA"]
-          lines = []
-          replacements = {
-              "ghcr.io/aidun/mealplanner/api": f"master-{short_sha}",
-              "ghcr.io/aidun/mealplanner/frontend": f"master-{short_sha}",
-          }
-          current = None
-
-          for line in overlay.read_text(encoding="utf-8").splitlines():
-              stripped = line.strip()
-              if stripped.startswith("- name: "):
-                  current = stripped.split(": ", 1)[1]
-              elif stripped.startswith("newTag: ") and current in replacements:
-                  prefix = line.split("newTag:")[0]
-                  line = f"{prefix}newTag: {replacements[current]} # replaced by bot PR: master-<git-sha>"
-              lines.append(line)
-
-          overlay.write_text("\n".join(lines) + "\n", encoding="utf-8")
-      - id: pr
-        continue-on-error: true
-        uses: peter-evans/create-pull-request@v7
-        with:
-          token: ${{ secrets.AUTOMATION_GITHUB_TOKEN != '' && secrets.AUTOMATION_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
-          commit-message: Update test image tags to master-${{ needs.publish-test-images.outputs.short_sha }}
-          title: Update test image tags to master-${{ needs.publish-test-images.outputs.short_sha }}
-          body: |
-            - update api and frontend test overlay tags to immutable `master-${{ needs.publish-test-images.outputs.short_sha }}`
-          branch: automation/update-mealplanner-test-target
-          branch-suffix: short-commit-hash
-          delete-branch: true
-          add-paths: |
-            deploy/test/kustomization.yaml
