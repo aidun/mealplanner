@@ -339,7 +339,7 @@ func (h *Handler) putAccountSettings(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	saved, err := h.repo.SaveAccountSettings(r, domain.AccountSettings{})
+	saved, err := h.repo.SaveAccountSettings(r, settings)
 	if err != nil {
 		h.serverError(w, r, err)
 		return
