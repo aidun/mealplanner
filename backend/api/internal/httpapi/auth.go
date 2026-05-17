@@ -2,7 +2,6 @@ package httpapi
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -17,37 +16,87 @@ import (
 type contextKey string
 
 const (
-	userIDKey  contextKey = "userID"
-	csrfKey    contextKey = "csrf"
-	emailKey   contextKey = "email"
-	adminKey   contextKey = "admin"
-	premiumKey contextKey = "premium"
+	userIDKey contextKey = "userID"
+	csrfKey   contextKey = "csrf"
+	adminKey  contextKey = "admin"
 )
 
-// oauthState is kept in an HttpOnly cookie while the provider roundtrip is in progress.
-type oauthState struct {
-	State    string `json:"state"`
-	Nonce    string `json:"nonce"`
-	Verifier string `json:"verifier"`
+func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	email := strings.ToLower(strings.TrimSpace(req.Email))
+	if email == "" || strings.TrimSpace(req.Password) == "" {
+		writeError(w, http.StatusBadRequest, "email and password are required")
+		return
+	}
+	if len(req.Password) < 8 {
+		writeError(w, http.StatusBadRequest, "password must be at least 8 characters")
+		return
+	}
+	hash, err := auth.HashPassword(req.Password)
+	if err != nil {
+		h.serverError(w, r, err)
+		return
+	}
+	userID, created, err := h.repo.RegisterUser(r, email, hash)
+	if err != nil {
+		h.serverError(w, r, err)
+		return
+	}
+	if !created {
+		writeError(w, http.StatusConflict, "email already registered")
+		return
+	}
+	sessionID, _, expiresAt, err := h.repo.CreateSession(r, userID, 30*24*time.Hour)
+	if err != nil {
+		h.serverError(w, r, err)
+		return
+	}
+	setSessionCookie(w, sessionID, expiresAt)
+	writeJSON(w, http.StatusCreated, map[string]bool{"ok": true})
 }
 
-func (h *Handler) getAuthProviders(w http.ResponseWriter, _ *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]any{"providers": h.auth.Providers()})
+func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	email := strings.ToLower(strings.TrimSpace(req.Email))
+	userID, hash, found, err := h.repo.GetUserByEmail(r, email)
+	if err != nil {
+		h.serverError(w, r, err)
+		return
+	}
+	if !found || !auth.CheckPassword(hash, req.Password) {
+		writeError(w, http.StatusUnauthorized, "invalid credentials")
+		return
+	}
+	sessionID, _, expiresAt, err := h.repo.CreateSession(r, userID, 30*24*time.Hour)
+	if err != nil {
+		h.serverError(w, r, err)
+		return
+	}
+	setSessionCookie(w, sessionID, expiresAt)
+	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
-// getSession returns frontend boot data without leaking anything for anonymous visitors.
 func (h *Handler) getSession(w http.ResponseWriter, r *http.Request) {
 	userID, csrf, _, ok := h.readSession(r)
 	if !ok {
 		writeJSON(w, http.StatusOK, map[string]any{"authenticated": false})
 		return
 	}
-	email, err := h.repo.GetUserEmail(r, userID)
-	if err != nil {
-		h.serverError(w, r, err)
-		return
-	}
-	isPremium, err := h.repo.IsPremiumUser(r, userID)
+	isAdmin, err := h.repo.IsAdminUser(r, userID)
 	if err != nil {
 		h.serverError(w, r, err)
 		return
@@ -66,92 +115,10 @@ func (h *Handler) getSession(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{
 		"authenticated":      true,
 		"userID":             userID,
-		"email":              email,
-		"isAdmin":            isAdminEmail(email),
-		"isPremium":          isPremium,
+		"isAdmin":            isAdmin,
 		"csrfToken":          csrf,
 		"onboardingRequired": domain.IsPlaceholderProfile(profile) && !hasSeenOnboarding,
 	})
-}
-
-// startGoogle supports both normal browser redirects and XHR starts used by the React login page.
-func (h *Handler) startGoogle(w http.ResponseWriter, r *http.Request) {
-	if !h.auth.GoogleEnabled() {
-		writeError(w, http.StatusServiceUnavailable, "google login is not configured")
-		return
-	}
-	state, nonce, verifier, challenge, err := auth.NewOAuthState()
-	if err != nil {
-		h.serverError(w, r, err)
-		return
-	}
-	raw, _ := json.Marshal(oauthState{State: state, Nonce: nonce, Verifier: verifier})
-	http.SetCookie(w, &http.Cookie{
-		Name:     auth.StateCookieName,
-		Value:    encodeCookie(raw),
-		Path:     "/api/auth/google",
-		MaxAge:   600,
-		HttpOnly: true,
-		Secure:   true,
-		SameSite: http.SameSiteLaxMode,
-	})
-	redirectURL := h.auth.GoogleStartURL(state, nonce, challenge)
-	if strings.Contains(r.Header.Get("Accept"), "application/json") || strings.EqualFold(strings.TrimSpace(r.Header.Get("X-Requested-With")), "XMLHttpRequest") {
-		writeJSON(w, http.StatusOK, map[string]string{"redirectUrl": redirectURL})
-		return
-	}
-	http.Redirect(w, r, redirectURL, http.StatusFound)
-}
-
-// googleCallback verifies the stored state before any token exchange to keep the OAuth flow CSRF-safe.
-func (h *Handler) googleCallback(w http.ResponseWriter, r *http.Request) {
-	var saved oauthState
-	cookie, err := r.Cookie(auth.StateCookieName)
-	if err != nil || decodeCookie(cookie.Value, &saved) != nil || saved.State == "" || saved.State != r.URL.Query().Get("state") {
-		h.logger.Warn(
-			"oauth state validation failed",
-			"path", r.URL.Path,
-			"has_cookie", err == nil,
-			"has_query_state", strings.TrimSpace(r.URL.Query().Get("state")) != "",
-		)
-		writeError(w, http.StatusBadRequest, auth.ErrInvalidState.Error())
-		return
-	}
-	if r.URL.Query().Get("error") != "" {
-		writeError(w, http.StatusBadRequest, r.URL.Query().Get("error"))
-		return
-	}
-	identity, err := h.auth.ExchangeGoogleCode(r.Context(), r.URL.Query().Get("code"), saved.Verifier, saved.Nonce)
-	if err != nil {
-		h.serverError(w, r, err)
-		return
-	}
-	allowed, err := h.repo.LoginAllowed(r, identity.Email, identity.EmailHash)
-	if err != nil {
-		h.serverError(w, r, err)
-		return
-	}
-	if !allowed {
-		writeError(w, http.StatusForbidden, "login not allowed")
-		return
-	}
-	userID, err := h.repo.UpsertUser(r, identity.Provider, identity.SubjectHash, identity.Email, identity.EmailHash)
-	if err != nil {
-		h.serverError(w, r, err)
-		return
-	}
-	sessionID, _, expiresAt, err := h.repo.CreateSession(r, userID, 30*24*time.Hour)
-	if err != nil {
-		h.serverError(w, r, err)
-		return
-	}
-	setSessionCookie(w, r, sessionID, expiresAt)
-	clearCookie(w, auth.StateCookieName, "/api/auth/google")
-	http.Redirect(w, r, "/", http.StatusFound)
-}
-
-func (h *Handler) appleNotConfigured(w http.ResponseWriter, _ *http.Request) {
-	writeError(w, http.StatusNotImplemented, "apple login is prepared but not configured")
 }
 
 func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
@@ -162,7 +129,6 @@ func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
-// withSession enriches the request context with account, admin and family-level premium flags.
 func (h *Handler) withSession(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID, csrf, _, ok := h.readSession(r)
@@ -170,26 +136,18 @@ func (h *Handler) withSession(next http.HandlerFunc) http.HandlerFunc {
 			writeError(w, http.StatusUnauthorized, "unauthorized")
 			return
 		}
-		email, err := h.repo.GetUserEmail(r, userID)
-		if err != nil {
-			h.serverError(w, r, err)
-			return
-		}
-		isPremium, err := h.repo.IsPremiumUser(r, userID)
+		isAdmin, err := h.repo.IsAdminUser(r, userID)
 		if err != nil {
 			h.serverError(w, r, err)
 			return
 		}
 		ctx := context.WithValue(r.Context(), userIDKey, userID)
 		ctx = context.WithValue(ctx, csrfKey, csrf)
-		ctx = context.WithValue(ctx, emailKey, email)
-		ctx = context.WithValue(ctx, adminKey, isAdminEmail(email))
-		ctx = context.WithValue(ctx, premiumKey, isPremium)
+		ctx = context.WithValue(ctx, adminKey, isAdmin)
 		next(w, r.WithContext(ctx))
 	}
 }
 
-// withCSRF protects mutating cookie-authenticated routes with the session-scoped token.
 func (h *Handler) withCSRF(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		csrf, _ := r.Context().Value(csrfKey).(string)
@@ -212,20 +170,6 @@ func (h *Handler) withAdmin(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-// withPremium lets the hard-privileged admin use support flows even without a normal premium grant.
-func (h *Handler) withPremium(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		isPremium, _ := r.Context().Value(premiumKey).(bool)
-		isAdmin, _ := r.Context().Value(adminKey).(bool)
-		if !isPremium && !isAdmin {
-			writeError(w, http.StatusForbidden, "premium required")
-			return
-		}
-		next(w, r)
-	}
-}
-
-// readSession treats missing or expired sessions as anonymous and logs only unexpected store failures.
 func (h *Handler) readSession(r *http.Request) (string, string, time.Time, bool) {
 	cookie, err := r.Cookie(auth.SessionCookieName)
 	if err != nil || cookie.Value == "" {
@@ -250,11 +194,7 @@ func mustUserID(ctx context.Context) string {
 	return userID
 }
 
-func isAdminEmail(email string) bool {
-	return strings.EqualFold(strings.TrimSpace(email), "markush1986@gmail.com")
-}
-
-func setSessionCookie(w http.ResponseWriter, _ *http.Request, sessionID string, expiresAt time.Time) {
+func setSessionCookie(w http.ResponseWriter, sessionID string, expiresAt time.Time) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     auth.SessionCookieName,
 		Value:    sessionID,
@@ -276,16 +216,4 @@ func clearCookie(w http.ResponseWriter, name, path string) {
 		Secure:   true,
 		SameSite: http.SameSiteLaxMode,
 	})
-}
-
-func encodeCookie(raw []byte) string {
-	return base64.RawURLEncoding.EncodeToString(raw)
-}
-
-func decodeCookie(value string, target any) error {
-	raw, err := base64.RawURLEncoding.DecodeString(value)
-	if err != nil {
-		return err
-	}
-	return json.Unmarshal(raw, target)
 }
