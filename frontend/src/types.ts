@@ -187,18 +187,6 @@ export interface ShoppingListDocument {
 // ShoppingList supports both the old flat array and the newer sectioned document shape.
 export type ShoppingList = ShoppingListItem[] | ShoppingListDocument;
 
-export type AuthProviderID = 'google' | 'apple' | string;
-
-export interface AuthProvider {
-  id: AuthProviderID;
-  name: string;
-  enabled: boolean;
-  startUrl: string;
-}
-
-export interface AuthProvidersResponse {
-  providers: AuthProvider[];
-}
 
 // Session is frontend boot data; csrfToken is cached by api.ts for mutating requests.
 export interface Session {

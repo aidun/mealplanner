@@ -389,18 +389,18 @@ describe('Mealplanner app', () => {
     expect(screen.getByText('0.70s')).toBeInTheDocument();
   });
 
-  it('shows the login page without a session and only enabled providers', async () => {
+  it('shows the login page with email/password form when not authenticated', async () => {
     vi.stubGlobal('fetch', createFetchMock({ authenticated: false }));
 
     renderApp('/');
 
     expect(await screen.findByRole('heading', { name: 'Mahlio' })).toBeInTheDocument();
     expect(screen.getByText('Bringt eure Woche an einen Tisch.')).toBeInTheDocument();
-    expect(await screen.findByRole('button', { name: 'Mit Google anmelden' })).toBeInTheDocument();
+    expect(await screen.findByRole('tab', { name: 'Anmelden' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Registrieren' })).toBeInTheDocument();
+    expect(screen.getByLabelText('E-Mail')).toBeInTheDocument();
+    expect(screen.getByLabelText('Passwort')).toBeInTheDocument();
     expect(screen.getByLabelText('Produktvorschau')).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Mit Apple anmelden' })).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Datenschutz' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Impressum' })).toBeInTheDocument();
   });
 
   it('redirects first-login users to onboarding and shows the guided onboarding wizard', async () => {
@@ -447,59 +447,16 @@ describe('Mealplanner app', () => {
     );
   });
 
-  it('renders disabled Google login as a disabled button, not a link', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async (input: RequestInfo | URL) => {
-        const url = String(input);
-        if (url.endsWith('/api/session')) {
-          return new Response(JSON.stringify({ authenticated: false }), { status: 200 });
-        }
-        if (url.endsWith('/api/auth/providers')) {
-          return new Response(JSON.stringify({ providers: [{ id: 'google', name: 'Google', enabled: false }] }), {
-            status: 200,
-          });
-        }
-        return new Response('', { status: 404 });
-      }) as unknown as typeof fetch
-    );
+  it('switches between login and register mode', async () => {
+    vi.stubGlobal('fetch', createFetchMock({ authenticated: false }));
 
     renderApp('/');
 
-    expect(await screen.findByRole('button', { name: 'Mit Google anmelden' })).toBeDisabled();
-    expect(screen.queryByRole('link', { name: 'Mit Google anmelden' })).not.toBeInTheDocument();
-  });
+    const registerTab = await screen.findByRole('tab', { name: 'Registrieren' });
+    await userEvent.click(registerTab);
 
-  it('falls back to same-origin auth paths when provider start urls are unsafe', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async (input: RequestInfo | URL) => {
-        const url = String(input);
-        if (url.endsWith('/api/session')) {
-          return new Response(JSON.stringify({ authenticated: false }), { status: 200 });
-        }
-        if (url.endsWith('/api/auth/providers')) {
-          return new Response(
-            JSON.stringify({
-              providers: [
-                { id: 'google', name: 'Google', enabled: true, startUrl: 'https://evil.example/login' },
-                { id: 'apple', name: 'Apple', enabled: true, startUrl: '//evil.example/apple' },
-              ],
-            }),
-            { status: 200 }
-          );
-        }
-        return new Response('', { status: 404 });
-      }) as unknown as typeof fetch
-    );
-
-    renderApp('/');
-
-    expect(await screen.findByRole('button', { name: 'Mit Google anmelden' })).toBeInTheDocument();
-    expect(await screen.findByRole('link', { name: 'Mit Apple anmelden' })).toHaveAttribute(
-      'href',
-      '/api/auth/apple/start'
-    );
+    expect(screen.getByRole('tab', { name: 'Registrieren' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('button', { name: 'Registrieren' })).toBeInTheDocument();
   });
 
   it('renders the weekly board and shopping list', async () => {
@@ -1145,7 +1102,7 @@ describe('Mealplanner app', () => {
         })
       );
     });
-    expect(await screen.findByRole('button', { name: 'Mit Google anmelden' })).toBeInTheDocument();
+    expect(await screen.findByRole('tab', { name: 'Anmelden' })).toBeInTheDocument();
   });
 
   it('keeps the dashboard visible when logout fails', async () => {

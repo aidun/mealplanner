@@ -1,10 +1,10 @@
-import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
-import { getAuthProviders } from '../api';
-import { AppLogo } from '../components/AppLogo';
-import { readableApiError } from '../lib/api-error';
 import { useState } from 'react';
+import { AppLogo } from '../components/AppLogo';
+import { login, register } from '../api';
+import { readableApiError } from '../lib/api-error';
 import { brand } from '../brand';
+
+type Mode = 'login' | 'register';
 
 const previewDays = [
   { label: 'Mo', title: 'Zitronenpasta', note: 'schnell nach dem Sport', active: true },
@@ -16,41 +16,28 @@ const previewDays = [
 const previewIngredients = ['Zitronen', 'Brokkoli', 'Burrata', 'Pasta', 'Basilikum'] as const;
 const previewShopping = ['Zitronen 2 Stk', 'Brokkoli 1 Kopf', 'Burrata 2 Kugeln', 'Pasta 500 g'] as const;
 
-// LoginPage starts OAuth through the backend so state, nonce and PKCE stay server-controlled.
 export function LoginPage() {
-  const [loginError, setLoginError] = useState('');
-  const [startingGoogleLogin, setStartingGoogleLogin] = useState(false);
-  const providersQuery = useQuery({
-    queryKey: ['auth-providers'],
-    queryFn: getAuthProviders,
-  });
-  const providers = providersQuery.data?.providers ?? [];
-  const google = providers.find((provider) => provider.id === 'google');
-  const apple = providers.find((provider) => provider.id === 'apple');
-  const googleEnabled = google?.enabled ?? false;
-  const googleStartUrl = safeAuthStartUrl(google?.startUrl, '/api/auth/google/start');
-  const appleStartUrl = safeAuthStartUrl(apple?.startUrl, '/api/auth/apple/start');
+  const [mode, setMode] = useState<Mode>('login');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const startGoogleLogin = async () => {
-    setLoginError('');
-    setStartingGoogleLogin(true);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
     try {
-      const response = await fetch(googleStartUrl, {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          Accept: 'application/json',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-      });
-      const payload = await response.json().catch(() => null);
-      if (!response.ok || !payload?.redirectUrl) {
-        throw new Error(payload?.error || 'Google Login konnte nicht gestartet werden.');
+      if (mode === 'login') {
+        await login(email, password);
+      } else {
+        await register(email, password);
       }
-      window.location.assign(payload.redirectUrl);
-    } catch (error) {
-      setLoginError(readableApiError(error, 'Google Login konnte nicht gestartet werden.'));
-      setStartingGoogleLogin(false);
+      window.location.assign('/');
+    } catch (err) {
+      setError(readableApiError(err, mode === 'login' ? 'Anmeldung fehlgeschlagen.' : 'Registrierung fehlgeschlagen.'));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -74,33 +61,63 @@ export function LoginPage() {
             </div>
 
             <div className="login-actions-block">
-              <div className="login-actions" aria-label="Login-Anbieter">
-                {googleEnabled ? (
-                  <button
-                    type="button"
-                    className="button button-primary login-button"
-                    onClick={() => void startGoogleLogin()}
-                    disabled={startingGoogleLogin}
-                  >
-                    {startingGoogleLogin ? 'Google Login startet…' : 'Mit Google anmelden'}
-                  </button>
-                ) : (
-                  <button type="button" className="button button-primary login-button" disabled>
-                    Mit Google anmelden
-                  </button>
-                )}
-
-                {apple?.enabled && appleStartUrl ? (
-                  <a className="button button-secondary login-button login-button-secondary" href={appleStartUrl}>
-                    Mit Apple anmelden
-                  </a>
-                ) : null}
+              <div className="login-mode-tabs" role="tablist">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={mode === 'login'}
+                  onClick={() => { setMode('login'); setError(''); }}
+                  className={mode === 'login' ? 'active' : ''}
+                >
+                  Anmelden
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={mode === 'register'}
+                  onClick={() => { setMode('register'); setError(''); }}
+                  className={mode === 'register' ? 'active' : ''}
+                >
+                  Registrieren
+                </button>
               </div>
-              <p className="login-support-copy">{brand.supportNote}</p>
-              <nav className="legal-links" aria-label="Rechtliches">
-                <Link to="/datenschutz">Datenschutz</Link>
-                <Link to="/impressum">Impressum</Link>
-              </nav>
+
+              <form onSubmit={(e) => void handleSubmit(e)} className="login-form" noValidate>
+                <label htmlFor="email">E-Mail</label>
+                <input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
+                  required
+                  disabled={loading}
+                />
+                <label htmlFor="password">Passwort</label>
+                <input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                  required
+                  disabled={loading}
+                  minLength={8}
+                />
+                <button
+                  type="submit"
+                  className="button button-primary login-button"
+                  disabled={loading}
+                >
+                  {loading
+                    ? mode === 'login' ? 'Anmelden…' : 'Registrieren…'
+                    : mode === 'login' ? 'Anmelden' : 'Registrieren'}
+                </button>
+              </form>
+
+              {error ? (
+                <p className="error-copy" role="alert">{error}</p>
+              ) : null}
             </div>
           </section>
 
@@ -156,30 +173,7 @@ export function LoginPage() {
             </div>
           </section>
         </div>
-
-        {providersQuery.isError ? (
-          <p className="error-copy" role="alert">
-            Login-Anbieter konnten nicht geladen werden. Bitte später erneut versuchen.
-          </p>
-        ) : null}
-        {loginError ? (
-          <p className="error-copy" role="alert">
-            {loginError}
-          </p>
-        ) : null}
       </main>
     </div>
   );
-}
-
-function safeAuthStartUrl(value: string | undefined, fallback: string) {
-  // Provider start URLs must stay same-origin API paths; never redirect to arbitrary absolute URLs.
-  const candidate = value?.trim() || fallback;
-  if (!candidate.startsWith('/api/auth/')) {
-    return fallback;
-  }
-  if (candidate.startsWith('//') || candidate.includes('\\')) {
-    return fallback;
-  }
-  return candidate;
 }

@@ -1,5 +1,4 @@
 import type {
-  AuthProvidersResponse,
   FamilyInvite,
   FamilySummary,
   FavoriteRecipe,
@@ -86,9 +85,18 @@ export async function getSession() {
   }
 }
 
-export async function getAuthProviders() {
-  const response = await request<AuthProvidersResponse>('/api/auth/providers');
-  return response ?? { providers: [] };
+export async function login(email: string, password: string): Promise<void> {
+  await request<null>('/api/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ email, password }),
+  });
+}
+
+export async function register(email: string, password: string): Promise<void> {
+  await request<null>('/api/auth/register', {
+    method: 'POST',
+    body: JSON.stringify({ email, password }),
+  });
 }
 
 export async function logout() {
