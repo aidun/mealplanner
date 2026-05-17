@@ -1,0 +1,46 @@
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: mealplanner
+      POSTGRES_USER: mealplanner
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mealplanner}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mealplanner"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: backend/api
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgres://mealplanner:${POSTGRES_PASSWORD:-mealplanner}@db:5432/mealplanner?sslmode=disable
+      SESSION_SECRET: ${SESSION_SECRET}
+      API_SECRET: ${API_SECRET}
+      PROVIDER_MODE: ${PROVIDER_MODE:-mock}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com}
+      OPENAI_MEAL_MODEL: ${OPENAI_MEAL_MODEL:-gpt-5.4-mini}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
+      PORT: 3001
+    ports:
+      - "3001:3001"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: frontend
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - api
+
+volumes:
+  db_data:
