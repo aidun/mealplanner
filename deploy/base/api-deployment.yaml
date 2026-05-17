@@ -13,6 +13,8 @@ spec:
         app: api
     spec:
       automountServiceAccountToken: false
+      imagePullSecrets:
+        - name: ghcr-pull-secret
       initContainers:
         - name: migrate
           image: ghcr.io/aidun/mealplanner/api:master
