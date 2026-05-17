@@ -13,19 +13,15 @@ import (
 	"time"
 
 	"github.com/aidun/mealplanner/backend/api/internal/domain"
-	"github.com/aidun/mealplanner/backend/api/internal/mailer"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 var (
 	ErrNotFound                 = errors.New("not found")
-	ErrAlreadyPremium           = errors.New("already premium")
 	ErrAccountAlreadyInFamily   = errors.New("account already in family")
 	ErrAccountInDifferentFamily = errors.New("account belongs to different family")
 )
-
-const adminEmail = "markush1986@gmail.com"
 
 // Store is the Postgres-backed persistence layer. Most read/write methods are family-scoped.
 type Store struct {
@@ -47,24 +43,6 @@ func (s familyMembershipState) isPersonal() bool {
 
 func New(pool *pgxpool.Pool) Store {
 	return Store{pool: pool}
-}
-
-// UpsertUser records a provider identity and guarantees the login has an active personal family.
-func (s Store) UpsertUser(ctx context.Context, provider, subjectHash string, email string, emailHash string) (string, error) {
-	var id string
-	err := s.pool.QueryRow(ctx, `
-		INSERT INTO users(provider, subject_hash, email, email_hash, last_login_at)
-		VALUES ($1, $2, NULLIF($3, ''), NULLIF($4, ''), now())
-		ON CONFLICT (provider, subject_hash) DO UPDATE
-		SET last_login_at = now(),
-		    email = COALESCE(NULLIF(EXCLUDED.email, ''), users.email),
-		    email_hash = COALESCE(NULLIF(EXCLUDED.email_hash, ''), users.email_hash)
-		RETURNING id::text
-	`, provider, subjectHash, email, emailHash).Scan(&id)
-	if err != nil {
-		return "", err
-	}
-	return id, s.ensurePersonalFamily(ctx, id)
 }
 
 func (s Store) CreateSession(ctx context.Context, userID string, ttl time.Duration) (sessionID, csrfToken string, expiresAt time.Time, err error) {
@@ -103,80 +81,6 @@ func (s Store) GetUserEmail(ctx context.Context, userID string) (string, error) 
 		return "", ErrNotFound
 	}
 	return strings.TrimSpace(email), err
-}
-
-// IsPremiumUser grants premium when any account in the active family is premium or the admin logs in.
-func (s Store) IsPremiumUser(ctx context.Context, userID string) (bool, error) {
-	familyID, err := s.activeFamilyID(ctx, userID)
-	if err != nil {
-		return false, err
-	}
-	rows, err := s.pool.Query(ctx, `
-		SELECT COALESCE(u.email, ''), COALESCE(u.email_hash, '')
-		FROM family_members fm
-		JOIN users u ON u.id = fm.user_id
-		WHERE fm.family_id = $1
-	`, familyID)
-	if err != nil {
-		return false, err
-	}
-	defer rows.Close()
-	emailHashes := make([]string, 0, 4)
-	for rows.Next() {
-		var email string
-		var emailHash string
-		if err := rows.Scan(&email, &emailHash); err != nil {
-			return false, err
-		}
-		if normalizeEmail(email) == adminEmail {
-			return true, nil
-		}
-		if strings.TrimSpace(emailHash) != "" {
-			emailHashes = append(emailHashes, strings.TrimSpace(emailHash))
-		}
-	}
-	if err := rows.Err(); err != nil {
-		return false, err
-	}
-	if len(emailHashes) == 0 {
-		return false, nil
-	}
-	var premiumCount int
-	if err := s.pool.QueryRow(ctx, `SELECT COUNT(*)::int FROM premium_users WHERE email_hash = ANY($1)`, emailHashes).Scan(&premiumCount); err != nil {
-		return false, err
-	}
-	return premiumCount > 0, nil
-}
-
-// LoginAllowed permits the admin, directly premium emails and members of an already premium family.
-func (s Store) LoginAllowed(ctx context.Context, email string, emailHash string) (bool, error) {
-	email = normalizeEmail(email)
-	if email == adminEmail {
-		return true, nil
-	}
-	if strings.TrimSpace(emailHash) == "" {
-		return false, nil
-	}
-	var directPremium bool
-	if err := s.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM premium_users WHERE email_hash = $1)`, emailHash).Scan(&directPremium); err != nil {
-		return false, err
-	}
-	if directPremium {
-		return true, nil
-	}
-	var familyPremium bool
-	err := s.pool.QueryRow(ctx, `
-		SELECT EXISTS(
-			SELECT 1
-			FROM users u
-			JOIN family_members current_member ON current_member.user_id = u.id
-			JOIN family_members family_member ON family_member.family_id = current_member.family_id
-			JOIN users family_user ON family_user.id = family_member.user_id
-			JOIN premium_users pu ON pu.email_hash = family_user.email_hash
-			WHERE u.email_hash = $1
-		)
-	`, emailHash).Scan(&familyPremium)
-	return familyPremium, err
 }
 
 func (s Store) GetAccountSettings(ctx context.Context, userID string) (domain.AccountSettings, error) {
@@ -227,46 +131,6 @@ func (s Store) SaveAccountSettings(ctx context.Context, userID string, settings 
 		RETURNING updated_at
 	`, userID, settings.WeeklyPlanEmailEnabled, settings.RecipeEmailEnabled).Scan(&settings.UpdatedAt)
 	return settings, err
-}
-
-func (s Store) ListPremiumInvites(ctx context.Context, limit int) ([]domain.PremiumInvite, error) {
-	if limit <= 0 {
-		limit = 50
-	}
-	rows, err := s.pool.Query(ctx, `
-		SELECT id::text, email, created_at
-		FROM premium_invites
-		ORDER BY created_at DESC
-		LIMIT $1
-	`, limit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := make([]domain.PremiumInvite, 0, limit)
-	for rows.Next() {
-		var item domain.PremiumInvite
-		if err := rows.Scan(&item.ID, &item.Email, &item.CreatedAt); err != nil {
-			return nil, err
-		}
-		item.EmailSent = true
-		items = append(items, item)
-	}
-	return items, rows.Err()
-}
-
-func (s Store) CreatePremiumInvite(ctx context.Context, invitedByUserID string, email string, emailHash string) (domain.PremiumInvite, error) {
-	var invite domain.PremiumInvite
-	err := s.pool.QueryRow(ctx, `
-		INSERT INTO premium_invites(email, email_hash, invited_by_user_id)
-		VALUES ($1, $2, $3::uuid)
-		RETURNING id::text, email, created_at
-	`, normalizeEmail(email), strings.TrimSpace(emailHash), invitedByUserID).Scan(&invite.ID, &invite.Email, &invite.CreatedAt)
-	if err != nil {
-		return domain.PremiumInvite{}, err
-	}
-	invite.EmailSent = true
-	return invite, nil
 }
 
 func (s Store) DeleteSession(ctx context.Context, sessionID string) error {
@@ -659,8 +523,11 @@ func (s Store) AcceptFamilyInvite(ctx context.Context, userID string, token stri
 	if err != nil {
 		return domain.FamilySummary{}, err
 	}
-	emailHash, err := s.UserEmailHash(ctx, userID)
-	if err != nil {
+	var emailHash string
+	if err := s.pool.QueryRow(ctx, `SELECT COALESCE(email_hash, '') FROM users WHERE id = $1`, userID).Scan(&emailHash); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.FamilySummary{}, ErrNotFound
+		}
 		return domain.FamilySummary{}, err
 	}
 	var targetFamilyID string
@@ -782,15 +649,6 @@ func (s Store) UpdateFamilyAccountSettings(ctx context.Context, userID string, a
 	return s.GetFamily(ctx, userID)
 }
 
-func (s Store) UserEmailHash(ctx context.Context, userID string) (string, error) {
-	var emailHash string
-	err := s.pool.QueryRow(ctx, `SELECT COALESCE(email_hash, '') FROM users WHERE id = $1`, userID).Scan(&emailHash)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return "", ErrNotFound
-	}
-	return emailHash, err
-}
-
 func (s Store) GetProfileByFamily(ctx context.Context, familyID string) (domain.Profile, error) {
 	var data []byte
 	var updatedAt time.Time
@@ -896,154 +754,6 @@ func (s Store) SavePromptDebug(ctx context.Context, userID string, entry domain.
 	}
 	_, err = s.pool.Exec(ctx, `INSERT INTO prompt_debug_entries(family_id, operation, model, prompt, meta) VALUES ($1, $2, $3, $4, $5)`, familyID, entry.Operation, entry.Model, entry.Prompt, meta)
 	return err
-}
-
-func (s Store) ListPremiumUsers(ctx context.Context) ([]domain.PremiumUser, error) {
-	rows, err := s.pool.Query(ctx, `SELECT id::text, email, created_at FROM premium_users ORDER BY created_at DESC, email ASC`)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var users []domain.PremiumUser
-	for rows.Next() {
-		var user domain.PremiumUser
-		if err := rows.Scan(&user.ID, &user.Email, &user.CreatedAt); err != nil {
-			return nil, err
-		}
-		users = append(users, user)
-	}
-	return users, rows.Err()
-}
-
-// SavePremiumUser rejects grants that would duplicate direct or family-level premium access.
-func (s Store) SavePremiumUser(ctx context.Context, grantedByUserID string, email string, emailHash string) (domain.PremiumUser, error) {
-	email = normalizeEmail(email)
-	emailHash = strings.TrimSpace(emailHash)
-	if email == adminEmail {
-		return domain.PremiumUser{}, ErrAlreadyPremium
-	}
-	var directPremium bool
-	if err := s.pool.QueryRow(ctx, `
-		SELECT EXISTS(
-			SELECT 1
-			FROM premium_users
-			WHERE email = $1 OR email_hash = $2
-		)
-	`, email, emailHash).Scan(&directPremium); err != nil {
-		return domain.PremiumUser{}, err
-	}
-	if directPremium {
-		return domain.PremiumUser{}, ErrAlreadyPremium
-	}
-	userState, found, err := s.findUserFamilyStateByEmailHash(ctx, emailHash)
-	if err != nil {
-		return domain.PremiumUser{}, err
-	}
-	if found {
-		familyPremium, err := s.IsPremiumUser(ctx, userState.userID)
-		if err != nil {
-			return domain.PremiumUser{}, err
-		}
-		if familyPremium {
-			return domain.PremiumUser{}, ErrAlreadyPremium
-		}
-	}
-	var user domain.PremiumUser
-	err = s.pool.QueryRow(ctx, `
-		INSERT INTO premium_users(email, email_hash, granted_by_user_id)
-		VALUES ($1, $2, $3::uuid)
-		ON CONFLICT DO NOTHING
-		RETURNING id::text, email, created_at
-	`, email, emailHash, grantedByUserID).Scan(&user.ID, &user.Email, &user.CreatedAt)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return domain.PremiumUser{}, ErrAlreadyPremium
-	}
-	return user, err
-}
-
-// ListMailTemplates layers database overrides onto the code-defined default template catalog.
-func (s Store) ListMailTemplates(ctx context.Context) ([]domain.MailTemplate, error) {
-	rows, err := s.pool.Query(ctx, `
-		SELECT kind, subject_template, text_template, html_template, updated_at
-		FROM mail_templates
-	`)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	overrides := map[string]domain.MailTemplate{}
-	for rows.Next() {
-		var item domain.MailTemplate
-		if err := rows.Scan(&item.Kind, &item.Subject, &item.TextBody, &item.HTMLBody, &item.UpdatedAt); err != nil {
-			return nil, err
-		}
-		overrides[item.Kind] = item
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	templates := make([]domain.MailTemplate, 0, len(mailer.DefaultTemplateKinds()))
-	for _, kind := range mailer.DefaultTemplateKinds() {
-		defaults, ok := mailer.DefaultTemplate(kind)
-		if !ok {
-			continue
-		}
-		item := domain.MailTemplate{
-			Kind:         kind,
-			Label:        defaults.Label,
-			Subject:      defaults.Subject,
-			TextBody:     defaults.TextBody,
-			HTMLBody:     defaults.HTMLBody,
-			Description:  defaults.Description,
-			VariableHint: append([]string(nil), defaults.Variables...),
-		}
-		if override, ok := overrides[kind]; ok {
-			item.Subject = override.Subject
-			item.TextBody = override.TextBody
-			item.HTMLBody = override.HTMLBody
-			item.UpdatedAt = override.UpdatedAt
-		}
-		templates = append(templates, item)
-	}
-	return templates, nil
-}
-
-func (s Store) SaveMailTemplate(ctx context.Context, kind string, update domain.UpdateMailTemplateRequest) (domain.MailTemplate, error) {
-	defaults, ok := mailer.DefaultTemplate(kind)
-	if !ok {
-		return domain.MailTemplate{}, ErrNotFound
-	}
-	item := domain.MailTemplate{
-		Kind:         kind,
-		Label:        defaults.Label,
-		Subject:      strings.TrimSpace(update.Subject),
-		TextBody:     strings.TrimSpace(update.TextBody),
-		HTMLBody:     strings.TrimSpace(update.HTMLBody),
-		Description:  defaults.Description,
-		VariableHint: append([]string(nil), defaults.Variables...),
-	}
-	err := s.pool.QueryRow(ctx, `
-		INSERT INTO mail_templates(kind, subject_template, text_template, html_template, updated_at)
-		VALUES ($1, $2, $3, $4, now())
-		ON CONFLICT (kind) DO UPDATE
-		SET subject_template = EXCLUDED.subject_template,
-		    text_template = EXCLUDED.text_template,
-		    html_template = EXCLUDED.html_template,
-		    updated_at = now()
-		RETURNING updated_at
-	`, item.Kind, item.Subject, item.TextBody, item.HTMLBody).Scan(&item.UpdatedAt)
-	return item, err
-}
-
-func (s Store) DeletePremiumUser(ctx context.Context, id string) error {
-	tag, err := s.pool.Exec(ctx, `DELETE FROM premium_users WHERE id = $1`, id)
-	if err != nil {
-		return err
-	}
-	if tag.RowsAffected() == 0 {
-		return ErrNotFound
-	}
-	return nil
 }
 
 func (s Store) RecordGenerationEvent(ctx context.Context, userID string, category string) error {
@@ -1399,4 +1109,62 @@ func scopedPlanID(userID string, planID string) string {
 		return planID
 	}
 	return prefix + "-" + planID
+}
+
+// RegisterUser legt einen neuen lokalen Account an.
+// Der erste registrierte User bekommt automatisch is_admin=true.
+func (s Store) RegisterUser(ctx context.Context, email, passwordHash string) (userID string, created bool, err error) {
+	var count int
+	err = s.pool.QueryRow(ctx, `SELECT COUNT(*) FROM users`).Scan(&count)
+	if err != nil {
+		return "", false, err
+	}
+	isAdmin := count == 0
+
+	err = s.pool.QueryRow(ctx, `
+		INSERT INTO users(provider, subject_hash, email, password_hash, is_admin, last_login_at)
+		VALUES ('local', $1, $2, $3, $4, now())
+		ON CONFLICT (provider, subject_hash) DO NOTHING
+		RETURNING id::text
+	`, hashEmail(email), strings.ToLower(strings.TrimSpace(email)), passwordHash, isAdmin).Scan(&userID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, err
+	}
+	return userID, true, s.ensurePersonalFamily(ctx, userID)
+}
+
+// GetUserByEmail sucht einen lokalen Account anhand der E-Mail-Adresse.
+func (s Store) GetUserByEmail(ctx context.Context, email string) (userID, passwordHash string, found bool, err error) {
+	err = s.pool.QueryRow(ctx, `
+		SELECT id::text, COALESCE(password_hash, '')
+		FROM users
+		WHERE provider = 'local' AND email = $1
+	`, strings.ToLower(strings.TrimSpace(email))).Scan(&userID, &passwordHash)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", "", false, nil
+	}
+	if err != nil {
+		return "", "", false, err
+	}
+	return userID, passwordHash, true, nil
+}
+
+// IsAdminUser gibt zurück ob der User die Admin-Rolle hat.
+func (s Store) IsAdminUser(ctx context.Context, userID string) (bool, error) {
+	var isAdmin bool
+	err := s.pool.QueryRow(ctx, `
+		SELECT is_admin FROM users WHERE id = $1
+	`, userID).Scan(&isAdmin)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	return isAdmin, err
+}
+
+func hashEmail(email string) string {
+	h := sha256.Sum256([]byte(strings.ToLower(strings.TrimSpace(email))))
+	return hex.EncodeToString(h[:])
 }
