@@ -231,12 +231,6 @@ func cleanBringExcludeValues(values []string) []string {
 }
 
 func (h *Handler) absoluteRequestURL(r *http.Request, path string) *url.URL {
-	if baseURL := h.auth.BaseURL(); baseURL != "" {
-		parsed, err := url.Parse(baseURL)
-		if err == nil && parsed.Scheme != "" && parsed.Host != "" {
-			return &url.URL{Scheme: parsed.Scheme, Host: parsed.Host, Path: path}
-		}
-	}
 	scheme := firstForwardedValue(r.Header.Get("X-Forwarded-Proto"))
 	if scheme == "" {
 		if r.TLS != nil {

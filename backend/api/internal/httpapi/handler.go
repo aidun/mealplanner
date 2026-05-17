@@ -26,10 +26,9 @@ import (
 // Repository is the handler's persistence boundary. It accepts the request so middleware context
 // can provide the authenticated user while tests can use an in-memory implementation.
 type Repository interface {
-	UpsertUser(r *http.Request, provider, subjectHash string, email string, emailHash string) (string, error)
-	GetUserEmail(r *http.Request, userID string) (string, error)
-	IsPremiumUser(r *http.Request, userID string) (bool, error)
-	LoginAllowed(r *http.Request, email string, emailHash string) (bool, error)
+	RegisterUser(r *http.Request, email, passwordHash string) (userID string, created bool, err error)
+	GetUserByEmail(r *http.Request, email string) (userID, passwordHash string, found bool, err error)
+	IsAdminUser(r *http.Request, userID string) (bool, error)
 	GetAccountSettings(r *http.Request) (domain.AccountSettings, error)
 	SaveAccountSettings(r *http.Request, settings domain.AccountSettings) (domain.AccountSettings, error)
 	GetAccountSettingsForUser(r *http.Request, userID string) (domain.AccountSettings, error)
@@ -44,7 +43,6 @@ type Repository interface {
 	AcceptFamilyInvite(r *http.Request, token string, mergedProfile domain.Profile) (domain.FamilySummary, error)
 	UpdateFamilyMemberLink(r *http.Request, accountUserID string, memberID string) (domain.FamilySummary, error)
 	UpdateFamilyAccountSettings(r *http.Request, accountUserID string, settings domain.AccountSettings) (domain.FamilySummary, error)
-	UserEmailHash(r *http.Request) (string, error)
 	GetProfileByFamily(r *http.Request, familyID string) (domain.Profile, error)
 	InviteTargetFamily(r *http.Request, token string) (string, error)
 	GetProfile(r *http.Request) (domain.Profile, error)
@@ -72,20 +70,16 @@ type StoreRepository struct {
 	Store store.Store
 }
 
-func (r StoreRepository) UpsertUser(req *http.Request, provider, subjectHash string, email string, emailHash string) (string, error) {
-	return r.Store.UpsertUser(req.Context(), provider, subjectHash, email, emailHash)
+func (r StoreRepository) RegisterUser(req *http.Request, email, passwordHash string) (string, bool, error) {
+	return r.Store.RegisterUser(req.Context(), email, passwordHash)
 }
 
-func (r StoreRepository) GetUserEmail(req *http.Request, userID string) (string, error) {
-	return r.Store.GetUserEmail(req.Context(), userID)
+func (r StoreRepository) GetUserByEmail(req *http.Request, email string) (string, string, bool, error) {
+	return r.Store.GetUserByEmail(req.Context(), email)
 }
 
-func (r StoreRepository) IsPremiumUser(req *http.Request, userID string) (bool, error) {
-	return r.Store.IsPremiumUser(req.Context(), userID)
-}
-
-func (r StoreRepository) LoginAllowed(req *http.Request, email string, emailHash string) (bool, error) {
-	return r.Store.LoginAllowed(req.Context(), email, emailHash)
+func (r StoreRepository) IsAdminUser(req *http.Request, userID string) (bool, error) {
+	return r.Store.IsAdminUser(req.Context(), userID)
 }
 
 func (r StoreRepository) GetAccountSettings(req *http.Request) (domain.AccountSettings, error) {
@@ -142,10 +136,6 @@ func (r StoreRepository) UpdateFamilyMemberLink(req *http.Request, accountUserID
 
 func (r StoreRepository) UpdateFamilyAccountSettings(req *http.Request, accountUserID string, settings domain.AccountSettings) (domain.FamilySummary, error) {
 	return r.Store.UpdateFamilyAccountSettings(req.Context(), mustUserID(req.Context()), accountUserID, settings)
-}
-
-func (r StoreRepository) UserEmailHash(req *http.Request) (string, error) {
-	return r.Store.UserEmailHash(req.Context(), mustUserID(req.Context()))
 }
 
 func (r StoreRepository) GetProfileByFamily(req *http.Request, familyID string) (domain.Profile, error) {
@@ -266,15 +256,11 @@ func New(repo Repository, planner planner.Planner, authService auth.Service, api
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", h.health)
 	mux.Handle("GET /metrics", h.metrics)
-	mux.HandleFunc("GET /api/auth/providers", h.getAuthProviders)
-	mux.HandleFunc("POST /api/auth/google/start", h.startGoogle)
-	mux.HandleFunc("GET /api/auth/google/callback", h.googleCallback)
-	mux.HandleFunc("GET /api/auth/apple/start", h.appleNotConfigured)
-	mux.HandleFunc("GET /api/auth/apple/callback", h.appleNotConfigured)
+	mux.HandleFunc("POST /api/auth/register", h.register)
+	mux.HandleFunc("POST /api/auth/login", h.login)
 	mux.HandleFunc("GET /api/session", h.getSession)
 	mux.HandleFunc("POST /api/auth/logout", h.withSession(h.withCSRF(h.logout)))
-	mux.HandleFunc("POST /api/feedback", h.withSession(h.withPremium(h.withCSRF(h.createFeedback))))
-	mux.HandleFunc("POST /api/internal/plans/weekly", h.withAPI(h.createPlansForAllUsers))
+	mux.HandleFunc("POST /api/feedback", h.withSession(h.withCSRF(h.createFeedback)))
 	mux.HandleFunc("GET /api/profile", h.withSession(h.getProfile))
 	mux.HandleFunc("PUT /api/profile", h.withSession(h.withCSRF(h.putProfile)))
 	mux.HandleFunc("GET /api/account-settings", h.withSession(h.getAccountSettings))
@@ -384,15 +370,9 @@ func (h *Handler) createFamilyInvite(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	emailHash := h.auth.Hash("email:" + strings.ToLower(strings.TrimSpace(req.Email)))
-	if strings.TrimSpace(req.Email) == "" {
-		writeError(w, http.StatusBadRequest, "Bitte gib eine E-Mail-Adresse an.")
-		return
-	}
-	family, err := h.repo.GetFamily(r)
-	if err != nil {
-		h.serverError(w, r, err)
-		return
+	emailHash := ""
+	if e := strings.TrimSpace(req.Email); e != "" {
+		emailHash = h.auth.Hash("email:" + strings.ToLower(e))
 	}
 	invite, token, err := h.repo.CreateFamilyInvite(r, emailHash, 7*24*time.Hour)
 	if errors.Is(err, store.ErrAccountAlreadyInFamily) {
@@ -407,7 +387,7 @@ func (h *Handler) createFamilyInvite(w http.ResponseWriter, r *http.Request) {
 		h.serverError(w, r, err)
 		return
 	}
-	invite.InviteLink = h.absoluteRequestURL(r, "/family/invites/accept").String() + "?token=" + token
+	invite.InviteLink = h.absoluteRequestURL(r, "/join").String() + "?token=" + token
 	writeJSON(w, http.StatusCreated, invite)
 }
 
@@ -730,49 +710,6 @@ func (h *Handler) createPlan(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, saved)
 }
 
-func (h *Handler) createPlansForAllUsers(w http.ResponseWriter, r *http.Request) {
-	userIDs, err := h.repo.ListUserIDs(r)
-	if err != nil {
-		h.serverError(w, r, err)
-		return
-	}
-	var created []string
-	var failures []map[string]string
-	for _, userID := range userIDs {
-		req := withUserID(r, userID)
-		profile, err := h.repo.GetProfile(req)
-		if err != nil {
-			failures = append(failures, map[string]string{"userID": userID, "error": err.Error()})
-			continue
-		}
-		favorites, err := h.repo.ListFavorites(req)
-		if err != nil {
-			failures = append(failures, map[string]string{"userID": userID, "error": err.Error()})
-			continue
-		}
-		plan, err := h.planner.GenerateWeek(req.Context(), profile, "", favorites)
-		if err != nil {
-			failures = append(failures, map[string]string{"userID": userID, "error": err.Error()})
-			continue
-		}
-		saved, err := h.repo.SavePlan(req, plan)
-		if err != nil {
-			failures = append(failures, map[string]string{"userID": userID, "error": err.Error()})
-			continue
-		}
-		_ = h.repo.RecordGenerationEvent(req, "weekly_cron")
-		created = append(created, saved.ID)
-	}
-	status := http.StatusCreated
-	if len(failures) > 0 {
-		status = http.StatusMultiStatus
-	}
-	writeJSON(w, status, map[string]any{
-		"created":  created,
-		"failures": failures,
-		"users":    len(userIDs),
-	})
-}
 
 func (h *Handler) getCurrentPlan(w http.ResponseWriter, r *http.Request) {
 	plan, err := h.repo.GetCurrentPlan(r)
