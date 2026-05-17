@@ -17,15 +17,17 @@ import (
 
 // OpenAIConfig contains only the live provider values; secrets are never logged or persisted.
 type OpenAIConfig struct {
-	APIKey string
-	Model  string
+	APIKey  string
+	BaseURL string
+	Model   string
 }
 
 // OpenAIGenerator implements planner.Generator through the OpenAI Responses API.
 type OpenAIGenerator struct {
-	apiKey string
-	model  string
-	client *http.Client
+	apiKey  string
+	baseURL string
+	model   string
+	client  *http.Client
 }
 
 // NewOpenAIGenerator rejects placeholder keys so live mode fails fast during startup.
@@ -34,14 +36,19 @@ func NewOpenAIGenerator(cfg OpenAIConfig) (OpenAIGenerator, error) {
 	if apiKey == "" || strings.HasPrefix(apiKey, "__set_") {
 		return OpenAIGenerator{}, errors.New("OPENAI_API_KEY is required for live provider mode")
 	}
+	baseURL := strings.TrimRight(strings.TrimSpace(cfg.BaseURL), "/")
+	if baseURL == "" {
+		baseURL = "https://api.openai.com"
+	}
 	model := strings.TrimSpace(cfg.Model)
 	if model == "" {
 		model = "gpt-5.4-mini"
 	}
 	return OpenAIGenerator{
-		apiKey: apiKey,
-		model:  model,
-		client: &http.Client{Timeout: 90 * time.Second},
+		apiKey:  apiKey,
+		baseURL: baseURL,
+		model:   model,
+		client:  &http.Client{Timeout: 90 * time.Second},
 	}, nil
 }
 
@@ -106,7 +113,7 @@ func (g OpenAIGenerator) call(ctx context.Context, operation string, prompt stri
 	if err != nil {
 		return err
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://api.openai.com/v1/responses", bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, g.baseURL+"/v1/responses", bytes.NewReader(body))
 	if err != nil {
 		return err
 	}

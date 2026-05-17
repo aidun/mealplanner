@@ -55,7 +55,7 @@ func main() {
 // buildGenerator keeps the provider switch at startup so request handling stays mode-agnostic.
 func buildGenerator(cfg config.Config) (planner.Generator, error) {
 	if strings.EqualFold(cfg.ProviderMode, "live") {
-		return provider.NewOpenAIGenerator(provider.OpenAIConfig{APIKey: cfg.OpenAIAPIKey, Model: cfg.OpenAIModel})
+		return provider.NewOpenAIGenerator(provider.OpenAIConfig{APIKey: cfg.OpenAIAPIKey, BaseURL: cfg.OpenAIBaseURL, Model: cfg.OpenAIModel})
 	}
 	return provider.NewMockGenerator(), nil
 }
