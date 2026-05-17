@@ -26,6 +26,12 @@ spec:
                 secretKeyRef:
                   name: mealplanner-database
                   key: DATABASE_URL
+            - name: SESSION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: mealplanner-auth-core
+                  key: SESSION_SECRET
+                  optional: true
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
