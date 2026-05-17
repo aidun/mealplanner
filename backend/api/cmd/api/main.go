@@ -12,7 +12,6 @@ import (
 	"github.com/aidun/mealplanner/backend/api/internal/auth"
 	"github.com/aidun/mealplanner/backend/api/internal/config"
 	"github.com/aidun/mealplanner/backend/api/internal/httpapi"
-	"github.com/aidun/mealplanner/backend/api/internal/mailer"
 	"github.com/aidun/mealplanner/backend/api/internal/planner"
 	"github.com/aidun/mealplanner/backend/api/internal/provider"
 	"github.com/aidun/mealplanner/backend/api/internal/store"
@@ -37,29 +36,10 @@ func main() {
 		log.Fatal(err)
 	}
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	appMailer, err := mailer.New(mailer.Config{
-		Enabled:      cfg.EmailEnabled,
-		Provider:     cfg.EmailProvider,
-		From:         cfg.EmailFrom,
-		ReplyTo:      cfg.EmailReplyTo,
-		ResendAPIKey: cfg.ResendAPIKey,
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
 	authService := auth.NewService(auth.Config{
-		BaseURL:              cfg.AuthBaseURL,
-		SessionSecret:        cfg.SessionSecret,
-		AllowedSubjectHashes: cfg.AuthAllowedSubjectHashes,
-		AllowedEmailHashes:   cfg.AuthAllowedEmailHashes,
-		GoogleClientID:       cfg.GoogleClientID,
-		GoogleClientSecret:   cfg.GoogleClientSecret,
-		AppleClientID:        cfg.AppleClientID,
-		AppleTeamID:          cfg.AppleTeamID,
-		AppleKeyID:           cfg.AppleKeyID,
-		ApplePrivateKey:      cfg.ApplePrivateKey,
+		SessionSecret: cfg.SessionSecret,
 	})
-	handler := httpapi.New(httpapi.StoreRepository{Store: store.New(pool)}, planner.New(generator), authService, cfg.APISecret, cfg.CORSOrigins, logger, appMailer)
+	handler := httpapi.New(httpapi.StoreRepository{Store: store.New(pool)}, planner.New(generator), authService, cfg.APISecret, cfg.CORSOrigins, logger)
 
 	server := &http.Server{
 		Addr:              ":" + cfg.Port,

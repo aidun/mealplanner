@@ -353,10 +353,7 @@ func (h *Handler) putAccountSettings(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	saved, err := h.repo.SaveAccountSettings(r, domain.AccountSettings{
-		WeeklyPlanEmailEnabled: settings.WeeklyPlanEmailEnabled,
-		RecipeEmailEnabled:     settings.RecipeEmailEnabled,
-	})
+	saved, err := h.repo.SaveAccountSettings(r, domain.AccountSettings{})
 	if err != nil {
 		h.serverError(w, r, err)
 		return
