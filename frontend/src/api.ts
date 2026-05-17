@@ -5,18 +5,14 @@ import type {
   FavoriteRecipe,
   Meal,
   AdminOverview,
-  PremiumUser,
   PromptDebugSnapshot,
   Plan,
   Profile,
   Session,
   FeedbackEntry,
-  MailTemplate,
-  PremiumInviteResult,
   ShoppingList,
   UpdateFamilyAccountSettingsRequest,
   UpdateFamilyMemberLinkRequest,
-  UpdateMailTemplateRequest,
 } from './types';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
@@ -232,28 +228,6 @@ export async function getAdminOverview(options: { includeResolved?: boolean } = 
   }
   const suffix = params.size > 0 ? `?${params.toString()}` : '';
   return request<AdminOverview>(`/api/admin/overview${suffix}`);
-}
-
-export async function createPremiumUser(email: string, options: { sendInvite?: boolean } = {}) {
-  return request<PremiumInviteResult>('/api/admin/premium-users', {
-    method: 'POST',
-    body: JSON.stringify({ email, sendInvite: Boolean(options.sendInvite) }),
-  });
-}
-
-export async function deletePremiumUser(premiumUserId: string) {
-  return request<null>(`/api/admin/premium-users/${encodeURIComponent(premiumUserId)}`, { method: 'DELETE' });
-}
-
-export async function getMailTemplates() {
-  return request<MailTemplate[]>('/api/admin/mail-templates');
-}
-
-export async function updateMailTemplate(kind: string, payload: UpdateMailTemplateRequest) {
-  return request<MailTemplate>(`/api/admin/mail-templates/${encodeURIComponent(kind)}`, {
-    method: 'PUT',
-    body: JSON.stringify(payload),
-  });
 }
 
 export async function createFeedback(message: string, page: string) {

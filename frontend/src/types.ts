@@ -79,7 +79,6 @@ export interface FamilySummary {
 export interface FamilyInvite {
   id: string;
   inviteLink: string;
-  emailSent: boolean;
   expiresAt: string;
   warningText?: string;
 }
@@ -208,7 +207,6 @@ export interface Session {
   userID?: string;
   email?: string;
   isAdmin?: boolean;
-  isPremium?: boolean;
   onboardingRequired?: boolean;
 }
 
@@ -216,19 +214,6 @@ export interface AccountSettings {
   weeklyPlanEmailEnabled: boolean;
   recipeEmailEnabled: boolean;
   updatedAt?: string;
-}
-
-export interface PremiumUser {
-  id: string;
-  email: string;
-  inviteSent?: boolean;
-  createdAt?: string;
-}
-
-export interface PremiumInviteResult {
-  premiumUser: PremiumUser;
-  emailSent: boolean;
-  inviteLink?: string;
 }
 
 export type FeedbackStatus = 'open' | 'resolved';
@@ -262,22 +247,9 @@ export interface AdminStats {
 }
 
 export interface AdminOverview {
-  premiumUsers?: PremiumUser[];
   feedback?: FeedbackEntry[];
   resolvedFeedback?: FeedbackEntry[];
-  mailTemplates?: MailTemplate[];
   stats: AdminStats;
-}
-
-export interface MailTemplate {
-  kind: string;
-  label?: string;
-  subject: string;
-  textBody: string;
-  htmlBody: string;
-  updatedAt?: string;
-  description?: string;
-  variableHint?: string[];
 }
 
 export interface UpdateFamilyMemberLinkRequest {
@@ -288,12 +260,6 @@ export interface UpdateFamilyMemberLinkRequest {
 export interface UpdateFamilyAccountSettingsRequest {
   accountUserId: string;
   settings: AccountSettings;
-}
-
-export interface UpdateMailTemplateRequest {
-  subject: string;
-  textBody: string;
-  htmlBody: string;
 }
 
 export interface MemberFormState {

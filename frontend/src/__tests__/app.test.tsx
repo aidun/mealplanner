@@ -140,32 +140,6 @@ const family = {
 };
 const session = { authenticated: true, csrfToken: 'csrf-token-1', userID: 'user-1', email: 'anna@example.test', isAdmin: false };
 const adminOverview = {
-  premiumUsers: [{ id: 'premium-1', email: 'premium@example.test' }],
-  mailTemplates: [
-    {
-      kind: 'premium-invite',
-      label: 'Premium-Einladung',
-      subject: 'Premium für dein Familienkonto',
-      textBody: 'Hallo {{email}}',
-      htmlBody: '<p>Hallo {{email}}</p>',
-      description: 'Wird nach Premium-Freigabe verschickt.',
-      variableHint: ['{{email}}', '{{invite_link}}'],
-    },
-    {
-      kind: 'family-invite',
-      label: 'Familien-Einladung',
-      subject: 'Einladung ins Familienkonto',
-      textBody: 'Komm in die Familie',
-      htmlBody: '<p>Komm in die Familie</p>',
-    },
-    {
-      kind: 'weekly-cron',
-      label: 'Wochenplan-Mail',
-      subject: 'Dein Wochenplan ist da',
-      textBody: 'Die Woche ist fertig',
-      htmlBody: '<p>Die Woche ist fertig</p>',
-    },
-  ],
   feedback: [{ id: 'feedback-1', message: 'Die Auswahl im Profil ist zu versteckt.', page: '/onboarding', status: 'open', createdAt: '2026-04-21T09:30:00Z' }],
   resolvedFeedback: [{ id: 'feedback-2', message: 'Header auf Mobile verdichten.', page: '/', status: 'resolved', createdAt: '2026-04-20T09:30:00Z', resolvedAt: '2026-04-21T10:30:00Z' }],
   stats: {
@@ -246,7 +220,6 @@ function createFetchMock(options: {
             ? {
                 ...session,
                 isAdmin: options.isAdmin ?? false,
-                isPremium: options.isAdmin ? false : true,
                 onboardingRequired: options.onboardingRequired ?? false,
               }
             : { authenticated: false }
@@ -309,7 +282,6 @@ function createFetchMock(options: {
         JSON.stringify({
           id: 'invite-1',
           inviteLink: 'https://mealplanner.test/family/invites/accept?token=invite-token',
-          emailSent: options.inviteEmailSent ?? true,
           expiresAt: '2026-04-28T00:00:00Z',
           warningText: 'Der persönliche Account geht im Familienkonto auf.',
         }),
@@ -363,32 +335,6 @@ function createFetchMock(options: {
 
     if (url.includes('/api/admin/feedback/') && init?.method === 'POST') {
       return new Response(JSON.stringify({ id: 'feedback-1', message: 'Die Auswahl im Profil ist zu versteckt.', page: '/onboarding', status: 'resolved' }), { status: 200 });
-    }
-
-    if (url.endsWith('/api/admin/mail-templates')) {
-      return new Response(JSON.stringify(adminOverview.mailTemplates), { status: 200 });
-    }
-
-    if (url.endsWith('/api/admin/premium-users') && init?.method === 'POST') {
-      const payload = JSON.parse(String(init.body ?? '{}'));
-      return new Response(
-        JSON.stringify({
-          premiumUser: { id: 'premium-new', email: payload.email, inviteSent: Boolean(payload.sendInvite) },
-          emailSent: Boolean(payload.sendInvite),
-          inviteLink: 'https://mealplanner.test/',
-        }),
-        { status: 201 }
-      );
-    }
-
-    if (url.includes('/api/admin/premium-users/') && init?.method === 'DELETE') {
-      return new Response(null, { status: 204 });
-    }
-
-    if (url.includes('/api/admin/mail-templates/') && init?.method === 'PUT') {
-      const payload = JSON.parse(String(init.body ?? '{}'));
-      const kind = url.split('/').pop();
-      return new Response(JSON.stringify({ kind, ...payload }), { status: 200 });
     }
 
     if (url.includes('/api/plans/plan-1/bring-export-url')) {
@@ -591,14 +537,6 @@ describe('Mealplanner app', () => {
     expect(screen.getByText('Zucchini')).toBeInTheDocument();
     expect(screen.queryByText('Heute im Fokus')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Liste einklappen' })).toBeInTheDocument();
-    expect(screen.getByRole('complementary', { name: 'Premium Feedback' })).toBeInTheDocument();
-  });
-
-  it('keeps the premium feedback box collapsed by default', async () => {
-    renderApp('/');
-
-    expect(await screen.findByRole('complementary', { name: 'Premium Feedback' })).toBeInTheDocument();
-    expect(screen.queryByRole('textbox', { name: 'Feedback' })).not.toBeInTheDocument();
   });
 
   it('loads a selected historical week and creates a plan for that week', async () => {
@@ -621,26 +559,6 @@ describe('Mealplanner app', () => {
         })
       );
     });
-  });
-
-  it('sends premium feedback with page context', async () => {
-    const fetchMock = vi.mocked(fetch);
-    renderApp('/');
-
-    fireEvent.click(await screen.findByRole('button', { name: /Feedback/i }));
-    await userEvent.type(await screen.findByRole('textbox', { name: 'Feedback' }), 'Die Tagesauswahl braucht mehr Kontext.');
-    fireEvent.click(screen.getByRole('button', { name: 'Feedback senden' }));
-
-    await waitFor(() =>
-      expect(fetchMock).toHaveBeenCalledWith(
-        expect.stringContaining('/api/feedback'),
-        expect.objectContaining({
-          method: 'POST',
-          body: JSON.stringify({ message: 'Die Tagesauswahl braucht mehr Kontext.', page: '/?meal=meal-1&day=2026-04-13' }),
-        })
-      )
-    );
-    expect(await screen.findByText(/Feedback gespeichert/)).toBeInTheDocument();
   });
 
   it('renders the Bring export as a direct link without opening a popup', async () => {
@@ -792,6 +710,7 @@ describe('Mealplanner app', () => {
   });
 
   it('keeps day-tab navigation in the plan pane until a recipe is opened', async () => {
+    vi.stubGlobal('fetch', createFetchMock({ isAdmin: true }));
     const fetchMock = vi.mocked(fetch);
     renderApp('/');
 
@@ -892,13 +811,10 @@ describe('Mealplanner app', () => {
 
     renderApp('/');
 
-    expect(await screen.findByRole('complementary', { name: 'Premium Feedback' })).toBeInTheDocument();
     fireEvent.click(await screen.findByRole('link', { name: 'Admin' }));
-    expect(await screen.findByRole('heading', { name: 'Betrieb, Freigaben und Feedback' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Betrieb und Feedback' })).toBeInTheDocument();
     expect(await screen.findByText('Letzter Test-Deploy')).toBeInTheDocument();
     expect(await screen.findByText('Build-ID')).toBeInTheDocument();
-    expect(await screen.findByText('premium@example.test')).toBeInTheDocument();
-    expect(await screen.findByText('Premium-Einladung')).toBeInTheDocument();
     expect(await screen.findByText('weekly_cron')).toBeInTheDocument();
     expect(await screen.findByText('Die Auswahl im Profil ist zu versteckt.')).toBeInTheDocument();
     expect(await screen.findByText('Archiv')).toBeInTheDocument();
@@ -944,27 +860,13 @@ describe('Mealplanner app', () => {
       );
     });
     expect(await screen.findByText('https://mealplanner.test/family/invites/accept?token=invite-token')).toBeInTheDocument();
-    expect(screen.getByText(/Die Einladung wurde per E-Mail verschickt/i)).toBeInTheDocument();
+    expect(screen.getByText('Der Einladungslink ist bereit zum Teilen.')).toBeInTheDocument();
     expect(screen.getByText(/persönliche Account geht im Familienkonto auf/i)).toBeInTheDocument();
     expect(screen.getAllByText('anna@example.test').length).toBeGreaterThan(0);
     expect(screen.getAllByDisplayValue('Mama').length).toBeGreaterThan(0);
     expect(screen.getByText(/von 2 Logins verbunden/i)).toBeInTheDocument();
   });
 
-  it('shows a manual-share fallback when invite email delivery fails', async () => {
-    vi.stubGlobal('fetch', createFetchMock({ inviteEmailSent: false }));
-
-    renderApp('/onboarding');
-
-    fireEvent.click(await screen.findByRole('button', { name: 'Einladen' }));
-    fireEvent.change(screen.getByLabelText('E-Mail-Adresse für Einladung'), {
-      target: { value: 'person@example.test' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Einladung per E-Mail senden' }));
-
-    expect(await screen.findByText(/Der Link ist bereit\. Die E-Mail konnte gerade nicht verschickt werden\./i)).toBeInTheDocument();
-    expect(screen.getByText('https://mealplanner.test/family/invites/accept?token=invite-token')).toBeInTheDocument();
-  });
 
   it('shows merged family members with visible login mails', async () => {
     renderApp('/onboarding');
@@ -1118,67 +1020,8 @@ describe('Mealplanner app', () => {
     expect(await screen.findByText('Mail-Einstellungen gespeichert.')).toBeInTheDocument();
   });
 
-  it('creates a premium user and sends an invite mail from admin', async () => {
-    vi.stubGlobal('fetch', createFetchMock({ isAdmin: true }));
-    renderApp('/admin');
 
-    fireEvent.change(await screen.findByLabelText('Premium-Mail freigeben'), {
-      target: { value: 'new@example.test' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Freigeben' }));
 
-    await waitFor(() => {
-      expect(fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/api/admin/premium-users'),
-        expect.objectContaining({
-          method: 'POST',
-          headers: expect.objectContaining({ 'X-CSRF-Token': 'csrf-token-1' }),
-          body: JSON.stringify({ email: 'new@example.test', sendInvite: true }),
-        })
-      );
-    });
-    expect(await screen.findByText('Premium freigeschaltet und Einladung versendet.')).toBeInTheDocument();
-    expect(screen.getByText('https://mealplanner.test/')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Premium-Link kopieren' }));
-    await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalledWith('https://mealplanner.test/'));
-  });
-
-  it('saves editable mail templates from admin', async () => {
-    vi.stubGlobal('fetch', createFetchMock({ isAdmin: true }));
-    renderApp('/admin');
-
-    const subjectField = await screen.findByDisplayValue('Premium für dein Familienkonto');
-    fireEvent.change(subjectField, { target: { value: 'Neue Premium-Einladung' } });
-    fireEvent.click(screen.getAllByRole('button', { name: 'Vorlage speichern' })[0]!);
-
-    await waitFor(() => {
-      expect(fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/api/admin/mail-templates/premium-invite'),
-        expect.objectContaining({
-          method: 'PUT',
-          headers: expect.objectContaining({ 'X-CSRF-Token': 'csrf-token-1' }),
-          body: JSON.stringify({
-            subject: 'Neue Premium-Einladung',
-            textBody: 'Hallo {{email}}',
-            htmlBody: '<p>Hallo {{email}}</p>',
-          }),
-        })
-      );
-    });
-    expect(await screen.findByText('Mail-Template gespeichert.')).toBeInTheDocument();
-  });
-
-  it('renders mail HTML previews in a sandboxed frame', async () => {
-    vi.stubGlobal('fetch', createFetchMock({ isAdmin: true }));
-    const { container } = renderApp('/admin');
-
-    await screen.findByDisplayValue('Premium für dein Familienkonto');
-    const previewFrame = container.querySelector('iframe.template-preview-frame');
-
-    expect(previewFrame).toHaveAttribute('sandbox', '');
-    expect(previewFrame).toHaveAttribute('referrerpolicy', 'no-referrer');
-    expect(previewFrame).toHaveAttribute('srcdoc', '<p>Hallo {{email}}</p>');
-  });
 
   it('copies the invite link from onboarding', async () => {
     renderApp('/onboarding');

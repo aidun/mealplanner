@@ -319,8 +319,7 @@ export function OnboardingPage() {
   const linkedAccountsCount = visibleAccounts.filter((account) => account.linkedMemberId).length;
   const unassignedAccountsCount = visibleAccounts.filter((account) => account.unassigned).length;
   const favorites = favoritesQuery.data ?? [];
-  const inviteSentByEmail = Boolean((inviteMutation.data as { emailSent?: boolean } | undefined)?.emailSent);
-  const canManageFamilyMail = Boolean(session?.isPremium || session?.isAdmin);
+  const canManageFamilyMail = Boolean(session?.isAdmin);
   const namedMembersCount = form.members.filter((member) => member.name.trim() !== '').length;
   const activeMealSlotsCount = form.mealPlanDays.reduce((sum, day) => sum + day.slots.filter((slot) => slot.enabled).length, 0);
   const hasUnconfiguredProfile = !form.householdName.trim() && namedMembersCount === 0;
@@ -1419,12 +1418,8 @@ export function OnboardingPage() {
                     >
                       {inviteCopyState === 'copied' ? <CheckIcon className="action-icon" /> : <CopyIcon className="action-icon" />}
                     </button>
-                    <p>
-                      {inviteSentByEmail
-                        ? 'Die Einladung wurde per E-Mail verschickt und kann bei Bedarf auch direkt geteilt werden.'
-                        : 'Der Link ist bereit. Die E-Mail konnte gerade nicht verschickt werden.'}
-                    </p>
-                    <p>{inviteMutation.data.warningText}</p>
+                    <p>Der Einladungslink ist bereit zum Teilen.</p>
+                    {inviteMutation.data.warningText ? <p>{inviteMutation.data.warningText}</p> : null}
                     {inviteCopyState === 'failed' ? <p className="error-copy">Link konnte nicht kopiert werden.</p> : null}
                   </div>
                 ) : null}
