@@ -1,98 +1,172 @@
 # Mahlio
 
-Private Familien-Webapp fuer Wochen-Essensplaene. Der aktuelle produktive Zugang laeuft in Phase A weiter ueber
-`https://mealplanner.markushartmann.dev`.
+KI-gestützter Wochenessensplaner für Familien. Open Source, self-hosted, auf Kubernetes bereit.
 
-## Architektur
+Mahlio nutzt ein großes Sprachmodell (LLM), um personalisierte Wochenpläne basierend auf Familienvorlieben, Diäten und Verfügbarkeiten zu erstellen. Alle Daten bleiben unter deiner Kontrolle — auf deinem Server.
 
-- `backend/api`: Go API mit Postgres, Migrationen und Provider-Abstraktion fuer Mock/OpenAI.
-- `frontend`: React/Vite UI im Premium-Food-App-Stil.
-- `deploy`: Kustomize-Manifeste fuer Test/Production, Cloudflare Tunnel und ArgoCD.
-- `docs/ARCHITECTURE.md`: Gesamtübersicht über Services, SaaS-Dienste und Betriebs-Komponenten.
-- `docs/API.md`: gepflegte Backend-API-Dokumentation fuer Frontend, Admin und Betrieb.
-- `docs/BRAND.md`: aktueller Marken-, Naming- und Claim-Stand fuer Phase A.
-- `docs/STITCH.md`: Stitch-MCP-Setup und AGENT-Workflow fuer UI-Arbeit in `mealplanner`.
-- `docs/REDESIGN_BREAKPOINT_SYSTEM.md`: geraeteklassenbezogene Redesign-Regeln fuer Desktop, Tablet und Handy als Handoff fuer die spaetere Frontend-Umsetzung.
-- `docs/security.md`: Security-, Pentest- und Betriebs-Runbook.
+---
 
-## Lokal starten
+## Quickstart mit Docker Compose
 
-Backend erwartet Postgres und nutzt standardmaessig Mock-Generierung:
+### Voraussetzungen
 
-```sh
+- Docker und Docker Compose
+- (Optional) OpenAI API-Schlüssel für LLM-Features
+
+### 3 Schritte zum Starten
+
+1. **`.env` erstellen** (von `.env.example` kopieren und anpassen):
+   ```bash
+   cp .env.example .env
+   ```
+   Mindestens setzen:
+   - `SESSION_SECRET`: Beliebig langer String (z.B. `$(openssl rand -hex 32)`)
+   - `API_SECRET`: Beliebig langer String
+   - Wenn du OpenAI nutzen möchtest: `OPENAI_API_KEY=sk-...`
+
+2. **Docker Compose starten**:
+   ```bash
+   docker compose up -d
+   ```
+   Das startet PostgreSQL, Backend und Frontend.
+
+3. **Browser öffnen**:
+   ```
+   http://localhost:5173
+   ```
+   Fertig! Erstelle einen Account und starte mit der Essensplanung.
+
+Weitere Infos: siehe `docker-compose.yml` und `.env.example`.
+
+---
+
+## Konfiguration
+
+Alle Einstellungen laufen über Umgebungsvariablen:
+
+| Variable | Bedeutung | Beispiel |
+|----------|-----------|---------|
+| `SESSION_SECRET` | Geheim für Session-Cookies | `openssl rand -hex 32` |
+| `API_SECRET` | Geheim für JWT/Token-Signierung | `openssl rand -hex 32` |
+| `DATABASE_URL` | PostgreSQL-Connection-String | `postgres://user:pass@localhost/mahlio` |
+| `PROVIDER_MODE` | `mock` (Test) oder `live` (LLM-Calls) | `mock` (default) |
+| `OPENAI_API_KEY` | OpenAI API-Schlüssel (falls `PROVIDER_MODE=live`) | `sk-...` |
+| `OPENAI_BASE_URL` | Alternative API-Basis-URL | `https://api.openai.com/v1` (default) |
+| `OPENAI_MEAL_MODEL` | LLM-Modell für Essensplanung | `gpt-4o-mini` (default) |
+| `CORS_ORIGINS` | Erlaubte Frontend-Origins (komma-separiert) | `http://localhost:5173,https://myapp.com` |
+
+Für die vollständige Liste und Defaults siehe `backend/api/cmd/api/main.go`.
+
+---
+
+## LLM-Provider
+
+Mahlio funktioniert mit jedem OpenAI-API-kompatiblen Provider:
+
+### OpenAI
+Standard. `OPENAI_API_KEY` reicht.
+
+### Ollama (lokal)
+```bash
+# Ollama lokal starten (z.B. auf Port 11434)
+ollama serve
+
+# In .env:
+OPENAI_BASE_URL=http://host.docker.internal:11434/v1
+OPENAI_MEAL_MODEL=llama2
+# (bei Docker Desktop; für Linux: IP des Hosts statt host.docker.internal)
+```
+
+### Groq
+Kostenlos, schnell. `OPENAI_API_KEY` auf einen Groq-Key setzen:
+```bash
+OPENAI_BASE_URL=https://api.groq.com/openai/v1
+OPENAI_API_KEY=gsk_...
+OPENAI_MEAL_MODEL=mixtral-8x7b-32768
+```
+
+Jeder OpenAI-API-kompatible Provider funktioniert via `OPENAI_BASE_URL`.
+
+---
+
+## Kubernetes / ArgoCD
+
+Für Production-Deployments nutze **Kustomize** + **ArgoCD**:
+
+### Struktur
+
+- `deploy/base/` — Standard-Konfiguration (Deployment, Service, ConfigMap, Secrets)
+- `deploy/argocd/` — ArgoCD Application-Definition
+- `deploy/test/` — Test-Overlay mit Test-DB und Dev-Settings
+- `deploy/production/` — Production-Overlay (hardened, replicas=2+, resource limits)
+
+### Deploy mit ArgoCD
+
+1. **Application erstellen**:
+   ```bash
+   kubectl apply -f deploy/argocd/application.yaml
+   ```
+
+2. **ArgoCD wird das Manifest synchen**:
+   ```bash
+   argocd app get mahlio
+   argocd app sync mahlio
+   ```
+
+Änderungen erfolgen nur über Git-Commits in diesem Repo — kein direktes `kubectl apply`.
+
+Siehe auch `docs/ARCHITECTURE.md` für die volle Cluster-Übersicht.
+
+---
+
+## Bring-Integration
+
+Mahlio kann Essensplaene in **Bring!** (Einkaufslisten-App) exportieren.
+
+### Voraussetzung
+
+Die Export-URL muss vom Mobilgerät erreichbar sein. In lokalen Setups meist ein Problem — nutze ein Reverse-Proxy oder Tunnel:
+
+```bash
+# z.B. ngrok oder Cloudflare Tunnel
+cloudflare-cli tunnel --url http://localhost:5173
+# Dann die öffentliche URL in Bring eintragen
+```
+
+In Production: `BRING_WEBHOOK_URL` auf die öffentliche HTTPS-URL setzen.
+
+---
+
+## Entwicklung
+
+Backend:
+```bash
 cd backend/api
-DATABASE_URL='postgres://mealplanner:mealplanner@127.0.0.1:5432/mealplanner_test?sslmode=disable' go run ./cmd/migrate up
-DATABASE_URL='postgres://mealplanner:mealplanner@127.0.0.1:5432/mealplanner_test?sslmode=disable' go run ./cmd/api
+DATABASE_URL='postgres://user:pass@localhost/mahlio' go run ./cmd/api
 ```
 
 Frontend:
-
-```sh
+```bash
 cd frontend
 npm ci
 npm run dev
 ```
 
-Social Login benoetigt eine HTTPS-`AUTH_BASE_URL`, Google OAuth Credentials und Allowlist-Hashes.
-Klartext-E-Mail-Adressen gehoeren nicht in Repo oder Datenbank.
-
-## E-Mail-Versand
-
-Transaktionale E-Mails fuer Familien-Einladungen und automatische Wochenplaene laufen ueber das
-Backend. Lokal ist standardmaessig `EMAIL_ENABLED=false`; in Produktion ist `Resend` mit
-`info@markushartmann.dev` als Absender vorgesehen.
-
-Noetige API-Variablen:
-
-- `EMAIL_ENABLED`
-- `EMAIL_PROVIDER` (`noop` oder `resend`)
-- `EMAIL_FROM`
-- `EMAIL_REPLY_TO`
-- `RESEND_API_KEY`
-
-Produktive Werte gehoeren in ein `SealedSecret` oder ein anderes Git-freies Secret-Management,
-nicht als Klartext in dieses Repo. Fuer Cloudflare-DNS muessen die von Resend gelieferten
-SPF-/DKIM-Records gesetzt werden; DMARC sollte mindestens im Monitoring-Modus dokumentiert sein.
-
-## Cluster
-
-Der Test-Overlay nutzt weiterhin `192.168.2.204` im LAN und zusaetzlich Cloudflare Tunnel fuer
-`mealplanner.markushartmann.dev`. `PROVIDER_MODE=live` startet nur sauber, wenn
-`mealplanner-openai.OPENAI_API_KEY` auf einen echten Wert gesetzt ist. Platzhalter wie
-`__set_openai_api_key__` werden vom Backend abgelehnt.
-
-Fuer Segmentierung, SealedSecrets, Secret-Monitoring und die zugehoerigen Cluster-Konventionen
-ist `/Users/markus/repo/clustermanager/docs/security/README.md` die verbindliche Einstiegsstelle.
-Dieses Repo beschreibt die App, nicht die clusterweite Security-Baseline.
-
-## Qualitaets-Gates
-
-```sh
-cd backend/api
-go vet ./...
-go test ./...
-govulncheck ./...
-gosec ./...
-
-cd ../../frontend
-npm run test -- --run
-npm run test:e2e
-npm run build
-npm audit --audit-level=moderate
-
-cd ..
-kubectl kustomize deploy/test
-kubectl kustomize deploy/production
+Tests:
+```bash
+cd backend/api && go test ./... && cd ../../frontend && npm test
 ```
 
-## Testbetrieb
+Siehe `docs/ARCHITECTURE.md` für Service-Übersicht und `docs/API.md` für die Backend-API.
 
-Fuer wiederholbare Erstlogin-Tests im Test-Cluster gibt es einen Operator-Reset:
+---
 
-```sh
-scripts/reset-test-first-login.sh markush1986@gmail.com
-```
+## Lizenz
 
-Der Reset ist absichtlich nur fuer `mealplanner-test` gedacht und bricht ab, wenn
-die notwendige Migration fuer `profile_onboarding_seen` noch nicht ausgerollt ist
-oder das Konto nicht mehr in einem persoenlichen Ein-Personen-Familienzustand ist.
+MIT — siehe `LICENSE`.
+
+---
+
+## Beitragen
+
+Wir freuen uns über Bug-Reports und Pull Requests! Siehe `CONTRIBUTING.md` für Richtlinien.
