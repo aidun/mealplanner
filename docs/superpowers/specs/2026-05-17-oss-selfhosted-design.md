@@ -147,6 +147,17 @@ Alle hardcodierten persönlichen Werte werden entfernt oder durch Env-Vars erset
 
 ---
 
+## Bring-Integration
+
+Bleibt unverändert. Signierung läuft über lokales `API_SECRET` (HMAC), kein externer Dienst.
+Die Export-URL wird aus `APP_BASE_URL` gebaut — bereits konfigurierbar.
+
+**Vorbehalt:** Die Bring-App muss die Export-URL vom Mobilgerät aus erreichen können.
+Bei rein lokalem LAN-Deployment ohne öffentliche URL ist das ein Netzwerk-Problem des Nutzers,
+kein Code-Problem. Im README dokumentieren.
+
+---
+
 ## Nicht im Scope
 
 - Helm Chart (kann später als separates Projekt folgen)
