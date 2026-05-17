@@ -109,7 +109,5 @@ jobs:
       - uses: azure/setup-kubectl@v4
         with:
           version: v1.33.0
-      - name: Render test overlay
-        run: kubectl kustomize deploy/test > /tmp/deploy-test.yaml
-      - name: Render production overlay
-        run: kubectl kustomize deploy/production > /tmp/deploy-production.yaml
+      - name: Render base manifests
+        run: kubectl kustomize deploy/base > /tmp/deploy-base.yaml

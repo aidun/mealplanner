@@ -12,9 +12,6 @@ test('planner smoke path', async ({ page, context }) => {
     if (path === '/api/session') {
       return route.fulfill(json({ authenticated: true, csrfToken: 'csrf-token-1' }));
     }
-    if (path === '/api/auth/providers') {
-      return route.fulfill(json({ providers: [{ id: 'google', name: 'Google', enabled: true, startUrl: '/api/auth/google/start' }] }));
-    }
     if (path === '/api/profile' && method === 'GET') {
       return route.fulfill(json(state.profile));
     }
@@ -88,7 +85,7 @@ test('planner smoke path', async ({ page, context }) => {
 
   await page.getByRole('button', { name: /Abendessen Pasta mit Gemüse/ }).click();
   await page.getByLabel('Wunsch zur Änderung').fill('Bitte schneller und mit mehr Gemüse.');
-  await page.getByRole('button', { name: 'Gericht austauschen' }).click();
+  await page.getByRole('button', { name: 'Einzelnes Gericht vorschlagen' }).click();
   await expect(page.getByRole('heading', { name: 'Cremige Gemüsepasta' })).toBeVisible();
 
   await page.getByRole('button', { name: 'Als Favorit merken' }).click();
@@ -216,9 +213,6 @@ test('login and invite acceptance stay on guarded production paths', async ({ pa
         )
       );
     }
-    if (path === '/api/auth/providers') {
-      return route.fulfill(json({ providers: [{ id: 'google', name: 'Google', enabled: true, startUrl: '/api/auth/google/start' }] }));
-    }
     if (path === '/api/family/invites/accept' && method === 'POST') {
       inviteAccepted = true;
       return route.fulfill(json({ id: 'family-1', name: 'Familie Weber', memberCount: 2, members: [] }));
@@ -243,9 +237,9 @@ test('login and invite acceptance stay on guarded production paths', async ({ pa
   });
 
   await page.goto('/');
-  await expect(page.getByRole('button', { name: 'Mit Google anmelden' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Mahlio' })).toBeVisible();
   await expect(page.getByText('Bringt eure Woche an einen Tisch.')).toBeVisible();
+  await expect(page.getByLabel('E-Mail')).toBeVisible();
 
   authenticated = true;
   await page.goto('/family/invites/accept?token=invite-token');
