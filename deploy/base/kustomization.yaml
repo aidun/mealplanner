@@ -18,6 +18,7 @@ resources:
   - postgres-pvc.yaml
   - postgres-service.yaml
   - postgres-statefulset.yaml
+  - entrypoint-service.yaml
   - entrypoint-configmap.yaml
   - entrypoint-deployment.yaml
   - api-deployment.yaml
