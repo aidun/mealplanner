@@ -19,35 +19,15 @@ spec:
           imagePullPolicy: IfNotPresent
           args:
             - --entryPoints.web.address=:8000/tcp
-            - --entryPoints.websecure.address=:8443/tcp
             - --entryPoints.traefik.address=:8080/tcp
             - --providers.file.filename=/etc/traefik/dynamic/dynamic.yaml
             - --providers.file.watch=false
-            - --certificatesresolvers.letsencrypt.acme.email=markush1986@gmail.com
-            - --certificatesresolvers.letsencrypt.acme.storage=/data/acme.json
-            - --certificatesresolvers.letsencrypt.acme.dnschallenge.provider=cloudflare
-            - --certificatesresolvers.letsencrypt.acme.dnschallenge.resolvers=1.1.1.1:53,1.0.0.1:53
             - --ping=true
             - --ping.entryPoint=traefik
             - --log.level=INFO
-          env:
-            - name: CF_DNS_API_TOKEN
-              valueFrom:
-                secretKeyRef:
-                  name: entrypoint-secrets
-                  key: CF_DNS_API_TOKEN
-                  optional: true
-            - name: CF_ZONE_API_TOKEN
-              valueFrom:
-                secretKeyRef:
-                  name: entrypoint-secrets
-                  key: CF_ZONE_API_TOKEN
-                  optional: true
           ports:
             - name: web
               containerPort: 8000
-            - name: websecure
-              containerPort: 8443
             - name: traefik
               containerPort: 8080
           readinessProbe:
@@ -83,12 +63,7 @@ spec:
             - name: dynamic-config
               mountPath: /etc/traefik/dynamic
               readOnly: true
-            - name: acme-storage
-              mountPath: /data
       volumes:
         - name: dynamic-config
           configMap:
             name: entrypoint-traefik-dynamic
-        - name: acme-storage
-          persistentVolumeClaim:
-            claimName: entrypoint-acme

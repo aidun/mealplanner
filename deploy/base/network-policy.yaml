@@ -39,8 +39,6 @@ spec:
     - ports:
         - protocol: TCP
           port: 8000
-        - protocol: TCP
-          port: 8443
 
 ---
 apiVersion: networking.k8s.io/v1
@@ -118,28 +116,6 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: cloudflared-ingress
-  labels:
-    security.aidun.dev/baseline: "true"
-spec:
-  podSelector:
-    matchLabels:
-      app: cloudflared
-  policyTypes:
-    - Ingress
-  ingress:
-    - from:
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: monitoring
-      ports:
-        - protocol: TCP
-          port: 2000
-
----
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
   name: allow-dns-egress
   labels:
     security.aidun.dev/baseline: "true"
@@ -150,7 +126,6 @@ spec:
         operator: In
         values:
           - api
-          - cloudflared
           - entrypoint
           - weekly-plan
           - database-bootstrap
@@ -226,44 +201,6 @@ spec:
       ports:
         - protocol: TCP
           port: 80
-    - to:
-        - ipBlock:
-            cidr: 0.0.0.0/0
-      ports:
-        - protocol: TCP
-          port: 443
-
----
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: cloudflared-egress
-  labels:
-    security.aidun.dev/baseline: "true"
-spec:
-  podSelector:
-    matchLabels:
-      app: cloudflared
-  policyTypes:
-    - Egress
-  egress:
-    - to:
-        - podSelector:
-            matchLabels:
-              app: entrypoint
-      ports:
-        - protocol: TCP
-          port: 8443
-    - to:
-        - ipBlock:
-            cidr: 0.0.0.0/0
-      ports:
-        - protocol: TCP
-          port: 443
-        - protocol: TCP
-          port: 7844
-        - protocol: UDP
-          port: 7844
 
 ---
 apiVersion: networking.k8s.io/v1

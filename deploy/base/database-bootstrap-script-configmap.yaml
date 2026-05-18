@@ -138,5 +138,3 @@ data:
       echo "ghcr-pull-secret not created; set GHCR_USERNAME and GHCR_TOKEN to bootstrap it"
     fi
     label_secret ghcr-pull-secret live-only
-    label_secret entrypoint-secrets live-only
-    label_secret cloudflared-credentials live-only

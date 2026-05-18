@@ -5,52 +5,14 @@ metadata:
 data:
   dynamic.yaml: |
     http:
-      middlewares:
-        https-redirect:
-          redirectScheme:
-            scheme: https
-            permanent: true
-
       routers:
-        api-domain:
-          entryPoints:
-            - websecure
-          rule: Host(`mealplanner.markushartmann.dev`) && PathPrefix(`/api`)
-          priority: 200
-          service: api
-          tls:
-            certResolver: letsencrypt
-        frontend-domain:
-          entryPoints:
-            - websecure
-          rule: Host(`mealplanner.markushartmann.dev`) && PathPrefix(`/`)
-          priority: 100
-          service: frontend
-          tls:
-            certResolver: letsencrypt
-        api-domain-http:
-          entryPoints:
-            - web
-          rule: Host(`mealplanner.markushartmann.dev`) && PathPrefix(`/api`)
-          priority: 200
-          middlewares:
-            - https-redirect
-          service: api
-        frontend-domain-http:
-          entryPoints:
-            - web
-          rule: Host(`mealplanner.markushartmann.dev`) && PathPrefix(`/`)
-          priority: 100
-          middlewares:
-            - https-redirect
-          service: frontend
-        api-lan:
+        api:
           entryPoints:
             - web
           rule: PathPrefix(`/api`)
           priority: 10
           service: api
-        frontend-lan:
+        frontend:
           entryPoints:
             - web
           rule: PathPrefix(`/`)
