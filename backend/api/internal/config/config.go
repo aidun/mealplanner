@@ -25,7 +25,7 @@ func Load() (Config, error) {
 	authRequired := !strings.EqualFold(strings.TrimSpace(os.Getenv("AUTH_REQUIRED")), "false")
 	sessionSecret := strings.TrimSpace(os.Getenv("SESSION_SECRET"))
 	if !authRequired && sessionSecret == "" {
-		sessionSecret = "guest-mode-default-secret-no-auth-required"
+		sessionSecret = "guest-mode-default-secret-no-auth-required" // #nosec G101 -- kein echtes Secret, Auth ist explizit deaktiviert
 	}
 	cfg := Config{
 		Port:          getenvDefault("PORT", "3001"),
