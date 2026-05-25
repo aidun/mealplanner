@@ -35,6 +35,78 @@
   --page-max: 1360px;
   --header-offset: 108px;
   -webkit-tap-highlight-color: rgba(13, 138, 99, 0.14);
+
+  /* ── Mahlio Brand-Palette ── */
+  --mahlio-sage:        #2e6b4e;
+  --mahlio-sage-deep:   #14684c;
+  --mahlio-mint:        #dbe6d2;
+  --mahlio-cream:       #fbf6ed;
+  --mahlio-cream-warm:  #f8f1e8;
+  --mahlio-tomato:      #e35a45;
+  --mahlio-tomato-deep: #b9311b;
+  --mahlio-lemon:       #f2c94c;
+  --mahlio-lemon-soft:  #f2c76e;
+  --mahlio-herb-ink:    #1f2a24;
+  --mahlio-olive:       #556b2f;
+
+  /* ── Fehlende Semantic-Tokens ── */
+  --surface-solid:  #fffdf7;
+  --on-dark:        #fffaf5;
+  --on-dark-soft:   rgba(255, 250, 245, 0.72);
+  --success-bg:     #e9fff7;
+  --success-fg:     #14684c;
+  --error-bg:       #fff1ed;
+  --error-fg:       #b42318;
+  --ink-night:      #111f1a;
+  --ink-night-soft: #1b4838;
+
+  /* ── Erweitertes Shadow-System ── */
+  --shadow-rest:   0 12px 26px rgba(18, 33, 29, 0.05);
+  --shadow-soft:   0 14px 30px rgba(18, 33, 29, 0.05);
+  --shadow-card:   0 18px 46px rgba(18, 33, 29, 0.06);
+  --shadow-hero:   0 30px 72px rgba(18, 33, 29, 0.09);
+  --shadow-button: 0 12px 26px rgba(15, 118, 110, 0.18);
+
+  /* ── Erweiterte Radii ── */
+  --radius-xs:   6px;
+  --radius-xl:   36px;
+  --radius-pill: 999px;
+
+  /* ── Spacing-Skala (4px-Basis) ── */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 40px;
+  --space-9: 56px;
+
+  /* ── Type-Skala ── */
+  --fs-display-hero: clamp(3.9rem, 12vw, 7rem);
+  --fs-display-1:    clamp(2.5rem, 6vw, 4rem);
+  --fs-display-2:    clamp(2.1rem, 5vw, 3.2rem);
+  --fs-h1:           clamp(1.8rem, 3vw, 2.4rem);
+  --fs-h2:           1.4rem;
+  --fs-h3:           1.1rem;
+  --fs-body:         1rem;
+  --fs-small:        0.92rem;
+  --fs-caption:      0.82rem;
+  --fs-eyebrow:      0.76rem;
+
+  /* ── Line-Height-Skala ── */
+  --lh-tight:   0.92;
+  --lh-display: 1.05;
+  --lh-body:    1.5;
+  --lh-reading: 1.62;
+
+  /* ── Motion ── */
+  --ease-out:    cubic-bezier(.2, .7, .2, 1);
+  --dur-instant: 120ms;
+  --dur-fast:    160ms;
+  --dur-base:    220ms;
+  --dur-rise:    420ms;
 }
 
 * {
