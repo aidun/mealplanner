@@ -233,6 +233,7 @@ type Handler struct {
 	corsOrigins  []string
 	logger       *slog.Logger
 	promptDebug  bool
+	cookieSecure bool
 	rateLimiter  *rateLimiter
 	authRequired bool
 }
@@ -248,6 +249,8 @@ func New(repo Repository, planner planner.Planner, authService auth.Service, api
 	if appEnv == "" {
 		appEnv = "development"
 	}
+	cookieSecureEnv := strings.ToLower(strings.TrimSpace(getenv("SESSION_SECURE")))
+	cookieSecure := cookieSecureEnv != "false"
 	h := &Handler{
 		repo:         repo,
 		planner:      planner,
@@ -257,6 +260,7 @@ func New(repo Repository, planner planner.Planner, authService auth.Service, api
 		corsOrigins:  corsOrigins,
 		logger:       logger,
 		promptDebug:  appEnv == "test" && strings.EqualFold(strings.TrimSpace(getenv("PROMPT_DEBUG")), "true"),
+		cookieSecure: cookieSecure,
 		rateLimiter:  newRateLimiter(rateLimitFromEnv(), time.Minute),
 		authRequired: authRequired,
 	}

@@ -58,7 +58,7 @@ func (h *Handler) register(w http.ResponseWriter, r *http.Request) {
 		h.serverError(w, r, err)
 		return
 	}
-	setSessionCookie(w, sessionID, expiresAt)
+	h.setSessionCookie(w, sessionID, expiresAt)
 	writeJSON(w, http.StatusCreated, map[string]bool{"ok": true})
 }
 
@@ -92,7 +92,7 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 		h.serverError(w, r, err)
 		return
 	}
-	setSessionCookie(w, sessionID, expiresAt)
+	h.setSessionCookie(w, sessionID, expiresAt)
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
@@ -110,7 +110,7 @@ func (h *Handler) getSession(w http.ResponseWriter, r *http.Request) {
 				h.serverError(w, r, err)
 				return
 			}
-			setSessionCookie(w, sessionID, expiresAt)
+			h.setSessionCookie(w, sessionID, expiresAt)
 			userID = guestID
 			csrf = csrfToken
 		} else {
@@ -147,7 +147,7 @@ func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
 	if cookie, err := r.Cookie(auth.SessionCookieName); err == nil {
 		_ = h.repo.DeleteSession(r, cookie.Value)
 	}
-	clearCookie(w, auth.SessionCookieName, "/")
+	h.clearCookie(w, auth.SessionCookieName, "/")
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
@@ -216,26 +216,26 @@ func mustUserID(ctx context.Context) string {
 	return userID
 }
 
-func setSessionCookie(w http.ResponseWriter, sessionID string, expiresAt time.Time) {
+func (h *Handler) setSessionCookie(w http.ResponseWriter, sessionID string, expiresAt time.Time) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     auth.SessionCookieName,
 		Value:    sessionID,
 		Path:     "/",
 		Expires:  expiresAt,
 		HttpOnly: true,
-		Secure:   true,
+		Secure:   h.cookieSecure,
 		SameSite: http.SameSiteLaxMode,
 	})
 }
 
-func clearCookie(w http.ResponseWriter, name, path string) {
+func (h *Handler) clearCookie(w http.ResponseWriter, name, path string) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     name,
 		Value:    "",
 		Path:     path,
 		MaxAge:   -1,
 		HttpOnly: true,
-		Secure:   true,
+		Secure:   h.cookieSecure,
 		SameSite: http.SameSiteLaxMode,
 	})
 }

@@ -5,6 +5,7 @@ metadata:
 data:
   AUTH_REQUIRED: "false"
   AUTH_BASE_URL: https://mealplanner.markushartmann.dev
+  SESSION_SECURE: "false"
   CORS_ORIGINS: https://mealplanner.markushartmann.dev
   EMAIL_ENABLED: "true"
   EMAIL_PROVIDER: resend
