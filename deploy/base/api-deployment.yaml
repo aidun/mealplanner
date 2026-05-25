@@ -118,6 +118,12 @@ spec:
                   name: mealplanner-api-config
                   key: AUTH_BASE_URL
                   optional: true
+            - name: SESSION_SECURE
+              valueFrom:
+                configMapKeyRef:
+                  name: mealplanner-api-config
+                  key: SESSION_SECURE
+                  optional: true
             - name: SESSION_SECRET
               valueFrom:
                 secretKeyRef:
