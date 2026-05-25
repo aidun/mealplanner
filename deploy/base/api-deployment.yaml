@@ -45,7 +45,7 @@ spec:
       containers:
         - name: api
           image: ghcr.io/aidun/mealplanner/api:master
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           ports:
             - containerPort: 3001
           env:
