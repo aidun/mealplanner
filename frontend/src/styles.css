@@ -2,8 +2,10 @@
 
 :root {
   color-scheme: light;
-  font-family: "Avenir Next", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-  --font-display: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  font-family: "Plus Jakarta Sans", "Avenir Next", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Newsreader", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --font-body: "Plus Jakarta Sans", "Avenir Next", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, monospace;
   line-height: 1.5;
   font-weight: 400;
   color: #13211d;
