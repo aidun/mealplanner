@@ -29,6 +29,7 @@ type Repository interface {
 	RegisterUser(r *http.Request, email, passwordHash string) (userID string, created bool, err error)
 	GetUserByEmail(r *http.Request, email string) (userID, passwordHash string, found bool, err error)
 	IsAdminUser(r *http.Request, userID string) (bool, error)
+	EnsureGuestAdmin(r *http.Request) (string, error)
 	GetAccountSettings(r *http.Request) (domain.AccountSettings, error)
 	SaveAccountSettings(r *http.Request, settings domain.AccountSettings) (domain.AccountSettings, error)
 	GetAccountSettingsForUser(r *http.Request, userID string) (domain.AccountSettings, error)
@@ -80,6 +81,10 @@ func (r StoreRepository) GetUserByEmail(req *http.Request, email string) (string
 
 func (r StoreRepository) IsAdminUser(req *http.Request, userID string) (bool, error) {
 	return r.Store.IsAdminUser(req.Context(), userID)
+}
+
+func (r StoreRepository) EnsureGuestAdmin(req *http.Request) (string, error) {
+	return r.Store.EnsureGuestAdmin(req.Context())
 }
 
 func (r StoreRepository) GetAccountSettings(req *http.Request) (domain.AccountSettings, error) {
@@ -220,21 +225,22 @@ func (r StoreRepository) RecordGenerationEvent(req *http.Request, category strin
 
 // Handler wires API routes, auth boundaries, prompt debug and metrics.
 type Handler struct {
-	repo        Repository
-	planner     planner.Planner
-	auth        auth.Service
-	metrics     *Metrics
-	apiSecret   string
-	corsOrigins []string
-	logger      *slog.Logger
-	promptDebug bool
-	rateLimiter *rateLimiter
+	repo         Repository
+	planner      planner.Planner
+	auth         auth.Service
+	metrics      *Metrics
+	apiSecret    string
+	corsOrigins  []string
+	logger       *slog.Logger
+	promptDebug  bool
+	rateLimiter  *rateLimiter
+	authRequired bool
 }
 
 const maxJSONBodyBytes = 1 << 20
 
 // New builds the HTTP surface and applies global middleware in the same order for every route.
-func New(repo Repository, planner planner.Planner, authService auth.Service, apiSecret string, corsOrigins []string, logger *slog.Logger) http.Handler {
+func New(repo Repository, planner planner.Planner, authService auth.Service, apiSecret string, corsOrigins []string, logger *slog.Logger, authRequired bool) http.Handler {
 	if logger == nil {
 		logger = slog.Default()
 	}
@@ -243,15 +249,16 @@ func New(repo Repository, planner planner.Planner, authService auth.Service, api
 		appEnv = "development"
 	}
 	h := &Handler{
-		repo:        repo,
-		planner:     planner,
-		auth:        authService,
-		metrics:     NewMetrics(),
-		apiSecret:   strings.TrimSpace(apiSecret),
-		corsOrigins: corsOrigins,
-		logger:      logger,
-		promptDebug: appEnv == "test" && strings.EqualFold(strings.TrimSpace(getenv("PROMPT_DEBUG")), "true"),
-		rateLimiter: newRateLimiter(rateLimitFromEnv(), time.Minute),
+		repo:         repo,
+		planner:      planner,
+		auth:         authService,
+		metrics:      NewMetrics(),
+		apiSecret:    strings.TrimSpace(apiSecret),
+		corsOrigins:  corsOrigins,
+		logger:       logger,
+		promptDebug:  appEnv == "test" && strings.EqualFold(strings.TrimSpace(getenv("PROMPT_DEBUG")), "true"),
+		rateLimiter:  newRateLimiter(rateLimitFromEnv(), time.Minute),
+		authRequired: authRequired,
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", h.health)

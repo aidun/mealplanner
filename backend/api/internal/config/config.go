@@ -17,10 +17,16 @@ type Config struct {
 	OpenAIModel   string
 	ProviderMode  string
 	SessionSecret string
+	AuthRequired  bool
 }
 
 // Load reads environment variables, applies defaults and validates the result.
 func Load() (Config, error) {
+	authRequired := !strings.EqualFold(strings.TrimSpace(os.Getenv("AUTH_REQUIRED")), "false")
+	sessionSecret := strings.TrimSpace(os.Getenv("SESSION_SECRET"))
+	if !authRequired && sessionSecret == "" {
+		sessionSecret = "guest-mode-default-secret-no-auth-required"
+	}
 	cfg := Config{
 		Port:          getenvDefault("PORT", "3001"),
 		DatabaseURL:   strings.TrimSpace(os.Getenv("DATABASE_URL")),
@@ -30,7 +36,8 @@ func Load() (Config, error) {
 		OpenAIBaseURL: getenvDefault("OPENAI_BASE_URL", "https://api.openai.com"),
 		OpenAIModel:   getenvDefault("OPENAI_MEAL_MODEL", "gpt-5.4-mini"),
 		ProviderMode:  getenvDefault("PROVIDER_MODE", "mock"),
-		SessionSecret: strings.TrimSpace(os.Getenv("SESSION_SECRET")),
+		SessionSecret: sessionSecret,
+		AuthRequired:  authRequired,
 	}
 	cfg.ProviderMode = strings.ToLower(strings.TrimSpace(cfg.ProviderMode))
 	if cfg.DatabaseURL == "" {

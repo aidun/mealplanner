@@ -39,7 +39,7 @@ func main() {
 	authService := auth.NewService(auth.Config{
 		SessionSecret: cfg.SessionSecret,
 	})
-	handler := httpapi.New(httpapi.StoreRepository{Store: store.New(pool)}, planner.New(generator), authService, cfg.APISecret, cfg.CORSOrigins, logger)
+	handler := httpapi.New(httpapi.StoreRepository{Store: store.New(pool)}, planner.New(generator), authService, cfg.APISecret, cfg.CORSOrigins, logger, cfg.AuthRequired)
 
 	server := &http.Server{
 		Addr:              ":" + cfg.Port,
