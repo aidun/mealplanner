@@ -3,6 +3,7 @@ kind: ConfigMap
 metadata:
   name: mealplanner-api-config
 data:
+  AUTH_REQUIRED: "false"
   AUTH_BASE_URL: https://mealplanner.markushartmann.dev
   CORS_ORIGINS: https://mealplanner.markushartmann.dev
   EMAIL_ENABLED: "true"
