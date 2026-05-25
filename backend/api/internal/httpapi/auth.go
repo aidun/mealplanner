@@ -99,8 +99,24 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) getSession(w http.ResponseWriter, r *http.Request) {
 	userID, csrf, _, ok := h.readSession(r)
 	if !ok {
-		writeJSON(w, http.StatusOK, map[string]any{"authenticated": false})
-		return
+		if !h.authRequired {
+			guestID, err := h.repo.EnsureGuestAdmin(r)
+			if err != nil {
+				h.serverError(w, r, err)
+				return
+			}
+			sessionID, csrfToken, expiresAt, err := h.repo.CreateSession(r, guestID, 30*24*time.Hour)
+			if err != nil {
+				h.serverError(w, r, err)
+				return
+			}
+			setSessionCookie(w, sessionID, expiresAt)
+			userID = guestID
+			csrf = csrfToken
+		} else {
+			writeJSON(w, http.StatusOK, map[string]any{"authenticated": false})
+			return
+		}
 	}
 	isAdmin, err := h.repo.IsAdminUser(r, userID)
 	if err != nil {

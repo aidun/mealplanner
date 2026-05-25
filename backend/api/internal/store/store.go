@@ -1130,6 +1130,22 @@ func (s Store) RegisterUser(ctx context.Context, email, passwordHash string) (us
 	return userID, true, s.ensurePersonalFamily(ctx, userID)
 }
 
+// EnsureGuestAdmin stellt sicher, dass ein persistenter Admin-Benutzer für den Auth-freien Modus existiert.
+func (s Store) EnsureGuestAdmin(ctx context.Context) (string, error) {
+	const guestEmail = "guest@local"
+	var userID string
+	err := s.pool.QueryRow(ctx, `
+		INSERT INTO users(provider, subject_hash, email, is_admin, last_login_at)
+		VALUES ('local', $1, $2, true, now())
+		ON CONFLICT (provider, subject_hash) DO UPDATE SET last_login_at = now()
+		RETURNING id::text
+	`, hashEmail(guestEmail), guestEmail).Scan(&userID)
+	if err != nil {
+		return "", err
+	}
+	return userID, s.ensurePersonalFamily(ctx, userID)
+}
+
 // GetUserByEmail sucht einen lokalen Account anhand der E-Mail-Adresse.
 func (s Store) GetUserByEmail(ctx context.Context, email string) (userID, passwordHash string, found bool, err error) {
 	err = s.pool.QueryRow(ctx, `
