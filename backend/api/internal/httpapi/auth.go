@@ -217,6 +217,7 @@ func mustUserID(ctx context.Context) string {
 }
 
 func (h *Handler) setSessionCookie(w http.ResponseWriter, sessionID string, expiresAt time.Time) {
+	// #nosec G124 -- Secure is intentionally configurable via SESSION_SECURE env var for HTTP-only deployments.
 	http.SetCookie(w, &http.Cookie{
 		Name:     auth.SessionCookieName,
 		Value:    sessionID,
@@ -229,6 +230,7 @@ func (h *Handler) setSessionCookie(w http.ResponseWriter, sessionID string, expi
 }
 
 func (h *Handler) clearCookie(w http.ResponseWriter, name, path string) {
+	// #nosec G124 -- Secure is intentionally configurable via SESSION_SECURE env var for HTTP-only deployments.
 	http.SetCookie(w, &http.Cookie{
 		Name:     name,
 		Value:    "",
