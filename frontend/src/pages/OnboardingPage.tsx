@@ -1058,6 +1058,7 @@ export function OnboardingPage() {
                             ))}
                           </select>
                         </label>
+                        {session?.authRequired !== false && (
                         <div className="family-account-settings">
                           <div className="family-account-settings-copy">
                             <strong>E-Mail-Versand</strong>
@@ -1102,6 +1103,7 @@ export function OnboardingPage() {
                             <span>Rezept-Mail</span>
                           </label>
                         </div>
+                        )}
                       </article>
                     ))
                   ) : null}

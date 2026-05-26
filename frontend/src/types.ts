@@ -196,6 +196,7 @@ export interface Session {
   email?: string;
   isAdmin?: boolean;
   onboardingRequired?: boolean;
+  authRequired?: boolean;
 }
 
 export interface AccountSettings {
