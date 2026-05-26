@@ -140,6 +140,7 @@ func (h *Handler) getSession(w http.ResponseWriter, r *http.Request) {
 		"isAdmin":            isAdmin,
 		"csrfToken":          csrf,
 		"onboardingRequired": domain.IsPlaceholderProfile(profile) && !hasSeenOnboarding,
+		"authRequired":       h.authRequired,
 	})
 }
 
