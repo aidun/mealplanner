@@ -97,6 +97,7 @@ Regeln:
 - Beachte bevorzugte Einkaufsläden, typische Verpackungsgrößen und Einkaufsnotizen aus dem Profil.
 - Nutze die hinterlegten Küchengeräte, wenn sie sinnvoll passen; erfinde keine vorausgesetzten Spezialgeräte.
 - Plane Zutaten so, dass angebrochene Packungen möglichst über Folgetage verbraucht werden und nicht als Einzelreste stehen bleiben.
+- Jeder Wochentag bekommt andere Hauptgerichte; dieselbe Mahlzeit (gleicher Titel oder gleiche Hauptzutat als Basis) darf pro Woche nicht zweimal vorkommen.
 - Nutze Favoriten als Inspiration. Wiederhole passende Favoriten oder Varianten davon, aber mache die Woche nicht monoton.
 - Wenn Favoriten gut passen, übernimm mindestens 2 Mahlzeiten der Woche direkt daraus oder als klar erkennbare Variante.
 - Gib nur JSON im vereinbarten Schema zurück.
