@@ -657,12 +657,9 @@ func normalizeNutrition(meal domain.Meal, warnings []string) (domain.Nutrition, 
 	nutrition.FatG = maxInt(nutrition.FatG, 0)
 	nutrition.FiberG = maxInt(nutrition.FiberG, 0)
 	source := "provider"
-	if estimated, ok := estimateNutritionFromIngredients(meal); ok {
-		source = "ingredients"
-		if meal.EstimatedNutrition {
-			nutrition = estimated
-			warnings = append(warnings, "Nährwerte wurden aus Zutaten und Portionsgrößen geschätzt.")
-		} else if nutrition.Calories == 0 {
+	if nutrition.Calories == 0 {
+		if estimated, ok := estimateNutritionFromIngredients(meal); ok {
+			source = "ingredients"
 			nutrition = estimated
 			warnings = append(warnings, "Nährwerte wurden aus Zutaten und Portionsgrößen ergänzt.")
 		}
