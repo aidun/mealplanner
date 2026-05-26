@@ -72,7 +72,6 @@ func (g OpenAIGenerator) RegenerateMeal(ctx context.Context, profile domain.Prof
 	}
 	meal.ID = mealID
 	meal.RegenerationNote = note
-	meal.EstimatedNutrition = true
 	meal.GeneratedAt = time.Now()
 	return meal, nil
 }

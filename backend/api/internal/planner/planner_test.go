@@ -230,8 +230,8 @@ func TestGenerateWeekNormalizesNutritionAndMealPayload(t *testing.T) {
 	if len(meal.Instructions) != 1 || meal.Instructions[0] != "Kochen" {
 		t.Fatalf("expected instructions to be normalized, got %#v", meal.Instructions)
 	}
-	if !strings.Contains(strings.Join(meal.Warnings, " "), "Zutaten") {
-		t.Fatalf("expected nutrition estimate warning, got %#v", meal.Warnings)
+	if !strings.Contains(strings.Join(meal.Warnings, " "), "Makros") {
+		t.Fatalf("expected macro plausibilization warning, got %#v", meal.Warnings)
 	}
 	if meal.Meta["nutritionSource"] == "" {
 		t.Fatalf("expected nutrition source metadata, got %#v", meal.Meta)
